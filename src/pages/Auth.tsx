@@ -21,6 +21,16 @@ const signUpSchema = signInSchema.extend({
   fullName: z.string().trim().min(2, { message: "Full name is required" }).max(100),
 });
 
+const DEMO_ACCOUNTS = [
+  { email: "admin@buildtrack.demo", name: "Alex Admin", role: "Admin" },
+  { email: "pm@buildtrack.demo", name: "Pat Planner", role: "PM" },
+  { email: "engineer@buildtrack.demo", name: "Erin Engineer", role: "Engineer" },
+  { email: "supervisor@buildtrack.demo", name: "Sam Supervisor", role: "Supervisor" },
+  { email: "worker@buildtrack.demo", name: "Wes Worker", role: "Worker" },
+  { email: "qaqc@buildtrack.demo", name: "Quinn Inspector", role: "QA/QC" },
+  { email: "accountant@buildtrack.demo", name: "Avery Accountant", role: "Accountant" },
+];
+
 export default function Auth() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
