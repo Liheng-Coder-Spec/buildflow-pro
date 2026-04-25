@@ -42,7 +42,10 @@ export default function Auth() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(result.data);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: result.data.email,
+      password: result.data.password,
+    });
     setLoading(false);
     if (error) {
       toast.error(error.message);
