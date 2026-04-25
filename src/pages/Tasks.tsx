@@ -21,6 +21,7 @@ import {
 } from "@/lib/taskMeta";
 import { Search, LayoutGrid, List, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTaskUnread } from "@/hooks/useTaskUnread";
 
 interface TaskRow {
   id: string;
@@ -36,6 +37,7 @@ interface TaskRow {
 
 export default function Tasks() {
   const { activeProject } = useProjects();
+  const { unreadByTaskId } = useTaskUnread();
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -157,11 +159,21 @@ export default function Tasks() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((t) => (
-                      <TableRow key={t.id} className="cursor-pointer">
+                    {filtered.map((t) => {
+                      const unread = unreadByTaskId.get(t.id) ?? 0;
+                      return (
+                      <TableRow key={t.id} className={cn("cursor-pointer", unread > 0 && "bg-info-soft/20")}>
                         <TableCell className="font-medium">
-                          <Link to={`/tasks/${t.id}`} className="hover:text-primary">
-                            {t.title}
+                          <Link to={`/tasks/${t.id}`} className="hover:text-primary inline-flex items-center gap-2">
+                            {unread > 0 && (
+                              <span
+                                aria-label={`${unread} new`}
+                                className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none"
+                              >
+                                {unread > 9 ? "9+" : unread}
+                              </span>
+                            )}
+                            <span>{t.title}</span>
                           </Link>
                           {t.location_zone && (
                             <div className="text-xs text-muted-foreground">{t.location_zone}</div>
@@ -191,7 +203,8 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell className="text-right num text-sm">{t.estimated_hours ?? 0}</TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -210,12 +223,25 @@ export default function Tasks() {
                     <span className="text-xs text-muted-foreground num">{items.length}</span>
                   </div>
                   <div className="space-y-2">
-                    {items.map((t) => (
+                    {items.map((t) => {
+                      const unread = unreadByTaskId.get(t.id) ?? 0;
+                      return (
                       <Link
                         key={t.id}
                         to={`/tasks/${t.id}`}
-                        className="block bg-card rounded-md border p-2 hover:shadow-elevated transition-shadow"
+                        className={cn(
+                          "block bg-card rounded-md border p-2 hover:shadow-elevated transition-shadow relative",
+                          unread > 0 && "border-destructive/40 ring-1 ring-destructive/20",
+                        )}
                       >
+                        {unread > 0 && (
+                          <span
+                            aria-label={`${unread} new`}
+                            className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none shadow"
+                          >
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        )}
                         <div className="text-sm font-medium leading-snug mb-2">{t.title}</div>
                         <div className="flex items-center justify-between gap-1">
                           <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", TASK_PRIORITY_TONE[t.priority])}>
@@ -229,7 +255,8 @@ export default function Tasks() {
                           </div>
                         )}
                       </Link>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
