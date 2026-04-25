@@ -50,6 +50,143 @@ export type Database = {
         }
         Relationships: []
       }
+      pay_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          hourly_rate: number
+          id: string
+          overtime_multiplier: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          hourly_rate: number
+          id?: string
+          overtime_multiplier?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          hourly_rate?: number
+          id?: string
+          overtime_multiplier?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payroll_lines: {
+        Row: {
+          created_at: string
+          currency: string
+          hourly_rate: number
+          id: string
+          overtime_hours: number
+          overtime_multiplier: number
+          overtime_pay: number
+          period_id: string
+          regular_hours: number
+          regular_pay: number
+          total_pay: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          hourly_rate?: number
+          id?: string
+          overtime_hours?: number
+          overtime_multiplier?: number
+          overtime_pay?: number
+          period_id: string
+          regular_hours?: number
+          regular_pay?: number
+          total_pay?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          hourly_rate?: number
+          id?: string
+          overtime_hours?: number
+          overtime_multiplier?: number
+          overtime_pay?: number
+          period_id?: string
+          regular_hours?: number
+          regular_pay?: number
+          total_pay?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_lines_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          name: string
+          notes: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -437,6 +574,84 @@ export type Database = {
           },
         ]
       }
+      timesheet_entries: {
+        Row: {
+          created_at: string
+          end_time: string | null
+          flags: Json
+          id: string
+          notes: string | null
+          overtime_hours: number
+          project_id: string
+          regular_hours: number
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at: string | null
+          task_id: string | null
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string | null
+          flags?: Json
+          id?: string
+          notes?: string | null
+          overtime_hours?: number
+          project_id: string
+          regular_hours?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          task_id?: string | null
+          updated_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string | null
+          flags?: Json
+          id?: string
+          notes?: string | null
+          overtime_hours?: number
+          project_id?: string
+          regular_hours?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          task_id?: string | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -463,6 +678,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_payroll_lines: {
+        Args: { _period_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -480,6 +699,7 @@ export type Database = {
         | "worker"
         | "qaqc_inspector"
         | "accountant"
+      payroll_period_status: "open" | "locked" | "paid"
       project_status:
         | "planning"
         | "active"
@@ -504,6 +724,7 @@ export type Database = {
         | "excavation"
         | "inspection"
         | "other"
+      timesheet_status: "draft" | "submitted" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -640,6 +861,7 @@ export const Constants = {
         "qaqc_inspector",
         "accountant",
       ],
+      payroll_period_status: ["open", "locked", "paid"],
       project_status: [
         "planning",
         "active",
@@ -667,6 +889,7 @@ export const Constants = {
         "inspection",
         "other",
       ],
+      timesheet_status: ["draft", "submitted", "approved", "rejected"],
     },
   },
 } as const
