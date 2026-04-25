@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { HardHat, Loader2 } from "lucide-react";
 
@@ -19,6 +20,16 @@ const signInSchema = z.object({
 const signUpSchema = signInSchema.extend({
   fullName: z.string().trim().min(2, { message: "Full name is required" }).max(100),
 });
+
+const DEMO_ACCOUNTS = [
+  { email: "admin@buildtrack.demo", name: "Alex Admin", role: "Admin" },
+  { email: "pm@buildtrack.demo", name: "Pat Planner", role: "PM" },
+  { email: "engineer@buildtrack.demo", name: "Erin Engineer", role: "Engineer" },
+  { email: "supervisor@buildtrack.demo", name: "Sam Supervisor", role: "Supervisor" },
+  { email: "worker@buildtrack.demo", name: "Wes Worker", role: "Worker" },
+  { email: "qaqc@buildtrack.demo", name: "Quinn Inspector", role: "QA/QC" },
+  { email: "accountant@buildtrack.demo", name: "Avery Accountant", role: "Accountant" },
+];
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -53,6 +64,16 @@ export default function Auth() {
     }
     toast.success("Signed in");
     navigate("/", { replace: true });
+  };
+
+  const fillDemoCredentials = (email: string) => {
+    const emailInput = document.getElementById("signin-email") as HTMLInputElement;
+    const passwordInput = document.getElementById("signin-password") as HTMLInputElement;
+    if (emailInput && passwordInput) {
+      emailInput.value = email;
+      passwordInput.value = "Demo1234!";
+      passwordInput.focus();
+    }
   };
 
   const onSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -171,6 +192,30 @@ export default function Auth() {
                       Sign in
                     </Button>
                   </form>
+
+                  {/* Demo Accounts Section */}
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Demo Accounts</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {DEMO_ACCOUNTS.map((account) => (
+                        <button
+                          key={account.email}
+                          type="button"
+                          onClick={() => fillDemoCredentials(account.email)}
+                          className="w-full text-left p-2.5 rounded-md bg-muted/50 hover:bg-muted transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{account.name}</p>
+                              <p className="text-xs text-muted-foreground">{account.email}</p>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px]">{account.role}</Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3 text-center">Password for all: <span className="font-mono font-medium text-foreground">Demo1234!</span></p>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="signup">
