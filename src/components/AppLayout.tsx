@@ -26,7 +26,9 @@ import {
   ShieldCheck,
   HardHat,
   LogOut,
+  Activity,
 } from "lucide-react";
+import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { useAuth, ROLE_LABELS, AppRole } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +64,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/timesheets", label: "Timesheets", icon: Clock },
       { to: "/approvals", label: "Approvals", icon: CheckSquare,
         roles: ["admin", "project_manager", "supervisor", "accountant", "qaqc_inspector"] },
+      { to: "/workload", label: "Workload", icon: Activity,
+        roles: ["admin", "project_manager", "supervisor"] },
     ],
   },
   {
@@ -174,6 +178,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Top bar */}
           <header className="h-14 border-b bg-card flex items-center px-4 gap-3 sticky top-0 z-20">
             <SidebarTrigger />
+            <div className="hidden md:block">
+              <ProjectSwitcher />
+            </div>
             <div className="flex-1" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

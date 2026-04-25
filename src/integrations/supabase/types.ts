@@ -163,6 +163,280 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          reason: string | null
+          task_id: string
+          unassigned_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          reason?: string | null
+          task_id: string
+          unassigned_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          reason?: string | null
+          task_id?: string
+          unassigned_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_predecessors: {
+        Row: {
+          id: string
+          predecessor_id: string
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          predecessor_id: string
+          task_id: string
+        }
+        Update: {
+          id?: string
+          predecessor_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_predecessors_predecessor_id_fkey"
+            columns: ["predecessor_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_predecessors_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_status: Database["public"]["Enums"]["task_status"] | null
+          id: string
+          reason: string | null
+          task_id: string
+          to_status: Database["public"]["Enums"]["task_status"]
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["task_status"] | null
+          id?: string
+          reason?: string | null
+          task_id: string
+          to_status: Database["public"]["Enums"]["task_status"]
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["task_status"] | null
+          id?: string
+          reason?: string | null
+          task_id?: string
+          to_status?: Database["public"]["Enums"]["task_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_status_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_updates: {
+        Row: {
+          created_at: string
+          hours_worked: number | null
+          id: string
+          is_blocker: boolean
+          note: string | null
+          progress_pct: number | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hours_worked?: number | null
+          id?: string
+          is_blocker?: boolean
+          note?: string | null
+          progress_pct?: number | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hours_worked?: number | null
+          id?: string
+          is_blocker?: boolean
+          note?: string | null
+          progress_pct?: number | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          actual_end: string | null
+          actual_hours: number | null
+          actual_start: string | null
+          approved_at: string | null
+          approved_by: string | null
+          code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          estimated_hours: number | null
+          id: string
+          location_zone: string | null
+          planned_end: string | null
+          planned_start: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          progress_pct: number
+          project_id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          task_type: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_hours?: number | null
+          actual_start?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          location_zone?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress_pct?: number
+          project_id: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type?: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          actual_end?: string | null
+          actual_hours?: number | null
+          actual_start?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          location_zone?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress_pct?: number
+          project_id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type?: Database["public"]["Enums"]["task_type"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -212,6 +486,24 @@ export type Database = {
         | "on_hold"
         | "completed"
         | "cancelled"
+      task_priority: "low" | "medium" | "high" | "critical"
+      task_status:
+        | "open"
+        | "assigned"
+        | "in_progress"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "completed"
+        | "closed"
+      task_type:
+        | "concrete"
+        | "steel"
+        | "mep"
+        | "finishing"
+        | "excavation"
+        | "inspection"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -354,6 +646,26 @@ export const Constants = {
         "on_hold",
         "completed",
         "cancelled",
+      ],
+      task_priority: ["low", "medium", "high", "critical"],
+      task_status: [
+        "open",
+        "assigned",
+        "in_progress",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "completed",
+        "closed",
+      ],
+      task_type: [
+        "concrete",
+        "steel",
+        "mep",
+        "finishing",
+        "excavation",
+        "inspection",
+        "other",
       ],
     },
   },
