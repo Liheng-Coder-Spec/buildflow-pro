@@ -171,6 +171,30 @@ export default function Auth() {
                       Sign in
                     </Button>
                   </form>
+
+                  {/* Demo Accounts Section */}
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Demo Accounts</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {DEMO_ACCOUNTS.map((account) => (
+                        <button
+                          key={account.email}
+                          type="button"
+                          onClick={() => fillDemoCredentials(account.email)}
+                          className="w-full text-left p-2.5 rounded-md bg-muted/50 hover:bg-muted transition-colors group"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{account.name}</p>
+                              <p className="text-xs text-muted-foreground">{account.email}</p>
+                            </div>
+                            <Badge variant="secondary" className="text-[10px]">{account.role}</Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3 text-center">Password for all: <span className="font-mono font-medium text-foreground">Demo1234!</span></p>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="signup">
