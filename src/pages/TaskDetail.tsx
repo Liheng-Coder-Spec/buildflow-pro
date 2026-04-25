@@ -41,6 +41,8 @@ interface Task {
   location_zone: string | null;
   planned_start: string | null;
   planned_end: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
   estimated_hours: number | null;
   actual_hours: number | null;
   progress_pct: number;
