@@ -27,6 +27,7 @@ import {
   HardHat,
   LogOut,
   Activity,
+  DollarSign,
 } from "lucide-react";
 import { ProjectSwitcher } from "@/components/ProjectSwitcher";
 import { useAuth, ROLE_LABELS, AppRole } from "@/contexts/AuthContext";
@@ -66,6 +67,13 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         roles: ["admin", "project_manager", "supervisor", "accountant", "qaqc_inspector"] },
       { to: "/workload", label: "Workload", icon: Activity,
         roles: ["admin", "project_manager", "supervisor"] },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { to: "/payroll", label: "Payroll", icon: DollarSign,
+        roles: ["admin", "accountant"] },
     ],
   },
   {
