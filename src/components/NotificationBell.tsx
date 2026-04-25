@@ -9,6 +9,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useTaskUnread } from "@/hooks/useTaskUnread";
 import {
   NOTIFICATION_ICON,
   PRIORITY_TONE,
@@ -21,9 +22,15 @@ import { cn } from "@/lib/utils";
 export function NotificationBell() {
   const navigate = useNavigate();
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications(20);
+  const { markTaskRead } = useTaskUnread();
 
   const handleClick = (n: NotificationRow) => {
     if (!n.read_at) markRead(n.id);
+    // If this is a task notification, also clear sibling unread alerts for the
+    // same task so the per-task badge & nav badge stay in sync.
+    if (n.entity_type === "task" && n.entity_id) {
+      markTaskRead(n.entity_id);
+    }
     const route = getNotificationRoute(n);
     if (route) navigate(route);
   };

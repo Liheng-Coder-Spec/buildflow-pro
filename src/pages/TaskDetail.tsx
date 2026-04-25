@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useTaskUnread } from "@/hooks/useTaskUnread";
 
 interface Task {
   id: string;
@@ -76,6 +77,7 @@ interface ProfileLite {
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, roles } = useAuth();
+  const { markTaskRead } = useTaskUnread();
   const [task, setTask] = useState<Task | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [updates, setUpdates] = useState<Update[]>([]);
@@ -85,6 +87,11 @@ export default function TaskDetail() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [posting, setPosting] = useState(false);
+
+  // Auto-clear unread task notifications when this detail page opens
+  useEffect(() => {
+    if (id) markTaskRead(id);
+  }, [id, markTaskRead]);
 
   const canPlan = roles.some((r) =>
     ["admin", "project_manager", "engineer", "supervisor"].includes(r),
