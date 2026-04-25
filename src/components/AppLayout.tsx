@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/NotificationBell";
 
 interface NavItem {
   to: string;
@@ -190,6 +191,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <ProjectSwitcher />
             </div>
             <div className="flex-1" />
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2 h-9">
