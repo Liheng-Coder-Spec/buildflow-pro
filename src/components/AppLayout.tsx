@@ -43,6 +43,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useTaskUnread } from "@/hooks/useTaskUnread";
 
 interface NavItem {
   to: string;
@@ -97,8 +98,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 
 function AppSidebar() {
   const { roles } = useAuth();
+  const { totalTaskUnread } = useTaskUnread();
   const canSee = (item: NavItem) =>
     !item.roles || item.roles.some((r) => roles.includes(r));
+
+  const badgeFor = (to: string): number =>
+    to === "/tasks" ? totalTaskUnread : 0;
 
   return (
     <Sidebar collapsible="icon">
@@ -123,26 +128,46 @@ function AppSidebar() {
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {items.map((item) => (
-                    <SidebarMenuItem key={item.to}>
-                      <SidebarMenuButton asChild tooltip={item.label}>
-                        <NavLink
-                          to={item.to}
-                          end={item.to === "/"}
-                          className={({ isActive }) =>
-                            isActive ? "data-[active=true]:bg-sidebar-accent" : ""
-                          }
-                        >
-                          {({ isActive }) => (
-                            <>
-                              <item.icon className={isActive ? "text-sidebar-primary" : ""} />
-                              <span>{item.label}</span>
-                            </>
-                          )}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {items.map((item) => {
+                    const count = badgeFor(item.to);
+                    const tooltip = count > 0 ? `${item.label} (${count} new)` : item.label;
+                    return (
+                      <SidebarMenuItem key={item.to}>
+                        <SidebarMenuButton asChild tooltip={tooltip}>
+                          <NavLink
+                            to={item.to}
+                            end={item.to === "/"}
+                            className={({ isActive }) =>
+                              isActive ? "data-[active=true]:bg-sidebar-accent" : ""
+                            }
+                          >
+                            {({ isActive }) => (
+                              <>
+                                <span className="relative flex items-center justify-center">
+                                  <item.icon className={isActive ? "text-sidebar-primary" : ""} />
+                                  {count > 0 && (
+                                    <span
+                                      aria-hidden
+                                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-sidebar group-data-[collapsible=icon]:block hidden"
+                                    />
+                                  )}
+                                </span>
+                                <span className="flex-1">{item.label}</span>
+                                {count > 0 && (
+                                  <span
+                                    aria-label={`${count} unread`}
+                                    className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none group-data-[collapsible=icon]:hidden"
+                                  >
+                                    {count > 9 ? "9+" : count}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
