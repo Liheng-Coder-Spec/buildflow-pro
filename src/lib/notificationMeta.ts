@@ -32,6 +32,26 @@ export type NotificationType =
 
 export type NotificationPriority = "low" | "normal" | "high" | "critical";
 
+/**
+ * Notification types where the current user is the *direct* recipient of a
+ * task workflow action (assigned to them, awaiting their approval, their
+ * submission was approved/rejected, etc.). These drive the unread badge on
+ * the Tasks nav item and on individual task rows/cards.
+ */
+export const DIRECT_TASK_NOTIFICATION_TYPES: NotificationType[] = [
+  "task_assigned",
+  "task_unassigned",
+  "task_submitted_for_approval",
+  "task_approved",
+  "task_rejected",
+  "task_reopened",
+  "task_blocker_reported",
+];
+
+export function isDirectTaskNotification(n: Pick<NotificationRow, "type" | "entity_type">): boolean {
+  return n.entity_type === "task" && DIRECT_TASK_NOTIFICATION_TYPES.includes(n.type);
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
