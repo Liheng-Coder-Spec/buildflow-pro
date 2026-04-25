@@ -18,6 +18,11 @@ import Approvals from "./pages/Approvals";
 import Workload from "./pages/Workload";
 import Timesheets from "./pages/Timesheets";
 import Payroll from "./pages/Payroll";
+import Documents from "./pages/Documents";
+import Reports from "./pages/Reports";
+import AuditLog from "./pages/AuditLog";
+import Team from "./pages/Team";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -110,6 +115,56 @@ const App = () => (
                     <ProtectedRoute>
                       <AppLayout>
                         <Payroll />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/documents"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Documents />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/reports"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Reports />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/team"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Team />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/audit"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <AuditLog />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Settings />
                       </AppLayout>
                     </ProtectedRoute>
                   }
