@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +15,7 @@ export function useNotifications(limit = 50) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const instanceId = useId();
 
   const query = useQuery({
     queryKey: [...QK, user?.id, limit],
@@ -34,7 +35,7 @@ export function useNotifications(limit = 50) {
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel(`notifications-${user.id}`)
+      .channel(`notifications-${user.id}-${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -80,7 +81,7 @@ export function useNotifications(limit = 50) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, qc, navigate]);
+  }, [user?.id, qc, navigate, instanceId]);
 
   const markRead = useMutation({
     mutationFn: async (id: string) => {

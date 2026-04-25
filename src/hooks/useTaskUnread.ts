@@ -1,24 +1,35 @@
 import { useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications } from "@/hooks/useNotifications";
 import {
   NotificationRow,
   isDirectTaskNotification,
 } from "@/lib/notificationMeta";
 
 /**
- * Aggregates unread "direct task" notifications for the current user
- * and exposes helpers for clearing them when the user opens a task.
+ * Aggregates unread "direct task" notifications for the current user.
  *
- * Counts only notifications where the current user is the direct recipient
- * of a task action (assigned-to-me, approval-requested-from-me, etc.).
+ * Reads from the same React Query cache populated by `useNotifications`
+ * (which owns the realtime subscription) — does NOT open its own channel.
  */
 export function useTaskUnread() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { notifications } = useNotifications(50);
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications", user?.id, 50],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as NotificationRow[];
+    },
+  });
 
   const directUnread = useMemo(
     () =>
