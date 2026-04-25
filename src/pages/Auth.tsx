@@ -66,6 +66,16 @@ export default function Auth() {
     navigate("/", { replace: true });
   };
 
+  const fillDemoCredentials = (email: string) => {
+    const emailInput = document.getElementById("signin-email") as HTMLInputElement;
+    const passwordInput = document.getElementById("signin-password") as HTMLInputElement;
+    if (emailInput && passwordInput) {
+      emailInput.value = email;
+      passwordInput.value = "Demo1234!";
+      passwordInput.focus();
+    }
+  };
+
   const onSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
