@@ -16,6 +16,8 @@ import Tasks from "./pages/Tasks";
 import TaskDetail from "./pages/TaskDetail";
 import Approvals from "./pages/Approvals";
 import Workload from "./pages/Workload";
+import Timesheets from "./pages/Timesheets";
+import Payroll from "./pages/Payroll";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -88,6 +90,26 @@ const App = () => (
                     <ProtectedRoute>
                       <AppLayout>
                         <Workload />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timesheets"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Timesheets />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payroll"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Payroll />
                       </AppLayout>
                     </ProtectedRoute>
                   }
