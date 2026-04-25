@@ -23,6 +23,7 @@ import Reports from "./pages/Reports";
 import AuditLog from "./pages/AuditLog";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -165,6 +166,16 @@ const App = () => (
                     <ProtectedRoute>
                       <AppLayout>
                         <Settings />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Notifications />
                       </AppLayout>
                     </ProtectedRoute>
                   }

@@ -141,6 +141,54 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          priority: Database["public"]["Enums"]["notification_priority"]
+          project_id: string | null
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          project_id?: string | null
+          read_at?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          project_id?: string | null
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       pay_rates: {
         Row: {
           created_at: string
@@ -773,6 +821,22 @@ export type Database = {
         Args: { _period_id: string }
         Returns: undefined
       }
+      create_notification: {
+        Args: {
+          _actor_id?: string
+          _body: string
+          _entity_id: string
+          _entity_type: string
+          _metadata?: Json
+          _priority?: Database["public"]["Enums"]["notification_priority"]
+          _project_id: string
+          _title: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      get_project_planners: { Args: { _project_id: string }; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -790,6 +854,22 @@ export type Database = {
         | "worker"
         | "qaqc_inspector"
         | "accountant"
+      notification_priority: "low" | "normal" | "high" | "critical"
+      notification_type:
+        | "task_assigned"
+        | "task_unassigned"
+        | "task_started"
+        | "task_submitted_for_approval"
+        | "task_approved"
+        | "task_rejected"
+        | "task_completed"
+        | "task_closed"
+        | "task_reopened"
+        | "task_blocker_reported"
+        | "timesheet_submitted"
+        | "timesheet_approved"
+        | "timesheet_rejected"
+        | "timesheet_flagged"
       payroll_period_status: "open" | "locked" | "paid"
       project_status:
         | "planning"
@@ -951,6 +1031,23 @@ export const Constants = {
         "worker",
         "qaqc_inspector",
         "accountant",
+      ],
+      notification_priority: ["low", "normal", "high", "critical"],
+      notification_type: [
+        "task_assigned",
+        "task_unassigned",
+        "task_started",
+        "task_submitted_for_approval",
+        "task_approved",
+        "task_rejected",
+        "task_completed",
+        "task_closed",
+        "task_reopened",
+        "task_blocker_reported",
+        "timesheet_submitted",
+        "timesheet_approved",
+        "timesheet_rejected",
+        "timesheet_flagged",
       ],
       payroll_period_status: ["open", "locked", "paid"],
       project_status: [
