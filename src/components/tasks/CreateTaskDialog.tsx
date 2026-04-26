@@ -22,6 +22,10 @@ import {
 } from "@/lib/taskMeta";
 import { WbsNodePicker } from "@/components/wbs/WbsNodePicker";
 import { WbsTreeNode } from "@/lib/wbsMeta";
+import {
+  Department, DEPARTMENT_LABELS, DEPT_INITIAL_STAGE,
+} from "@/lib/departmentMeta";
+import { DisciplineMetaFields } from "@/components/tasks/DisciplineMetaFields";
 
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(200),
