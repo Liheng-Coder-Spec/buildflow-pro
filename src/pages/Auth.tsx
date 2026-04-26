@@ -29,6 +29,12 @@ const DEMO_ACCOUNTS = [
   { email: "worker@buildtrack.demo", name: "Wes Worker", role: "Worker" },
   { email: "qaqc@buildtrack.demo", name: "Quinn Inspector", role: "QA/QC" },
   { email: "accountant@buildtrack.demo", name: "Avery Accountant", role: "Accountant" },
+  // Department approvers (seeded via Settings → Departments → Seed demo data)
+  { email: "aria.architect@demo.test", name: "Aria Architect", role: "Architecture" },
+  { email: "stella.struct@demo.test", name: "Stella Struct", role: "Structure" },
+  { email: "marco.mep@demo.test", name: "Marco MEP", role: "MEP" },
+  { email: "pierre.proc@demo.test", name: "Pierre Procurement", role: "Procurement" },
+  { email: "connor.constr@demo.test", name: "Connor Construction", role: "Construction" },
 ];
 
 export default function Auth() {
