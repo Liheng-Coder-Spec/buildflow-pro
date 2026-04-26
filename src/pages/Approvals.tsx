@@ -53,6 +53,12 @@ export default function Approvals() {
   const { activeProject, projects } = useProjects();
   const { roles } = useAuth();
   const [tab, setTab] = useState("tasks");
+  const {
+    taskApprovalCount,
+    timesheetApprovalCount,
+    markTaskApprovalsRead,
+    markTimesheetApprovalsRead,
+  } = useApprovalUnread();
 
   // Tasks
   const [items, setItems] = useState<Pending[]>([]);
