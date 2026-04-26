@@ -13,7 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, Trash2, Plus, Search } from "lucide-react";
+import { Loader2, Trash2, Plus, Search, Sparkles } from "lucide-react";
 import {
   Department, DEPARTMENT_LABELS, DeptRole, DEPT_ROLE_LABELS,
 } from "@/lib/departmentMeta";
