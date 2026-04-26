@@ -38,6 +38,7 @@ export function DepartmentMembersTab() {
   const [allUsers, setAllUsers] = useState<ProfileLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState("");
 
   const [userId, setUserId] = useState("");
