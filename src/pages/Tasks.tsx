@@ -261,7 +261,11 @@ export default function Tasks() {
                           <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", TASK_PRIORITY_TONE[t.priority])}>
                             {TASK_PRIORITY_LABELS[t.priority]}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{TASK_TYPE_LABELS[t.task_type]}</span>
+                          {t.department ? (
+                            <DepartmentBadge department={t.department} size="xs" />
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">{TASK_TYPE_LABELS[t.task_type]}</span>
+                          )}
                         </div>
                         {t.progress_pct > 0 && (
                           <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">
