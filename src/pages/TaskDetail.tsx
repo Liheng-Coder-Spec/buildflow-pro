@@ -51,6 +51,7 @@ interface Task {
   progress_pct: number;
   created_at: string;
   rejection_reason: string | null;
+  department: Department | null;
 }
 
 interface Assignment {
