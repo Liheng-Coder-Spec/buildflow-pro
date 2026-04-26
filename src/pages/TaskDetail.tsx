@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
+import { Department } from "@/lib/departmentMeta";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface Task {
   id: string;
@@ -49,6 +51,7 @@ interface Task {
   progress_pct: number;
   created_at: string;
   rejection_reason: string | null;
+  department: Department | null;
 }
 
 interface Assignment {
@@ -234,6 +237,7 @@ export default function TaskDetail() {
                 {TASK_PRIORITY_LABELS[task.priority]}
               </span>
               <Badge variant="secondary">{TASK_TYPE_LABELS[task.task_type]}</Badge>
+              {task.department && <DepartmentBadge department={task.department} />}
             </div>
           </div>
 

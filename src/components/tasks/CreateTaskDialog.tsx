@@ -22,6 +22,10 @@ import {
 } from "@/lib/taskMeta";
 import { WbsNodePicker } from "@/components/wbs/WbsNodePicker";
 import { WbsTreeNode } from "@/lib/wbsMeta";
+import {
+  Department, DEPARTMENT_LABELS, DEPT_INITIAL_STAGE,
+} from "@/lib/departmentMeta";
+import { DisciplineMetaFields } from "@/components/tasks/DisciplineMetaFields";
 
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -40,6 +44,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
   const [saving, setSaving] = useState(false);
   const [wbsNodeId, setWbsNodeId] = useState<string | null>(null);
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
+  const [department, setDepartment] = useState<Department | "">("");
+  const [meta, setMeta] = useState<Record<string, any>>({});
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -49,6 +55,10 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     }
     if (!wbsNodeId || !wbsNode) {
       toast.error("Pick a WBS location for this task");
+      return;
+    }
+    if (!department) {
+      toast.error("Pick a department for this task");
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -75,6 +85,9 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       wbs_node_id: wbsNodeId,
       // Mirror WBS path into legacy location_zone so older list views still display nicely
       location_zone: wbsNode.path_text,
+      department: department as Department,
+      dept_status: DEPT_INITIAL_STAGE[department as Department],
+      discipline_meta: meta,
       planned_start: parsed.data.planned_start || null,
       planned_end: parsed.data.planned_end || null,
       estimated_hours: parsed.data.estimated_hours ? Number(parsed.data.estimated_hours) : 0,
@@ -89,6 +102,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     setOpen(false);
     setWbsNodeId(null);
     setWbsNode(null);
+    setDepartment("");
+    setMeta({});
     onCreated?.();
   };
 
@@ -139,6 +154,24 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
               </Select>
             </div>
           </div>
+          <div>
+            <Label htmlFor="department">Department *</Label>
+            <Select value={department} onValueChange={(v) => { setDepartment(v as Department); setMeta({}); }}>
+              <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(DEPARTMENT_LABELS) as Department[]).map((d) => (
+                  <SelectItem key={d} value={d}>{DEPARTMENT_LABELS[d]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {department && (
+            <DisciplineMetaFields
+              department={department as Department}
+              value={meta}
+              onChange={setMeta}
+            />
+          )}
           <div>
             <Label>WBS location *</Label>
             {activeProject && (

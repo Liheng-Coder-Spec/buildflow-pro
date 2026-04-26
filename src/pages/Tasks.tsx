@@ -22,6 +22,8 @@ import {
 import { Search, LayoutGrid, List, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
+import { Department, DEPARTMENT_LABELS } from "@/lib/departmentMeta";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface TaskRow {
   id: string;
@@ -33,6 +35,7 @@ interface TaskRow {
   planned_end: string | null;
   estimated_hours: number | null;
   progress_pct: number;
+  department: Department | null;
 }
 
 export default function Tasks() {
@@ -43,6 +46,7 @@ export default function Tasks() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">("all");
+  const [deptFilter, setDeptFilter] = useState<Department | "all">("all");
 
   const load = useCallback(async () => {
     if (!activeProject) {
@@ -53,7 +57,7 @@ export default function Tasks() {
     setLoading(true);
     const { data } = await supabase
       .from("tasks")
-      .select("id, title, status, priority, task_type, location_zone, planned_end, estimated_hours, progress_pct")
+      .select("id, title, status, priority, task_type, location_zone, planned_end, estimated_hours, progress_pct, department")
       .eq("project_id", activeProject.id)
       .order("created_at", { ascending: false });
     setTasks((data ?? []) as TaskRow[]);
@@ -66,6 +70,7 @@ export default function Tasks() {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+    if (deptFilter !== "all" && t.department !== deptFilter) return false;
     return true;
   });
 
@@ -123,6 +128,15 @@ export default function Tasks() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={deptFilter} onValueChange={(v) => setDeptFilter(v as any)}>
+          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All departments</SelectItem>
+            {(Object.keys(DEPARTMENT_LABELS) as Department[]).map((d) => (
+              <SelectItem key={d} value={d}>{DEPARTMENT_LABELS[d]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="ml-auto text-sm text-muted-foreground">
           {filtered.length} of {tasks.length}
         </div>
@@ -150,7 +164,7 @@ export default function Tasks() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Progress</TableHead>
@@ -180,7 +194,7 @@ export default function Tasks() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {TASK_TYPE_LABELS[t.task_type]}
+                          {t.department ? <DepartmentBadge department={t.department} /> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
                           <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", TASK_PRIORITY_TONE[t.priority])}>
@@ -247,7 +261,11 @@ export default function Tasks() {
                           <span className={cn("inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium", TASK_PRIORITY_TONE[t.priority])}>
                             {TASK_PRIORITY_LABELS[t.priority]}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{TASK_TYPE_LABELS[t.task_type]}</span>
+                          {t.department ? (
+                            <DepartmentBadge department={t.department} size="xs" />
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">{TASK_TYPE_LABELS[t.task_type]}</span>
+                          )}
                         </div>
                         {t.progress_pct > 0 && (
                           <div className="h-1 bg-muted rounded-full overflow-hidden mt-2">

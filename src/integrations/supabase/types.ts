@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      department_members: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          role_in_dept: Database["public"]["Enums"]["dept_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          role_in_dept?: Database["public"]["Enums"]["dept_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          role_in_dept?: Database["public"]["Enums"]["dept_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       document_versions: {
         Row: {
           change_note: string | null
@@ -521,16 +548,22 @@ export type Database = {
       task_predecessors: {
         Row: {
           id: string
+          is_hard_block: boolean
+          note: string | null
           predecessor_id: string
           task_id: string
         }
         Insert: {
           id?: string
+          is_hard_block?: boolean
+          note?: string | null
           predecessor_id: string
           task_id: string
         }
         Update: {
           id?: string
+          is_hard_block?: boolean
+          note?: string | null
           predecessor_id?: string
           task_id?: string
         }
@@ -640,7 +673,10 @@ export type Database = {
           code: string | null
           created_at: string
           created_by: string | null
+          department: Database["public"]["Enums"]["department"] | null
+          dept_status: Database["public"]["Enums"]["dept_status"] | null
           description: string | null
+          discipline_meta: Json
           estimated_hours: number | null
           id: string
           location_zone: string | null
@@ -665,7 +701,10 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          dept_status?: Database["public"]["Enums"]["dept_status"] | null
           description?: string | null
+          discipline_meta?: Json
           estimated_hours?: number | null
           id?: string
           location_zone?: string | null
@@ -690,7 +729,10 @@ export type Database = {
           code?: string | null
           created_at?: string
           created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          dept_status?: Database["public"]["Enums"]["dept_status"] | null
           description?: string | null
+          discipline_meta?: Json
           estimated_hours?: number | null
           id?: string
           location_zone?: string | null
@@ -955,6 +997,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_dept_member: {
+        Args: {
+          _dept: Database["public"]["Enums"]["department"]
+          _min_role?: Database["public"]["Enums"]["dept_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       wbs_user_can: {
         Args: {
           _node_id: string
@@ -973,6 +1023,32 @@ export type Database = {
         | "worker"
         | "qaqc_inspector"
         | "accountant"
+      department:
+        | "architecture"
+        | "structure"
+        | "mep"
+        | "procurement"
+        | "construction"
+      dept_role: "member" | "reviewer" | "approver"
+      dept_status:
+        | "draft"
+        | "internal_review"
+        | "coordination"
+        | "dept_approved"
+        | "issued"
+        | "request"
+        | "rfq"
+        | "quotation_received"
+        | "evaluation"
+        | "po_issued"
+        | "delivered"
+        | "assigned"
+        | "in_progress"
+        | "inspection"
+        | "site_approved"
+        | "completed"
+        | "rejected"
+        | "cancelled"
       notification_priority: "low" | "normal" | "high" | "critical"
       notification_type:
         | "task_assigned"
@@ -1160,6 +1236,34 @@ export const Constants = {
         "worker",
         "qaqc_inspector",
         "accountant",
+      ],
+      department: [
+        "architecture",
+        "structure",
+        "mep",
+        "procurement",
+        "construction",
+      ],
+      dept_role: ["member", "reviewer", "approver"],
+      dept_status: [
+        "draft",
+        "internal_review",
+        "coordination",
+        "dept_approved",
+        "issued",
+        "request",
+        "rfq",
+        "quotation_received",
+        "evaluation",
+        "po_issued",
+        "delivered",
+        "assigned",
+        "in_progress",
+        "inspection",
+        "site_approved",
+        "completed",
+        "rejected",
+        "cancelled",
       ],
       notification_priority: ["low", "normal", "high", "critical"],
       notification_type: [
