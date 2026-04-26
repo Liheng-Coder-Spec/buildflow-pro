@@ -164,7 +164,7 @@ export default function Tasks() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Department</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Progress</TableHead>
