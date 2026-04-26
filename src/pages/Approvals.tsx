@@ -22,6 +22,7 @@ import { formatHours } from "@/lib/timesheetMeta";
 import { CheckCheck, Clock, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useApprovalUnread } from "@/hooks/useApprovalUnread";
 
 interface Pending {
   id: string;
