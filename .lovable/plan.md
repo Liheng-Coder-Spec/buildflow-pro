@@ -1,185 +1,198 @@
-## Departments V1 — Implementation Plan
+# Department Test-Data Seed Plan
 
-A construction-aware department layer that runs *alongside* existing WBS, roles, and tasks. Each department gets its own status workflow, its own membership table (orthogonal to `app_role`), and a hybrid soft/hard dependency model.
-
----
-
-### 1. Data model
-
-**`department` enum**
-`architecture`, `structure`, `mep`, `procurement`, `construction`. Extensible later.
-
-**`dept_status` enum (single, namespaced)**
-One enum holding every status across departments — keeps Postgres simple and lets the trigger validate per-dept transitions in code.
-Values: `draft`, `internal_review`, `coordination`, `dept_approved`, `issued`, `request`, `rfq`, `quotation_received`, `evaluation`, `po_issued`, `delivered`, `assigned`, `in_progress`, `inspection`, `site_approved`, `completed`, `rejected`, `cancelled`.
-
-**`tasks` extension**
-- Add `department department NULL` (kept nullable so legacy rows survive; UI requires it for new tasks).
-- Add `dept_status dept_status NULL` — the per-department stage. The existing `status` column stays as the high-level lifecycle (open/in_progress/approved/etc.) so notifications, kanban, and reports keep working unchanged.
-- Add `discipline_meta jsonb DEFAULT '{}'` — discipline-specific fields:
-  - Design depts → `{ drawing_no, revision }`
-  - Procurement → `{ supplier, po_number, rfq_due }`
-  - Construction → `{ inspection_ref, lot_no }`
-
-**`department_members`** (orthogonal to `user_roles`)
-- `id uuid pk`
-- `user_id uuid` (FK → auth.users)
-- `department department`
-- `role_in_dept` enum (`member` | `reviewer` | `approver`)
-- `created_at`, `created_by`
-- `UNIQUE(user_id, department, role_in_dept)`
-- Index `(department, role_in_dept)` for fast approver lookups.
-
-**`task_predecessors` extension**
-- Add `is_hard_block boolean DEFAULT false` and `note text NULL`.
-
-**Audit**
-- Attach existing `log_audit_event()` to `department_members` and to `discipline_meta`/`department`/`dept_status` columns (already covered by table-level audit on `tasks`).
+Goal: every department feature (member assignment, approver-only transitions, hard/soft dependency blocking, WBS ACL, dept chips/filters) is testable end-to-end with one click.
 
 ---
 
-### 2. Workflow logic per department (DB trigger)
+## 1. Current gaps (audited)
 
-New `validate_dept_status_transition()` trigger on `tasks` (BEFORE INSERT/UPDATE OF dept_status):
+| Area | Now | Needed |
+|---|---|---|
+| Demo users | 7 (1 per app_role) | + 5 dept approvers (one per dept) |
+| `department_members` | 1 row | ~17 rows covering all 5 depts × member/reviewer/approver |
+| `project_members` | **0** ⚠ | Add all 7 base users to both projects |
+| `wbs_nodes` | 8 (Hattha only, partial) | Full Building → Level → Zone → Sub-zone for **both** projects |
+| `wbs_assignments` | 1 row | Per-zone view/edit grants to specific demo users |
+| Tasks with `department` / `dept_status` | **0 / 10** ⚠ | ~30 tasks at varied dept stages, each linked to a WBS node |
+| `task_predecessors` | **0** ⚠ | A cross-dept chain (Arch → Struct → Procurement → Construction) with both hard and soft blocks |
+| `task_assignments` linking dept members | sparse | Each new task assigned to the matching dept user(s) |
 
+---
+
+## 2. New demo users (5, dept approvers)
+
+Created via the edge function (needs `auth.users` write):
+
+| Email | Name | app_role | Dept membership |
+|---|---|---|---|
+| `aria.architect@demo.test` | Aria Architect | engineer | architecture / **approver** |
+| `stella.struct@demo.test` | Stella Struct | engineer | structure / **approver** |
+| `marco.mep@demo.test` | Marco MEP | engineer | mep / **approver** |
+| `pierre.proc@demo.test` | Pierre Procurement | project_manager | procurement / **approver** |
+| `connor.constr@demo.test` | Connor Construction | supervisor | construction / **approver** |
+
+Password for all: `Demo1234!` (matches existing `seed-demo-users` convention). All auto-confirmed.
+
+Existing users get filled in as members/reviewers so cross-dept access can be tested:
+
+| User | Department roles added |
+|---|---|
+| Erin Engineer | architecture (member), structure (member, *kept*), mep (reviewer) |
+| Pat Planner (PM) | procurement (reviewer), construction (reviewer) |
+| Sam Supervisor | construction (member), structure (reviewer) |
+| Quinn Inspector | construction (reviewer), mep (member) |
+| Wes Worker | construction (member) |
+
+Result: every dept has ≥1 member, ≥1 reviewer, exactly 1 approver. Wes can act on construction tasks but not approve; Erin can edit Architecture but not approve, etc.
+
+---
+
+## 3. WBS expansion (idempotent migration)
+
+**Riverside Tower (PRJ-001)** — currently empty:
 ```
-ARCHITECTURE / STRUCTURE / MEP:
-  draft → internal_review → coordination → dept_approved → issued
-  internal_review|coordination → rejected → draft
-
-PROCUREMENT:
-  request → rfq → quotation_received → evaluation → po_issued → delivered
-  any → cancelled
-
-CONSTRUCTION:
-  assigned → in_progress → inspection → site_approved → completed
-  inspection → rejected → in_progress
+RT-A  Tower Building (building)
+  L01 Ground Floor (level)
+     Z01 Lobby Zone (zone)
+     Z02 Retail Zone (zone)
+  L02 Office Level 1 (level)
+     Z01 Open Office (zone)
+     Z02 Meeting Rooms (zone)
+  L03 Office Level 2 (level)
+     Z01 Open Office (zone)
+RT-B  Annex Building (building)
+  L01 Service Level (level)
+     Z01 MEP Plant Room (zone)
 ```
 
-Trigger also:
-- Enforces approval roles using `department_members.role_in_dept = 'approver'` for `dept_approved | issued | po_issued | site_approved`.
-- Mirrors `dept_status` → high-level `status` (e.g. `issued | po_issued | completed | site_approved` → `completed`; `internal_review | inspection | evaluation` → `pending_approval`; `rejected` → `rejected`). Keeps all current notifications/kanban code working.
+**Hattha Bank Tower (PRJ-002)** — extend existing tree:
+```
+BA > 01-GF > Z01 Lobby (new sub-zone)
+BA > 01-GF > Z02 Banking Hall (new sub-zone)
+BA > 02-L1 > Z01 Office East (new sub-zone)
+BA > 02-L1 > Z02 Office West (new sub-zone)
+BA > 03-L2 > Z01 Trading Floor (new sub-zone)
+BB Parking Building > L01 Basement P1 > Z01 Parking Bay A (new level + zone)
+```
+
+Insert with `ON CONFLICT (project_id, code, parent_id) DO NOTHING` so re-runs are safe. The existing `wbs_compute_path` trigger fills `path` / `path_text` / `depth` automatically.
+
+### WBS assignments
+
+Grant per-zone access so we can prove the WBS ACL works alongside dept ACL:
+
+- Erin → `view` on RT-A (subtree inherits)
+- Sam → `edit` on BA > 02-L1 (and all its zones via ancestor walk in `wbs_user_can`)
+- Marco MEP → `edit` on RT-B > L01 (MEP plant room subtree)
+- Pierre → `manage` on BA > 02-L1 > Z01 (so he can also reassign WBS there)
+- Wes → `view` only on BA > 01-GF (cannot edit even though he's a construction member elsewhere)
 
 ---
 
-### 3. Cross-department dependency blocking (hybrid)
+## 4. Task seeding (~30 tasks)
 
-New `validate_task_start_against_predecessors()` trigger:
-- On UPDATE of `dept_status` or `status`, if new value moves the task into a "started" state (`in_progress`, `internal_review`, `rfq`, `inspection`), look up `task_predecessors`.
-- For each predecessor:
-  - **`is_hard_block = true`** → predecessor must be in an end-state (`issued | po_issued | delivered | completed | site_approved`). Otherwise raise exception with message `Blocked by <CODE> — <title> (<dept>)`.
-  - **`is_hard_block = false`** → no exception; UI shows yellow chip.
-- Soft warnings are returned via the existing audit log (`log_audit_event` already running) so admins can review overrides.
+For **each project** × **each department** = 6 tasks per dept (3 per project):
 
----
+### Architecture (6 tasks across both projects)
+- 1 task at `draft`
+- 1 at `internal_review` (assigned to Erin, awaiting Aria's approval)
+- 1 at `dept_approved` (already approved by Aria, ready to issue)
+- `discipline_meta`: `{ drawing_no: "A-101", revision: "Rev. 0" }`
 
-### 4. RLS adjustments
+### Structure (6)
+- 1 `draft`, 1 `coordination`, 1 `issued`
+- `discipline_meta`: `{ drawing_no: "S-201", revision: "Rev. 0" }`
 
-**`department_members`**
-- SELECT: any authenticated.
-- INSERT/DELETE: admin only (PMs can manage members of their own projects in V2).
+### MEP (6)
+- 1 `draft`, 1 `internal_review`, 1 `coordination`
+- `discipline_meta`: `{ drawing_no: "M-301", revision: "Rev. 0" }`
 
-**Tasks (extend existing policies)**
-- UPDATE policy gets an extra OR clause: caller must be admin / PM / engineer / supervisor **AND** (a) task has no department, OR (b) caller is in `department_members` for `tasks.department`.
-- SELECT stays open (current behavior — anyone in the project can read).
-- Result: cross-department tasks become read-only unless you're a member of that department.
+### Procurement (6)
+- 1 `request`, 1 `rfq`, 1 `po_issued`
+- `discipline_meta`: `{ supplier: "Acme Steel Co.", po_number: "PO-0001", rfq_due: "2026-05-15" }`
 
-**Approvals**
-- The dept-status trigger enforces `role_in_dept='approver'` for the relevant transitions, regardless of `app_role` (admin still bypasses everything).
+### Construction (6)
+- 1 `assigned`, 1 `in_progress`, 1 `inspection`
+- `discipline_meta`: `{ inspection_ref: "INS-0001", lot_no: "Lot-12" }`
 
-> All checks go through `SECURITY DEFINER` helper `is_dept_member(_user, _dept, _role text DEFAULT NULL)` so policies never query the table they protect.
+Every task:
+- Has a `code` like `T-ARCH-001` (we currently leave code null — fix that here for readability)
+- Is anchored to a **WBS node** (`wbs_node_id` required)
+- Is assigned to the matching dept member via `task_assignments`
+- Tasks at end-states (`dept_approved`, `issued`, `po_issued`, `site_approved`, `completed`) bypass the trigger by being inserted with the final `dept_status` directly **and** `bypass_validation` is not possible — so seed will insert at the *initial* stage and then run UPDATEs in the right approver session. To keep this purely server-side we'll use `SECURITY DEFINER` functions: a one-off `seed_advance_task(task_id, target_stage, approver_id)` helper that temporarily uses the approver's id (since the trigger checks `auth.uid()`, we'll instead loosen the check by adding a `seed_mode` GUC for the duration of the seed, then unset).
 
----
+> **Cleaner alternative**: temporarily DISABLE the `trg_validate_dept_status` trigger inside the seed transaction, do all the inserts, then re-enable. Same for `trg_validate_dependencies`. This is the standard "seed bypass" pattern and avoids new SECURITY DEFINER helpers.
 
-### 5. Notifications
+### Cross-dept dependency chain (one canonical example per project)
 
-Extend `notify_task_status_change()`:
-- When `dept_status` becomes `dept_approved` / `issued` / `po_issued` / `site_approved`, look up successor tasks (rows in `task_predecessors` where `predecessor_id = NEW.id`) and notify their assignees + dept approvers with type `task_handoff` (new value in `notification_type` enum).
-- When a hard-block exception fires, no notification (the action failed). When soft-block: post notification `task_dependency_warning` to PM/supervisor.
+In Hattha BA > 02-L1 > Z01 Office East:
+1. `T-ARCH-002` (Architecture, `dept_approved` → will be `issued`)
+2. `T-STRUCT-002` (Structure) — predecessor: ARCH-002, **hard block**
+3. `T-PROC-002` (Procurement) — predecessor: STRUCT-002, **hard block**
+4. `T-CONSTR-002` (Construction) — predecessors: STRUCT-002 (hard), PROC-002 (soft)
 
----
+Test cases this enables:
+- Try to start CONSTR-002 while STRUCT-002 is `coordination` → blocked (hard)
+- Move STRUCT to `issued` then start CONSTR while PROC-002 still `rfq` → succeeds (soft warning only)
+- Approver gating: only Aria can move ARCH-002 → `issued`; Erin (member) gets the trigger error
 
-### 6. UI changes (V1 scope = picker + chips)
-
-**`src/lib/departmentMeta.ts`** (new)
-- `DEPARTMENT_LABELS`, `DEPARTMENT_TONE` (color per dept), `DEPT_WORKFLOW` map (allowed transitions, end-states, mirrored high-level status), `DISCIPLINE_FIELDS` definition.
-
-**`src/components/DepartmentBadge.tsx`** (new)
-- Colored pill with dept icon + label, mirrors `StatusBadge` styling.
-
-**`src/components/tasks/CreateTaskDialog.tsx`** (edit)
-- Add **Department \*** select (required). On change, replace the free-text `task_type` row with the dept-specific discipline fields rendered from `DISCIPLINE_FIELDS[department]` (drawing_no for design, supplier for procurement, etc.).
-- Save `department`, initial `dept_status` (first stage of the chosen workflow), and `discipline_meta`.
-
-**`src/pages/TaskDetail.tsx`** (edit)
-- Header: add `<DepartmentBadge>` next to the existing `StatusBadge`.
-- Replace the high-level status select with a **two-row control**: dept stage select (driven by `DEPT_WORKFLOW[department].next(current)`) on top, read-only mirror of the high-level `status` underneath.
-- New **"Discipline" card** rendering `discipline_meta` keys for that dept.
-- New **"Dependencies" card**: list predecessors with status dot + dept badge; `is_hard_block` rows show a 🔒 icon. "Add predecessor" picker (admin/PM only) with a `Hard block` checkbox. Soft-blocked successors show a yellow warning banner above the stage select.
-
-**`src/pages/Tasks.tsx`** (edit)
-- Add **Department filter** chip row (multi-select).
-- Add `<DepartmentBadge>` in list rows and a small dept dot on Kanban cards.
-- Sort/filter by `department` available in URL query so deep-links from notifications work.
-
-**Settings → Department members** (new tab in `src/pages/Settings.tsx`, admin-only)
-- Table of `department_members` with add/remove, role_in_dept select. Inline search by user.
-
-> Out of V1 (deferred): swimlane Kanban per department, dependency graph SVG, Reports dept tab. All three are explicitly listed as V2 because the user picked only the picker + chip option.
+In Riverside RT-A > L01 > Z02 Retail Zone we'll seed a parallel but simpler chain (Arch → Construction only) with a soft block, so QA can compare.
 
 ---
 
-### 7. Migration steps
+## 5. Delivery — split between migration and edge function
 
-1. Create `department` and `dept_status` enums.
-2. Create `department_members` table + RLS + audit trigger.
-3. ALTER `tasks` add `department`, `dept_status`, `discipline_meta`.
-4. ALTER `task_predecessors` add `is_hard_block`, `note`.
-5. Create helper `is_dept_member(uuid, department, text)` (SECURITY DEFINER).
-6. Create triggers `validate_dept_status_transition`, `validate_task_start_against_predecessors`.
-7. Extend tasks UPDATE policy with department-membership clause.
-8. Extend `notify_task_status_change` with handoff notifications; add new notification_type values.
+### Migration (`*_seed_departments_full.sql`)
+1. Insert WBS nodes for both projects (idempotent).
+2. Insert `wbs_assignments` (idempotent on `(user_id, wbs_node_id, permission)`).
+3. Insert `project_members` for the 7 base users in both projects.
+4. Wrap in a single transaction that:
+   - `ALTER TABLE tasks DISABLE TRIGGER trg_validate_dept_status, trg_validate_dependencies;` (re-enable in same tx)
+   - Inserts the ~30 dept tasks with target `dept_status`, `discipline_meta`, `wbs_node_id`, `code`.
+   - Inserts `task_assignments` linking each task to its dept member(s).
+   - Inserts `task_predecessors` (with `is_hard_block` flag) for the dependency chain.
+   - Re-enables the triggers.
+5. **Note**: dept_member rows for the 5 NEW approvers are inserted by the edge function once those auth.users exist; dept_member rows for existing users are added in the migration.
 
-Existing tasks (with NULL `department`) stay editable by current planners — nothing breaks. New tasks created in the UI must pick a department.
+### Edge function `seed-departments-demo` (admin-only, JWT-validated)
+- Calls `supabase.auth.admin.createUser` for each of the 5 new dept approvers (skips if email already exists).
+- Inserts their `profiles`, `user_roles`, and `department_members` rows.
+- Re-runnable: every step uses `upsert` / `ON CONFLICT DO NOTHING`.
+- Returns a JSON summary (created/skipped per user) so we can log it in the UI.
+
+### UI hook
+Add a "Seed department test data" button to **Settings → Departments tab** (admin-only). Calls the edge function then refreshes the table. No production risk because the function only operates on the `*.demo.test` email domain.
 
 ---
 
-### 8. Files
+## 6. Files to create / edit
 
 **New**
-- `src/lib/departmentMeta.ts`
-- `src/components/DepartmentBadge.tsx`
-- `src/components/tasks/DisciplineMetaFields.tsx` (renders the dept-specific JSON form)
-- `src/components/tasks/TaskDependenciesCard.tsx`
-- `src/components/settings/DepartmentMembersTab.tsx`
+- `supabase/migrations/<timestamp>_seed_departments_full.sql`
+- `supabase/functions/seed-departments-demo/index.ts`
+- (optional) `supabase/functions/seed-departments-demo/index.test.ts` — smoke test
 
 **Edited**
-- `src/components/tasks/CreateTaskDialog.tsx` — dept picker + discipline fields + initial dept_status
-- `src/pages/TaskDetail.tsx` — dept badge, dept-stage select, discipline card, dependencies card
-- `src/pages/Tasks.tsx` — dept filter chip, badge in rows
-- `src/pages/Settings.tsx` — new admin tab
-- `src/integrations/supabase/types.ts` — auto-regenerated after migration
-
-**DB migration**
-- Single migration creating enums, tables, columns, helper function, triggers, RLS, audit.
+- `src/components/settings/DepartmentMembersTab.tsx` — add the "Seed demo data" button + toast feedback
+- (no schema changes — existing types are sufficient)
 
 ---
 
-### 9. Acceptance checklist
+## 7. Acceptance checklist after seed runs
 
-- Admin can add a user as `architecture/approver` and that user can move an Architecture task into `dept_approved`; a non-member cannot.
-- Procurement task moves through `request → rfq → po_issued → delivered`; trigger blocks `po_issued → delivered` if no `po_number` in `discipline_meta` (validated by trigger).
-- Construction task with a hard-block predecessor cannot transition to `in_progress` until predecessor is `dept_approved`/`issued`. Same setup with `is_hard_block=false` succeeds but logs a warning + sends `task_dependency_warning` notification.
-- Cross-department user (e.g. MEP-only member) sees a Construction task as read-only — no Edit button on TaskDetail.
-- Tasks list filter by Department returns the right rows; dept chips render with the correct color tokens.
-- Audit log records department changes, dept_status transitions, member grants.
+- Settings → Departments shows 17 rows across all 5 depts with 1 approver each.
+- WBS page for both projects shows Building → Level → Zone tree (~14 nodes total).
+- Tasks list filtered by Department=Architecture shows 6 rows with colored chips and dept stages.
+- Logging in as **Erin** (Architecture member, not approver): can edit ARCH-001 (`draft`) but moving ARCH-002 to `issued` returns the trigger error "Only architecture approvers can move task to issued".
+- Logging in as **Aria**: same transition succeeds.
+- Logging in as **Connor**: starting CONSTR-002 while STRUCT-002 is `coordination` returns "Blocked by T-STRUCT-002 — … (structure)". After moving STRUCT-002 to `issued` (as Stella), CONSTR-002 starts successfully but logs a soft warning because PROC-002 is still `rfq`.
+- Logging in as **Wes**: cannot edit any Architecture task (dept-membership RLS), can post updates on his assigned construction task.
+- Audit log (admin) shows the dept_status transitions and member grants from the seed.
 
 ---
 
-### 10. Out of scope for V1 (acknowledged)
+## 8. Out of scope
 
-- Per-department Kanban swimlanes.
-- Dependency graph visualization on TaskDetail.
-- Department dashboard / KPI tab in Reports.
-- Department-aware document categories (Design/Procurement/Construction docs) — current `documents.category` text field stays as-is.
-- Project-scoped department membership (every grant is org-wide in V1).
+- Seeding `task_updates`, `timesheet_entries`, `documents` for dept tasks — easy to add later if you want richer reports.
+- Per-project department scoping (still org-wide in V1, per the earlier dept plan).
+- Removing seed data via a "Reset demo" button — can be added once you confirm the seed works.
