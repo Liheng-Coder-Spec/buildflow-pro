@@ -102,11 +102,15 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 function AppSidebar() {
   const { roles } = useAuth();
   const { totalTaskUnread } = useTaskUnread();
+  const { totalApprovalUnread } = useApprovalUnread();
   const canSee = (item: NavItem) =>
     !item.roles || item.roles.some((r) => roles.includes(r));
 
-  const badgeFor = (to: string): number =>
-    to === "/tasks" ? totalTaskUnread : 0;
+  const badgeFor = (to: string): number => {
+    if (to === "/tasks") return totalTaskUnread;
+    if (to === "/approvals") return totalApprovalUnread;
+    return 0;
+  };
 
   return (
     <Sidebar collapsible="icon">
