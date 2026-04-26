@@ -35,6 +35,7 @@ interface TaskRow {
   planned_end: string | null;
   estimated_hours: number | null;
   progress_pct: number;
+  department: Department | null;
 }
 
 export default function Tasks() {
@@ -45,6 +46,7 @@ export default function Tasks() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">("all");
+  const [deptFilter, setDeptFilter] = useState<Department | "all">("all");
 
   const load = useCallback(async () => {
     if (!activeProject) {
