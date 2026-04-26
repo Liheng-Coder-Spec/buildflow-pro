@@ -459,6 +459,7 @@ export default function Reports() {
       ) : (
         <>
           <OrgKpis data={kpi} />
+          <DepartmentBreakdown rows={deptRows} />
           {isAdmin ? (
             <Card>
               <CardHeader>
