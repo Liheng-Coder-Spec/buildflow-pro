@@ -1,173 +1,185 @@
-## WBS V1 — Implementation Plan
+## Departments V1 — Implementation Plan
 
-A flexible Work Breakdown Structure that anchors every new task to a precise location in the project, with full WBS-based access control and a dedicated management page.
+A construction-aware department layer that runs *alongside* existing WBS, roles, and tasks. Each department gets its own status workflow, its own membership table (orthogonal to `app_role`), and a hybrid soft/hard dependency model.
 
 ---
 
-### 1. Data model (new tables)
+### 1. Data model
 
-**`wbs_node_type` enum**
-`building`, `level`, `zone`, `sub_zone`, `area`, `system`, `package`, `other` — extensible later.
+**`department` enum**
+`architecture`, `structure`, `mep`, `procurement`, `construction`. Extensible later.
 
-**`wbs_nodes`** (self-referencing tree)
+**`dept_status` enum (single, namespaced)**
+One enum holding every status across departments — keeps Postgres simple and lets the trigger validate per-dept transitions in code.
+Values: `draft`, `internal_review`, `coordination`, `dept_approved`, `issued`, `request`, `rfq`, `quotation_received`, `evaluation`, `po_issued`, `delivered`, `assigned`, `in_progress`, `inspection`, `site_approved`, `completed`, `rejected`, `cancelled`.
+
+**`tasks` extension**
+- Add `department department NULL` (kept nullable so legacy rows survive; UI requires it for new tasks).
+- Add `dept_status dept_status NULL` — the per-department stage. The existing `status` column stays as the high-level lifecycle (open/in_progress/approved/etc.) so notifications, kanban, and reports keep working unchanged.
+- Add `discipline_meta jsonb DEFAULT '{}'` — discipline-specific fields:
+  - Design depts → `{ drawing_no, revision }`
+  - Procurement → `{ supplier, po_number, rfq_due }`
+  - Construction → `{ inspection_ref, lot_no }`
+
+**`department_members`** (orthogonal to `user_roles`)
 - `id uuid pk`
-- `project_id uuid` (FK → projects)
-- `parent_id uuid null` (self-FK; null = project root child)
-- `node_type wbs_node_type`
-- `name text`
-- `code text` — **manual, required**, validated unique per project
-- `path text[]` — denormalized array of ancestor codes for fast filter/breadcrumb (`{PRJ-A, BLDG-1, L05, Z03}`), maintained by trigger
-- `path_text text` — flattened display path (`PRJ-A > BLDG-1 > L05 > Z03`), trigger-maintained
-- `depth int` — trigger-maintained
-- `sort_order int` — for drag-reorder within siblings
-- `description text null`
-- `created_by`, `created_at`, `updated_at`
-- Constraints: `UNIQUE(project_id, code)`; trigger blocks cycles (parent cannot be a descendant) and enforces `parent_id` belongs to the same `project_id`.
-- Indexes: `(project_id, parent_id, sort_order)`, GIN on `path`.
+- `user_id uuid` (FK → auth.users)
+- `department department`
+- `role_in_dept` enum (`member` | `reviewer` | `approver`)
+- `created_at`, `created_by`
+- `UNIQUE(user_id, department, role_in_dept)`
+- Index `(department, role_in_dept)` for fast approver lookups.
 
-**`wbs_assignments`** (full ACL — view + edit + assign)
-- `id`, `wbs_node_id`, `user_id`, `permission` enum (`view` | `edit` | `manage`), `created_at`, `created_by`
-- `UNIQUE(wbs_node_id, user_id, permission)`
-- `manage` ⇒ can assign others to this subtree.
-
-**Tasks change**
-- Add `wbs_node_id uuid null` to `tasks` (FK → wbs_nodes, ON DELETE RESTRICT).
-- Existing rows stay null → keep their `location_zone` text as-is (no risky backfill).
-- New tasks created via the UI **require** `wbs_node_id` (UI-enforced; DB stays nullable for backward compat).
-- Index `(wbs_node_id)`, `(project_id, wbs_node_id)`.
+**`task_predecessors` extension**
+- Add `is_hard_block boolean DEFAULT false` and `note text NULL`.
 
 **Audit**
-- Attach existing `log_audit_event()` trigger to `wbs_nodes` and `wbs_assignments` (re-parenting, code edits, ACL changes are auto-logged into `audit_log`).
+- Attach existing `log_audit_event()` to `department_members` and to `discipline_meta`/`department`/`dept_status` columns (already covered by table-level audit on `tasks`).
 
 ---
 
-### 2. Security definer helpers + RLS
+### 2. Workflow logic per department (DB trigger)
 
-New functions (SECURITY DEFINER, `search_path=public`):
-- `wbs_user_can(_user_id uuid, _node_id uuid, _perm text) returns boolean` — returns true if the user has `_perm` (or higher) on the node OR any ancestor (inherited down). Admin always true.
-- `wbs_visible_node_ids(_user_id uuid, _project_id uuid) returns setof uuid` — used by RLS for fast subtree filtering.
-- `wbs_compute_path(_node_id uuid)` — used by trigger to recompute `path` / `path_text` / `depth` on insert, update of `parent_id`, and on rename.
+New `validate_dept_status_transition()` trigger on `tasks` (BEFORE INSERT/UPDATE OF dept_status):
 
-**RLS on `wbs_nodes`**
-- SELECT: admin OR PM OR `wbs_user_can(auth.uid(), id, 'view')`.
-- INSERT/UPDATE/DELETE: admin OR PM OR `wbs_user_can(auth.uid(), parent_id, 'edit')`.
+```
+ARCHITECTURE / STRUCTURE / MEP:
+  draft → internal_review → coordination → dept_approved → issued
+  internal_review|coordination → rejected → draft
 
-**RLS on `wbs_assignments`**
-- SELECT: admin OR PM OR `wbs_user_can(auth.uid(), wbs_node_id, 'view')`.
-- INSERT/DELETE: admin OR PM OR `wbs_user_can(auth.uid(), wbs_node_id, 'manage')`.
+PROCUREMENT:
+  request → rfq → quotation_received → evaluation → po_issued → delivered
+  any → cancelled
 
-**Tasks RLS extension**
-- Add an extra clause to the existing SELECT/UPDATE policies on `tasks`: when `wbs_node_id` is set, also require `wbs_user_can(auth.uid(), wbs_node_id, 'view'|'edit')`. Tasks without a WBS node fall back to the current role checks (preserves existing data).
-- Same extension on `task_updates`, `task_assignments`, `task_attachments` (subtree-scoped visibility).
+CONSTRUCTION:
+  assigned → in_progress → inspection → site_approved → completed
+  inspection → rejected → in_progress
+```
 
-> Recursion safety: every check goes through SECURITY DEFINER functions — no policy queries the table it protects.
-
----
-
-### 3. Triggers
-
-- `wbs_nodes_path_trg` (BEFORE INSERT/UPDATE OF parent_id, code, name): recomputes `path`, `path_text`, `depth`; cascades to descendants on parent/code changes.
-- `wbs_nodes_no_cycle_trg` (BEFORE UPDATE OF parent_id): rejects if new parent is self or a descendant.
-- `wbs_nodes_same_project_trg` (BEFORE INSERT/UPDATE): enforces parent shares `project_id`.
-- `audit_log_wbs_trg` on both new tables (re-uses `log_audit_event()`).
-- Optional: BEFORE DELETE on `wbs_nodes` rejects deletion if any task points at the node or its descendants (force re-link first).
+Trigger also:
+- Enforces approval roles using `department_members.role_in_dept = 'approver'` for `dept_approved | issued | po_issued | site_approved`.
+- Mirrors `dept_status` → high-level `status` (e.g. `issued | po_issued | completed | site_approved` → `completed`; `internal_review | inspection | evaluation` → `pending_approval`; `rejected` → `rejected`). Keeps all current notifications/kanban code working.
 
 ---
 
-### 4. Edge function — `wbs-import-xlsx`
+### 3. Cross-department dependency blocking (hybrid)
 
-Server-side parser (xlsx lib) for bulk import:
-- Accepts an uploaded `.xlsx` / `.csv` with columns: `code`, `name`, `node_type`, `parent_code` (blank for root), `description`.
-- Validates: codes unique within the file + project, parents resolve, no cycles, types are valid enum values.
-- Returns dry-run report `{ rows, errors, willInsert, willUpdate }`; second call with `{confirm:true}` performs the insert in a transaction with service-role client.
-- Auth: requires admin / PM via `has_role`.
-
----
-
-### 5. UI — WBS Manager page (`/projects/:projectId/wbs`)
-
-Reachable from a new "WBS" tab on the project header (visible to admin/PM; read-only tree visible to anyone with `view` on a node).
-
-**Layout** (resizable, persisted in localStorage)
-- Left: **WBS Tree** panel (shadcn `ResizablePanelGroup` + custom virtualized tree, collapsible/expandable, search box, "focus mode" toggle to hide tree).
-- Right: **Detail / Editor** panel — node form (name, type, code, parent picker), assignments tab (users + permission), tasks-in-subtree tab (read-only count + link to filtered Tasks page).
-- Top breadcrumb showing `path_text` of selected node.
-
-**Interactions**
-- Inline create (`+ Add child`) on any tree row.
-- Drag-and-drop re-parenting (`@dnd-kit/core`) — fires single UPDATE on `parent_id`; trigger recomputes paths.
-- Rename in place; code edit dialog with uniqueness validator.
-- Delete with confirmation; blocked by trigger if tasks attached.
-- "Import from Excel" button → upload sheet → preview dry-run → Confirm → progress toast.
-- "Download template" link generates a small starter `.xlsx` client-side via existing `xlsxDownload` helper.
-- Permissions tab on node detail: pick user + permission, list/remove existing grants. Notes inheritance (e.g. "Inherits view from parent BLDG-1").
-
-**Performance**
-- Tree fetch: single query of `wbs_nodes` for the project (typical < 2k rows). Build tree client-side, memoize.
-- Use `react-window` (or simple windowing) only when project exceeds 500 nodes.
-- Selected node detail loaded on demand.
+New `validate_task_start_against_predecessors()` trigger:
+- On UPDATE of `dept_status` or `status`, if new value moves the task into a "started" state (`in_progress`, `internal_review`, `rfq`, `inspection`), look up `task_predecessors`.
+- For each predecessor:
+  - **`is_hard_block = true`** → predecessor must be in an end-state (`issued | po_issued | delivered | completed | site_approved`). Otherwise raise exception with message `Blocked by <CODE> — <title> (<dept>)`.
+  - **`is_hard_block = false`** → no exception; UI shows yellow chip.
+- Soft warnings are returned via the existing audit log (`log_audit_event` already running) so admins can review overrides.
 
 ---
 
-### 6. Task ↔ WBS integration (minimal V1 surface)
+### 4. RLS adjustments
 
-- **CreateTaskDialog**: replace free-text `location_zone` with a required **WBS node picker** (search-as-you-type combobox showing `path_text`). Selected node's `id` saved to `wbs_node_id`; its `path_text` mirrored into `location_zone` for backward display compatibility.
-- **TaskDetail**: show full WBS path as a breadcrumb above the title when `wbs_node_id` is set; falls back to `location_zone` otherwise.
-- **Tasks list**: keep existing filters; add a small "WBS" filter chip (one-level picker) — full tree-filter view comes in V2.
+**`department_members`**
+- SELECT: any authenticated.
+- INSERT/DELETE: admin only (PMs can manage members of their own projects in V2).
 
-> Existing tasks render exactly as today — no migration of `location_zone` text in V1.
+**Tasks (extend existing policies)**
+- UPDATE policy gets an extra OR clause: caller must be admin / PM / engineer / supervisor **AND** (a) task has no department, OR (b) caller is in `department_members` for `tasks.department`.
+- SELECT stays open (current behavior — anyone in the project can read).
+- Result: cross-department tasks become read-only unless you're a member of that department.
+
+**Approvals**
+- The dept-status trigger enforces `role_in_dept='approver'` for the relevant transitions, regardless of `app_role` (admin still bypasses everything).
+
+> All checks go through `SECURITY DEFINER` helper `is_dept_member(_user, _dept, _role text DEFAULT NULL)` so policies never query the table they protect.
 
 ---
 
-### 7. Files
+### 5. Notifications
+
+Extend `notify_task_status_change()`:
+- When `dept_status` becomes `dept_approved` / `issued` / `po_issued` / `site_approved`, look up successor tasks (rows in `task_predecessors` where `predecessor_id = NEW.id`) and notify their assignees + dept approvers with type `task_handoff` (new value in `notification_type` enum).
+- When a hard-block exception fires, no notification (the action failed). When soft-block: post notification `task_dependency_warning` to PM/supervisor.
+
+---
+
+### 6. UI changes (V1 scope = picker + chips)
+
+**`src/lib/departmentMeta.ts`** (new)
+- `DEPARTMENT_LABELS`, `DEPARTMENT_TONE` (color per dept), `DEPT_WORKFLOW` map (allowed transitions, end-states, mirrored high-level status), `DISCIPLINE_FIELDS` definition.
+
+**`src/components/DepartmentBadge.tsx`** (new)
+- Colored pill with dept icon + label, mirrors `StatusBadge` styling.
+
+**`src/components/tasks/CreateTaskDialog.tsx`** (edit)
+- Add **Department \*** select (required). On change, replace the free-text `task_type` row with the dept-specific discipline fields rendered from `DISCIPLINE_FIELDS[department]` (drawing_no for design, supplier for procurement, etc.).
+- Save `department`, initial `dept_status` (first stage of the chosen workflow), and `discipline_meta`.
+
+**`src/pages/TaskDetail.tsx`** (edit)
+- Header: add `<DepartmentBadge>` next to the existing `StatusBadge`.
+- Replace the high-level status select with a **two-row control**: dept stage select (driven by `DEPT_WORKFLOW[department].next(current)`) on top, read-only mirror of the high-level `status` underneath.
+- New **"Discipline" card** rendering `discipline_meta` keys for that dept.
+- New **"Dependencies" card**: list predecessors with status dot + dept badge; `is_hard_block` rows show a 🔒 icon. "Add predecessor" picker (admin/PM only) with a `Hard block` checkbox. Soft-blocked successors show a yellow warning banner above the stage select.
+
+**`src/pages/Tasks.tsx`** (edit)
+- Add **Department filter** chip row (multi-select).
+- Add `<DepartmentBadge>` in list rows and a small dept dot on Kanban cards.
+- Sort/filter by `department` available in URL query so deep-links from notifications work.
+
+**Settings → Department members** (new tab in `src/pages/Settings.tsx`, admin-only)
+- Table of `department_members` with add/remove, role_in_dept select. Inline search by user.
+
+> Out of V1 (deferred): swimlane Kanban per department, dependency graph SVG, Reports dept tab. All three are explicitly listed as V2 because the user picked only the picker + chip option.
+
+---
+
+### 7. Migration steps
+
+1. Create `department` and `dept_status` enums.
+2. Create `department_members` table + RLS + audit trigger.
+3. ALTER `tasks` add `department`, `dept_status`, `discipline_meta`.
+4. ALTER `task_predecessors` add `is_hard_block`, `note`.
+5. Create helper `is_dept_member(uuid, department, text)` (SECURITY DEFINER).
+6. Create triggers `validate_dept_status_transition`, `validate_task_start_against_predecessors`.
+7. Extend tasks UPDATE policy with department-membership clause.
+8. Extend `notify_task_status_change` with handoff notifications; add new notification_type values.
+
+Existing tasks (with NULL `department`) stay editable by current planners — nothing breaks. New tasks created in the UI must pick a department.
+
+---
+
+### 8. Files
 
 **New**
-- `supabase/functions/wbs-import-xlsx/index.ts`
-- `src/pages/Wbs.tsx` (route shell)
-- `src/components/wbs/WbsTree.tsx` (virtualized tree + DnD)
-- `src/components/wbs/WbsNodeEditor.tsx` (right panel form)
-- `src/components/wbs/WbsAssignmentsTab.tsx`
-- `src/components/wbs/WbsImportDialog.tsx`
-- `src/components/wbs/WbsNodePicker.tsx` (combobox used by tasks)
-- `src/lib/wbsMeta.ts` (types, node-type labels, permission labels)
-- `src/hooks/useWbsTree.ts` (load + cache + realtime invalidate)
+- `src/lib/departmentMeta.ts`
+- `src/components/DepartmentBadge.tsx`
+- `src/components/tasks/DisciplineMetaFields.tsx` (renders the dept-specific JSON form)
+- `src/components/tasks/TaskDependenciesCard.tsx`
+- `src/components/settings/DepartmentMembersTab.tsx`
 
 **Edited**
-- `src/App.tsx` — add `/projects/:projectId/wbs` route.
-- `src/components/AppLayout.tsx` — add "WBS" sidebar entry under the active project (shown when `activeProject` set).
-- `src/components/tasks/CreateTaskDialog.tsx` — swap `location_zone` input for `WbsNodePicker`, write `wbs_node_id`.
-- `src/pages/TaskDetail.tsx` — show WBS breadcrumb.
-- `src/pages/Tasks.tsx` — add WBS filter chip.
+- `src/components/tasks/CreateTaskDialog.tsx` — dept picker + discipline fields + initial dept_status
+- `src/pages/TaskDetail.tsx` — dept badge, dept-stage select, discipline card, dependencies card
+- `src/pages/Tasks.tsx` — dept filter chip, badge in rows
+- `src/pages/Settings.tsx` — new admin tab
+- `src/integrations/supabase/types.ts` — auto-regenerated after migration
 
 **DB migration**
-- New enum, two tables, indexes, triggers, RLS policies, helper functions, audit trigger attachments.
+- Single migration creating enums, tables, columns, helper function, triggers, RLS, audit.
 
 ---
 
-### 8. Out of scope for V1 (acknowledged from the master prompt)
+### 9. Acceptance checklist
 
-- Auto-generated WBS codes (toggle deferred).
-- Task ↔ task dependency engine across WBS (start-blocking) — current `task_predecessors` table stays as informational only.
-- WBS rollup KPIs in Reports / delay heatmap — planned for V2 once data exists.
-- BIM / Revit zone mapping, cost per WBS — V3+.
-- Hard DB-level NOT NULL on `tasks.wbs_node_id` — to be flipped after a future backfill.
-
----
-
-### 9. Risks & mitigations
-
-- **Path recomputation on big subtree re-parent** — done in a single recursive CTE inside the trigger; benchmarks fine up to ~10k nodes.
-- **Permission inheritance perf** — `wbs_user_can` walks ancestors via recursive CTE; cached per request via STABLE function. Add covering index `(project_id, parent_id)`.
-- **Existing tasks without WBS** — RLS branch keeps current behavior so nothing breaks for current data.
-- **Drag-reorder race** — single UPDATE per drop, optimistic UI rolled back on error toast.
+- Admin can add a user as `architecture/approver` and that user can move an Architecture task into `dept_approved`; a non-member cannot.
+- Procurement task moves through `request → rfq → po_issued → delivered`; trigger blocks `po_issued → delivered` if no `po_number` in `discipline_meta` (validated by trigger).
+- Construction task with a hard-block predecessor cannot transition to `in_progress` until predecessor is `dept_approved`/`issued`. Same setup with `is_hard_block=false` succeeds but logs a warning + sends `task_dependency_warning` notification.
+- Cross-department user (e.g. MEP-only member) sees a Construction task as read-only — no Edit button on TaskDetail.
+- Tasks list filter by Department returns the right rows; dept chips render with the correct color tokens.
+- Audit log records department changes, dept_status transitions, member grants.
 
 ---
 
-### 10. Acceptance checklist
+### 10. Out of scope for V1 (acknowledged)
 
-- Admin can create a 4-level tree, codes validated unique per project.
-- Re-parenting a node updates `path_text` everywhere instantly.
-- Excel import dry-run shows errors before commit.
-- Non-admin user with `view` on `BLDG-1 > L05` sees only that subtree's nodes and only tasks under it.
-- New task creation requires picking a WBS node; task detail shows the breadcrumb.
-- Audit log records every create / re-parent / code change / ACL grant.
+- Per-department Kanban swimlanes.
+- Dependency graph visualization on TaskDetail.
+- Department dashboard / KPI tab in Reports.
+- Department-aware document categories (Design/Procurement/Construction docs) — current `documents.category` text field stays as-is.
+- Project-scoped department membership (every grant is org-wide in V1).
