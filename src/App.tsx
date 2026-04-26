@@ -24,6 +24,7 @@ import AuditLog from "./pages/AuditLog";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
+import Wbs from "./pages/Wbs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -176,6 +177,16 @@ const App = () => (
                     <ProtectedRoute>
                       <AppLayout>
                         <Notifications />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wbs"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Wbs />
                       </AppLayout>
                     </ProtectedRoute>
                   }
