@@ -65,7 +65,7 @@ export default function Reports() {
       let tasksQ = supabase
         .from("tasks")
         .select(
-          "id, status, planned_end, actual_end, project_id, created_by",
+          "id, status, planned_end, actual_end, project_id, created_by, department",
         );
       if (projectId !== "all") tasksQ = tasksQ.eq("project_id", projectId);
 
@@ -76,12 +76,13 @@ export default function Reports() {
       if (dateFrom) tsQ = tsQ.gte("work_date", dateFrom);
       if (dateTo) tsQ = tsQ.lte("work_date", dateTo);
 
-      const [tRes, tsRes, plRes, mRes, prRes] = await Promise.all([
+      const [tRes, tsRes, plRes, mRes, prRes, dmRes] = await Promise.all([
         tasksQ,
         tsQ,
         supabase.from("payroll_lines").select("total_pay, currency"),
         supabase.from("project_members").select("user_id, project_id"),
         supabase.from("profiles").select("id, full_name, job_title"),
+        supabase.from("department_members").select("user_id, department"),
       ]);
       if (cancelled) return;
 
@@ -91,6 +92,7 @@ export default function Reports() {
         planned_end: string | null;
         actual_end: string | null;
         project_id: string;
+        department: Department | null;
       }>;
       const ts = (tsRes.data ?? []) as Array<{
         user_id: string;
@@ -106,6 +108,10 @@ export default function Reports() {
         id: string;
         full_name: string;
         job_title: string | null;
+      }>;
+      const deptMembers = (dmRes.data ?? []) as Array<{
+        user_id: string;
+        department: Department;
       }>;
 
       // Org KPIs
@@ -158,44 +164,154 @@ export default function Reports() {
         onTimeRate,
       });
 
-      // Per-member rows
-      if (isAdmin) {
-        const taskIds = tasks.map((t) => t.id);
-        const { data: assigns } = taskIds.length
-          ? await supabase
-              .from("task_assignments")
-              .select("user_id, task_id")
-              .in("task_id", taskIds)
-              .is("unassigned_at", null)
-          : { data: [] };
-        if (cancelled) return;
+      // ───── Department breakdown ─────
+      type DeptAgg = {
+        members: Set<string>;
+        total: number;
+        open: number;
+        assigned: number;
+        in_progress: number;
+        pending_approval: number;
+        approved: number;
+        rejected: number;
+        completed: number;
+        closed: number;
+        overdue: number;
+        hours: number;
+      };
+      const deptAgg = new Map<Department | "unassigned", DeptAgg>();
+      const ensureDept = (k: Department | "unassigned"): DeptAgg => {
+        let a = deptAgg.get(k);
+        if (!a) {
+          a = {
+            members: new Set(),
+            total: 0,
+            open: 0, assigned: 0, in_progress: 0, pending_approval: 0,
+            approved: 0, rejected: 0, completed: 0, closed: 0,
+            overdue: 0, hours: 0,
+          };
+          deptAgg.set(k, a);
+        }
+        return a;
+      };
 
+      const taskIds = tasks.map((t) => t.id);
+      const { data: assignsData } = isAdmin && taskIds.length
+        ? await supabase
+            .from("task_assignments")
+            .select("user_id, task_id")
+            .in("task_id", taskIds)
+            .is("unassigned_at", null)
+        : { data: [] };
+      if (cancelled) return;
+
+      const assigns = (assignsData ?? []) as Array<{ user_id: string; task_id: string }>;
+      const assignsByTask = new Map<string, string[]>();
+      assigns.forEach((a) => {
+        let arr = assignsByTask.get(a.task_id);
+        if (!arr) { arr = []; assignsByTask.set(a.task_id, arr); }
+        arr.push(a.user_id);
+      });
+
+      tasks.forEach((t) => {
+        const k: Department | "unassigned" = t.department ?? "unassigned";
+        const a = ensureDept(k);
+        a.total += 1;
+        const isClosed = ["completed", "closed", "approved"].includes(t.status);
+        if (t.planned_end && t.planned_end < today && !isClosed) a.overdue += 1;
+        switch (t.status) {
+          case "open": a.open += 1; break;
+          case "assigned": a.assigned += 1; break;
+          case "in_progress": a.in_progress += 1; break;
+          case "pending_approval": a.pending_approval += 1; break;
+          case "approved": a.approved += 1; break;
+          case "rejected": a.rejected += 1; break;
+          case "completed": a.completed += 1; break;
+          case "closed": a.closed += 1; break;
+        }
+        (assignsByTask.get(t.id) ?? []).forEach((uid) => a.members.add(uid));
+      });
+
+      // Add explicit dept memberships even with 0 tasks
+      deptMembers.forEach((dm) => {
+        ensureDept(dm.department).members.add(dm.user_id);
+      });
+
+      // Hours per department: attribute timesheet hours to the user's primary dept (first match).
+      const userDept = new Map<string, Department>();
+      deptMembers.forEach((dm) => {
+        if (!userDept.has(dm.user_id)) userDept.set(dm.user_id, dm.department);
+      });
+      ts.forEach((e) => {
+        const k: Department | "unassigned" = userDept.get(e.user_id) ?? "unassigned";
+        ensureDept(k).hours += Number(e.regular_hours) + Number(e.overtime_hours);
+      });
+
+      const ORDER: (Department | "unassigned")[] = [
+        "architecture", "structure", "mep", "procurement", "construction", "unassigned",
+      ];
+      setDeptRows(
+        ORDER.filter((k) => deptAgg.has(k)).map((k) => {
+          const a = deptAgg.get(k)!;
+          return {
+            department: k,
+            members: a.members.size,
+            total: a.total,
+            open: a.open,
+            assigned: a.assigned,
+            in_progress: a.in_progress,
+            pending_approval: a.pending_approval,
+            approved: a.approved,
+            rejected: a.rejected,
+            completed: a.completed,
+            closed: a.closed,
+            overdue: a.overdue,
+            hours: a.hours,
+          };
+        }),
+      );
+
+      // ───── Per-member rows (admin only) ─────
+      if (isAdmin) {
         const taskMap = new Map(tasks.map((t) => [t.id, t]));
         const profMap = new Map(profiles.map((p) => [p.id, p]));
 
         type Acc = {
-          total: number; done: number; inProg: number; overdue: number; onTime: number;
+          total: number; completed: number; in_progress: number; overdue: number; onTime: number;
+          open: number; assigned: number; pending_approval: number; approved: number; rejected: number; closed: number;
           regH: number; otH: number; appH: number;
         };
         const agg = new Map<string, Acc>();
         const ensure = (uid: string): Acc => {
           let a = agg.get(uid);
           if (!a) {
-            a = { total: 0, done: 0, inProg: 0, overdue: 0, onTime: 0, regH: 0, otH: 0, appH: 0 };
+            a = {
+              total: 0, completed: 0, in_progress: 0, overdue: 0, onTime: 0,
+              open: 0, assigned: 0, pending_approval: 0, approved: 0, rejected: 0, closed: 0,
+              regH: 0, otH: 0, appH: 0,
+            };
             agg.set(uid, a);
           }
           return a;
         };
 
-        ((assigns ?? []) as Array<{ user_id: string; task_id: string }>).forEach((a) => {
+        assigns.forEach((a) => {
           const t = taskMap.get(a.task_id);
           if (!t) return;
           const acc = ensure(a.user_id);
           acc.total += 1;
-          if (t.status === "completed" || t.status === "closed") acc.done += 1;
-          if (t.status === "in_progress") acc.inProg += 1;
           const isClosed = ["completed", "closed", "approved"].includes(t.status);
           if (t.planned_end && t.planned_end < today && !isClosed) acc.overdue += 1;
+          switch (t.status) {
+            case "open": acc.open += 1; break;
+            case "assigned": acc.assigned += 1; break;
+            case "in_progress": acc.in_progress += 1; break;
+            case "pending_approval": acc.pending_approval += 1; break;
+            case "approved": acc.approved += 1; break;
+            case "rejected": acc.rejected += 1; break;
+            case "completed": acc.completed += 1; break;
+            case "closed": acc.closed += 1; break;
+          }
           if (
             (t.status === "completed" || t.status === "closed") &&
             t.planned_end && t.actual_end &&
@@ -212,22 +328,44 @@ export default function Reports() {
           if (e.status === "approved") acc.appH += Number(e.regular_hours) + Number(e.overtime_hours);
         });
 
-        const rows: MemberRow[] = Array.from(agg.entries()).map(([uid, a]) => {
+        // Group rows: emit one MemberRow per (user, department). Members in N depts → N rows.
+        const userDepts = new Map<string, Department[]>();
+        deptMembers.forEach((dm) => {
+          let arr = userDepts.get(dm.user_id);
+          if (!arr) { arr = []; userDepts.set(dm.user_id, arr); }
+          if (!arr.includes(dm.department)) arr.push(dm.department);
+        });
+
+        const rows: MemberRow[] = [];
+        Array.from(agg.entries()).forEach(([uid, a]) => {
           const p = profMap.get(uid);
-          return {
+          const completedDone = a.completed + a.closed;
+          const base = {
             user_id: uid,
             full_name: p?.full_name ?? "Unknown",
             job_title: p?.job_title ?? null,
             total_tasks: a.total,
-            completed: a.done,
-            in_progress: a.inProg,
+            open: a.open,
+            assigned: a.assigned,
+            in_progress: a.in_progress,
+            pending_approval: a.pending_approval,
+            approved: a.approved,
+            rejected: a.rejected,
+            completed: completedDone,
+            closed: a.closed,
             overdue: a.overdue,
-            on_time_rate: a.done > 0 ? a.onTime / a.done : 0,
-            completion_rate: a.total > 0 ? a.done / a.total : 0,
+            on_time_rate: completedDone > 0 ? a.onTime / completedDone : 0,
+            completion_rate: a.total > 0 ? completedDone / a.total : 0,
             regular_hours: a.regH,
             overtime_hours: a.otH,
             approved_hours: a.appH,
           };
+          const depts = userDepts.get(uid);
+          if (depts && depts.length > 0) {
+            depts.forEach((d) => rows.push({ ...base, department: d }));
+          } else {
+            rows.push({ ...base, department: null });
+          }
         });
 
         setMembers(rows);
