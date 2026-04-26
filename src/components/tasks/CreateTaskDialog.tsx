@@ -44,6 +44,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
   const [saving, setSaving] = useState(false);
   const [wbsNodeId, setWbsNodeId] = useState<string | null>(null);
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
+  const [department, setDepartment] = useState<Department | "">("");
+  const [meta, setMeta] = useState<Record<string, any>>({});
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
