@@ -30,6 +30,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
+import { Department } from "@/lib/departmentMeta";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface Task {
   id: string;
