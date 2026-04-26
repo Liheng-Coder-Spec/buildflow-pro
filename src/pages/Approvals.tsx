@@ -56,8 +56,6 @@ export default function Approvals() {
   const {
     taskApprovalCount,
     timesheetApprovalCount,
-    markTaskApprovalsRead,
-    markTimesheetApprovalsRead,
   } = useApprovalUnread();
 
   // Tasks
