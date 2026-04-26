@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import type { MemberRow } from "./MemberPerformanceTable";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface RecentTask {
   id: string;
@@ -104,7 +105,10 @@ export function MemberDetailSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{member.full_name}</SheetTitle>
+          <SheetTitle className="flex items-center gap-2 flex-wrap">
+            {member.full_name}
+            {member.department && <DepartmentBadge department={member.department} />}
+          </SheetTitle>
           <SheetDescription>
             {member.job_title || "—"} · {member.total_tasks} tasks ·{" "}
             {member.approved_hours.toFixed(1)} approved hours
