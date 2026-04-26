@@ -20,13 +20,14 @@ import {
   TaskPriority, TaskType,
   TASK_PRIORITY_LABELS, TASK_TYPE_LABELS,
 } from "@/lib/taskMeta";
+import { WbsNodePicker } from "@/components/wbs/WbsNodePicker";
+import { WbsTreeNode } from "@/lib/wbsMeta";
 
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(200),
   description: z.string().trim().max(4000).optional().or(z.literal("")),
   task_type: z.enum(["concrete","steel","mep","finishing","excavation","inspection","other"]),
   priority: z.enum(["low","medium","high","critical"]),
-  location_zone: z.string().trim().max(120).optional().or(z.literal("")),
   planned_start: z.string().optional().or(z.literal("")),
   planned_end: z.string().optional().or(z.literal("")),
   estimated_hours: z.string().optional().or(z.literal("")),
@@ -37,11 +38,17 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
   const { activeProject } = useProjects();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [wbsNodeId, setWbsNodeId] = useState<string | null>(null);
+  const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!activeProject) {
       toast.error("Select a project first");
+      return;
+    }
+    if (!wbsNodeId || !wbsNode) {
+      toast.error("Pick a WBS location for this task");
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -50,7 +57,6 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       description: fd.get("description") || "",
       task_type: fd.get("task_type"),
       priority: fd.get("priority"),
-      location_zone: fd.get("location_zone") || "",
       planned_start: fd.get("planned_start") || "",
       planned_end: fd.get("planned_end") || "",
       estimated_hours: fd.get("estimated_hours") || "",
@@ -66,7 +72,9 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       description: parsed.data.description || null,
       task_type: parsed.data.task_type as TaskType,
       priority: parsed.data.priority as TaskPriority,
-      location_zone: parsed.data.location_zone || null,
+      wbs_node_id: wbsNodeId,
+      // Mirror WBS path into legacy location_zone so older list views still display nicely
+      location_zone: wbsNode.path_text,
       planned_start: parsed.data.planned_start || null,
       planned_end: parsed.data.planned_end || null,
       estimated_hours: parsed.data.estimated_hours ? Number(parsed.data.estimated_hours) : 0,
@@ -79,6 +87,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     }
     toast.success("Task created");
     setOpen(false);
+    setWbsNodeId(null);
+    setWbsNode(null);
     onCreated?.();
   };
 
@@ -130,8 +140,18 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
             </div>
           </div>
           <div>
-            <Label htmlFor="location_zone">Location / zone</Label>
-            <Input id="location_zone" name="location_zone" placeholder="e.g. Level 3 / Zone B" maxLength={120} />
+            <Label>WBS location *</Label>
+            {activeProject && (
+              <WbsNodePicker
+                projectId={activeProject.id}
+                value={wbsNodeId}
+                onChange={(id, n) => { setWbsNodeId(id); setWbsNode(n); }}
+                required
+              />
+            )}
+            {wbsNode && (
+              <p className="text-[11px] text-muted-foreground mt-1 font-mono">{wbsNode.path_text}</p>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

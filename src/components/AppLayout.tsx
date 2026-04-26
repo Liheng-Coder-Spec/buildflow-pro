@@ -16,6 +16,7 @@ import {
 import {
   LayoutDashboard,
   FolderKanban,
+  Network,
   ClipboardList,
   Clock,
   CheckSquare,
@@ -58,6 +59,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/", label: "Dashboard", icon: LayoutDashboard },
       { to: "/projects", label: "Projects", icon: FolderKanban },
+      { to: "/wbs", label: "WBS", icon: Network },
     ],
   },
   {

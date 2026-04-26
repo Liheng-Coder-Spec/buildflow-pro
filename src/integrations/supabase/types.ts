@@ -654,6 +654,7 @@ export type Database = {
           task_type: Database["public"]["Enums"]["task_type"]
           title: string
           updated_at: string
+          wbs_node_id: string | null
         }
         Insert: {
           actual_end?: string | null
@@ -678,6 +679,7 @@ export type Database = {
           task_type?: Database["public"]["Enums"]["task_type"]
           title: string
           updated_at?: string
+          wbs_node_id?: string | null
         }
         Update: {
           actual_end?: string | null
@@ -702,6 +704,7 @@ export type Database = {
           task_type?: Database["public"]["Enums"]["task_type"]
           title?: string
           updated_at?: string
+          wbs_node_id?: string | null
         }
         Relationships: [
           {
@@ -709,6 +712,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_wbs_node_id_fkey"
+            columns: ["wbs_node_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
             referencedColumns: ["id"]
           },
         ]
@@ -812,6 +822,107 @@ export type Database = {
         }
         Relationships: []
       }
+      wbs_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          permission: Database["public"]["Enums"]["wbs_permission"]
+          user_id: string
+          wbs_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["wbs_permission"]
+          user_id: string
+          wbs_node_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["wbs_permission"]
+          user_id?: string
+          wbs_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wbs_assignments_wbs_node_id_fkey"
+            columns: ["wbs_node_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wbs_nodes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          depth: number
+          description: string | null
+          id: string
+          name: string
+          node_type: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id: string | null
+          path: string[]
+          path_text: string
+          project_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          depth?: number
+          description?: string | null
+          id?: string
+          name: string
+          node_type?: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id?: string | null
+          path?: string[]
+          path_text?: string
+          project_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          depth?: number
+          description?: string | null
+          id?: string
+          name?: string
+          node_type?: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id?: string | null
+          path?: string[]
+          path_text?: string
+          project_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wbs_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wbs_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -840,6 +951,14 @@ export type Database = {
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      wbs_user_can: {
+        Args: {
+          _node_id: string
+          _perm: Database["public"]["Enums"]["wbs_permission"]
           _user_id: string
         }
         Returns: boolean
@@ -896,6 +1015,16 @@ export type Database = {
         | "inspection"
         | "other"
       timesheet_status: "draft" | "submitted" | "approved" | "rejected"
+      wbs_node_type:
+        | "building"
+        | "level"
+        | "zone"
+        | "sub_zone"
+        | "area"
+        | "system"
+        | "package"
+        | "other"
+      wbs_permission: "view" | "edit" | "manage"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1078,6 +1207,17 @@ export const Constants = {
         "other",
       ],
       timesheet_status: ["draft", "submitted", "approved", "rejected"],
+      wbs_node_type: [
+        "building",
+        "level",
+        "zone",
+        "sub_zone",
+        "area",
+        "system",
+        "package",
+        "other",
+      ],
+      wbs_permission: ["view", "edit", "manage"],
     },
   },
 } as const
