@@ -237,6 +237,7 @@ export default function TaskDetail() {
                 {TASK_PRIORITY_LABELS[task.priority]}
               </span>
               <Badge variant="secondary">{TASK_TYPE_LABELS[task.task_type]}</Badge>
+              {task.department && <DepartmentBadge department={task.department} />}
             </div>
           </div>
 
