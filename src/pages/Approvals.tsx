@@ -180,10 +180,26 @@ export default function Approvals() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="tasks">
-            Tasks {items.length > 0 && <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{items.length}</span>}
+            Tasks
+            {taskApprovalCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none">
+                {taskApprovalCount > 9 ? "9+" : taskApprovalCount}
+              </span>
+            )}
+            {taskApprovalCount === 0 && items.length > 0 && (
+              <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{items.length}</span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="timesheets">
-            Timesheets {tsItems.length > 0 && <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{tsItems.length}</span>}
+            Timesheets
+            {timesheetApprovalCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none">
+                {timesheetApprovalCount > 9 ? "9+" : timesheetApprovalCount}
+              </span>
+            )}
+            {timesheetApprovalCount === 0 && tsItems.length > 0 && (
+              <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{tsItems.length}</span>
+            )}
           </TabsTrigger>
         </TabsList>
 
