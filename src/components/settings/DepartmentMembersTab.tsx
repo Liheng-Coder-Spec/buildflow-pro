@@ -117,11 +117,17 @@ export function DepartmentMembersTab() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Department members</CardTitle>
-        <CardDescription>
-          Assign users to a department. Approvers can move tasks into the approved/issued/PO/site-approved stages of their department.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base">Department members</CardTitle>
+          <CardDescription>
+            Assign users to a department. Approvers can move tasks into the approved/issued/PO/site-approved stages of their department.
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onSeed} disabled={seeding} className="shrink-0">
+          {seeding ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+          Seed demo data
+        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Add form */}
