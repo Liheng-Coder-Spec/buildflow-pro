@@ -88,6 +88,21 @@ export function DepartmentMembersTab() {
     load();
   };
 
+  const onSeed = async () => {
+    setSeeding(true);
+    const { data, error } = await supabase.functions.invoke("seed-departments-demo");
+    setSeeding(false);
+    if (error) { toast.error(error.message); return; }
+    const created = (data?.users ?? []).filter((u: { status: string }) => u.status === "created").length;
+    const exists = (data?.users ?? []).filter((u: { status: string }) => u.status === "exists").length;
+    toast.success(
+      `Demo data seeded — ${created} new approver(s), ${exists} already existed. ` +
+      `Password for demo accounts: ${data?.password ?? "Demo1234!"}`,
+      { duration: 8000 },
+    );
+    load();
+  };
+
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return rows;
