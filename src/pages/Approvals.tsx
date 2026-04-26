@@ -114,6 +114,16 @@ export default function Approvals() {
   useEffect(() => { loadTasks(); }, [loadTasks]);
   useEffect(() => { loadTimesheets(); }, [loadTimesheets]);
 
+  // Auto-clear approval notifications when the matching tab is viewed.
+  useEffect(() => {
+    if (tab === "tasks" && taskApprovalCount > 0) {
+      markTaskApprovalsRead();
+    } else if (tab === "timesheets" && timesheetApprovalCount > 0) {
+      markTimesheetApprovalsRead();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, taskApprovalCount, timesheetApprovalCount]);
+
   const approve = async (id: string) => {
     setBusy(id);
     const { error } = await supabase.from("tasks").update({ status: "approved" }).eq("id", id);
