@@ -19,7 +19,12 @@ import {
   type MemberRow,
 } from "@/components/reports/MemberPerformanceTable";
 import { MemberDetailSheet } from "@/components/reports/MemberDetailSheet";
+import {
+  DepartmentBreakdown,
+  type DeptRow,
+} from "@/components/reports/DepartmentBreakdown";
 import { invokeXlsxDownload } from "@/lib/xlsxDownload";
+import type { Department } from "@/lib/departmentMeta";
 
 interface ProjectOpt {
   id: string;
