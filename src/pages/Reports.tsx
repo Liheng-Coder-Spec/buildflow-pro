@@ -45,6 +45,7 @@ export default function Reports() {
 
   const [kpi, setKpi] = useState<OrgKpiData | null>(null);
   const [members, setMembers] = useState<MemberRow[]>([]);
+  const [deptRows, setDeptRows] = useState<DeptRow[]>([]);
   const [active, setActive] = useState<MemberRow | null>(null);
 
   useEffect(() => {
