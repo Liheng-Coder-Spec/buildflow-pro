@@ -45,6 +45,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
+import { useApprovalUnread } from "@/hooks/useApprovalUnread";
 
 interface NavItem {
   to: string;
