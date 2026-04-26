@@ -22,6 +22,8 @@ import {
 import { Search, LayoutGrid, List, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
+import { Department, DEPARTMENT_LABELS } from "@/lib/departmentMeta";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface TaskRow {
   id: string;
