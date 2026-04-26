@@ -194,7 +194,7 @@ export default function Tasks() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {TASK_TYPE_LABELS[t.task_type]}
+                          {t.department ? <DepartmentBadge department={t.department} /> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell>
                           <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", TASK_PRIORITY_TONE[t.priority])}>
