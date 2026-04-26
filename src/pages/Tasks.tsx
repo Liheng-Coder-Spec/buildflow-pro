@@ -128,6 +128,15 @@ export default function Tasks() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={deptFilter} onValueChange={(v) => setDeptFilter(v as any)}>
+          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All departments</SelectItem>
+            {(Object.keys(DEPARTMENT_LABELS) as Department[]).map((d) => (
+              <SelectItem key={d} value={d}>{DEPARTMENT_LABELS[d]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="ml-auto text-sm text-muted-foreground">
           {filtered.length} of {tasks.length}
         </div>
