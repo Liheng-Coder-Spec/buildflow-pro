@@ -155,6 +155,24 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
             </div>
           </div>
           <div>
+            <Label htmlFor="department">Department *</Label>
+            <Select value={department} onValueChange={(v) => { setDepartment(v as Department); setMeta({}); }}>
+              <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+              <SelectContent>
+                {(Object.keys(DEPARTMENT_LABELS) as Department[]).map((d) => (
+                  <SelectItem key={d} value={d}>{DEPARTMENT_LABELS[d]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {department && (
+            <DisciplineMetaFields
+              department={department as Department}
+              value={meta}
+              onChange={setMeta}
+            />
+          )}
+          <div>
             <Label>WBS location *</Label>
             {activeProject && (
               <WbsNodePicker
