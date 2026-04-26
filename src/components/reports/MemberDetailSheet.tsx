@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import type { MemberRow } from "./MemberPerformanceTable";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 
 interface RecentTask {
   id: string;
