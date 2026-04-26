@@ -85,6 +85,9 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       wbs_node_id: wbsNodeId,
       // Mirror WBS path into legacy location_zone so older list views still display nicely
       location_zone: wbsNode.path_text,
+      department: department as Department,
+      dept_status: DEPT_INITIAL_STAGE[department as Department],
+      discipline_meta: meta,
       planned_start: parsed.data.planned_start || null,
       planned_end: parsed.data.planned_end || null,
       estimated_hours: parsed.data.estimated_hours ? Number(parsed.data.estimated_hours) : 0,
@@ -99,6 +102,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     setOpen(false);
     setWbsNodeId(null);
     setWbsNode(null);
+    setDepartment("");
+    setMeta({});
     onCreated?.();
   };
 
