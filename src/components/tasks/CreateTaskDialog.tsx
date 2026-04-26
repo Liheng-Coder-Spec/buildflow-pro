@@ -57,6 +57,10 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       toast.error("Pick a WBS location for this task");
       return;
     }
+    if (!department) {
+      toast.error("Pick a department for this task");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     const parsed = taskSchema.safeParse({
       title: fd.get("title"),
