@@ -57,7 +57,7 @@ export default function Tasks() {
     setLoading(true);
     const { data } = await supabase
       .from("tasks")
-      .select("id, title, status, priority, task_type, location_zone, planned_end, estimated_hours, progress_pct")
+      .select("id, title, status, priority, task_type, location_zone, planned_end, estimated_hours, progress_pct, department")
       .eq("project_id", activeProject.id)
       .order("created_at", { ascending: false });
     setTasks((data ?? []) as TaskRow[]);
@@ -70,6 +70,7 @@ export default function Tasks() {
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+    if (deptFilter !== "all" && t.department !== deptFilter) return false;
     return true;
   });
 
