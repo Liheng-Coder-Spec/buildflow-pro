@@ -22,6 +22,7 @@ import { formatHours } from "@/lib/timesheetMeta";
 import { CheckCheck, Clock, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useApprovalUnread } from "@/hooks/useApprovalUnread";
 
 interface Pending {
   id: string;
@@ -52,6 +53,12 @@ export default function Approvals() {
   const { activeProject, projects } = useProjects();
   const { roles } = useAuth();
   const [tab, setTab] = useState("tasks");
+  const {
+    taskApprovalCount,
+    timesheetApprovalCount,
+    markTaskApprovalsRead,
+    markTimesheetApprovalsRead,
+  } = useApprovalUnread();
 
   // Tasks
   const [items, setItems] = useState<Pending[]>([]);
@@ -106,6 +113,16 @@ export default function Approvals() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
   useEffect(() => { loadTimesheets(); }, [loadTimesheets]);
+
+  // Auto-clear approval notifications when the matching tab is viewed.
+  useEffect(() => {
+    if (tab === "tasks" && taskApprovalCount > 0) {
+      markTaskApprovalsRead();
+    } else if (tab === "timesheets" && timesheetApprovalCount > 0) {
+      markTimesheetApprovalsRead();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, taskApprovalCount, timesheetApprovalCount]);
 
   const approve = async (id: string) => {
     setBusy(id);
@@ -163,10 +180,26 @@ export default function Approvals() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="tasks">
-            Tasks {items.length > 0 && <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{items.length}</span>}
+            Tasks
+            {taskApprovalCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none">
+                {taskApprovalCount > 9 ? "9+" : taskApprovalCount}
+              </span>
+            )}
+            {taskApprovalCount === 0 && items.length > 0 && (
+              <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{items.length}</span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="timesheets">
-            Timesheets {tsItems.length > 0 && <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{tsItems.length}</span>}
+            Timesheets
+            {timesheetApprovalCount > 0 && (
+              <span className="ml-2 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none">
+                {timesheetApprovalCount > 9 ? "9+" : timesheetApprovalCount}
+              </span>
+            )}
+            {timesheetApprovalCount === 0 && tsItems.length > 0 && (
+              <span className="ml-2 rounded-full bg-warning text-warning-foreground px-1.5 text-[10px]">{tsItems.length}</span>
+            )}
           </TabsTrigger>
         </TabsList>
 
