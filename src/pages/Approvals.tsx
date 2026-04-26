@@ -56,8 +56,6 @@ export default function Approvals() {
   const {
     taskApprovalCount,
     timesheetApprovalCount,
-    markTaskApprovalsRead,
-    markTimesheetApprovalsRead,
   } = useApprovalUnread();
 
   // Tasks
@@ -114,15 +112,10 @@ export default function Approvals() {
   useEffect(() => { loadTasks(); }, [loadTasks]);
   useEffect(() => { loadTimesheets(); }, [loadTimesheets]);
 
-  // Auto-clear approval notifications when the matching tab is viewed.
-  useEffect(() => {
-    if (tab === "tasks" && taskApprovalCount > 0) {
-      markTaskApprovalsRead();
-    } else if (tab === "timesheets" && timesheetApprovalCount > 0) {
-      markTimesheetApprovalsRead();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, taskApprovalCount, timesheetApprovalCount]);
+  // NOTE: We intentionally do NOT auto-mark approval notifications as read
+  // when a tab is opened — the sidebar "Approvals" badge and tab badges
+  // should persist as a visible reminder until the approver actually acts on
+  // the items (approve/reject) or clears them from the notification bell.
 
   const approve = async (id: string) => {
     setBusy(id);
