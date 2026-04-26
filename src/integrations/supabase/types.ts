@@ -1005,6 +1005,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      seed_demo_run: { Args: never; Returns: Json }
       wbs_user_can: {
         Args: {
           _node_id: string
