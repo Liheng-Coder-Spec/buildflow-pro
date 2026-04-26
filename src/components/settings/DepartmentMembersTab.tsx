@@ -13,7 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, Trash2, Plus, Search } from "lucide-react";
+import { Loader2, Trash2, Plus, Search, Sparkles } from "lucide-react";
 import {
   Department, DEPARTMENT_LABELS, DeptRole, DEPT_ROLE_LABELS,
 } from "@/lib/departmentMeta";
@@ -38,6 +38,7 @@ export function DepartmentMembersTab() {
   const [allUsers, setAllUsers] = useState<ProfileLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState("");
 
   const [userId, setUserId] = useState("");
@@ -87,6 +88,21 @@ export function DepartmentMembersTab() {
     load();
   };
 
+  const onSeed = async () => {
+    setSeeding(true);
+    const { data, error } = await supabase.functions.invoke("seed-departments-demo");
+    setSeeding(false);
+    if (error) { toast.error(error.message); return; }
+    const created = (data?.users ?? []).filter((u: { status: string }) => u.status === "created").length;
+    const exists = (data?.users ?? []).filter((u: { status: string }) => u.status === "exists").length;
+    toast.success(
+      `Demo data seeded — ${created} new approver(s), ${exists} already existed. ` +
+      `Password for demo accounts: ${data?.password ?? "Demo1234!"}`,
+      { duration: 8000 },
+    );
+    load();
+  };
+
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
     if (!q) return rows;
@@ -101,11 +117,17 @@ export function DepartmentMembersTab() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Department members</CardTitle>
-        <CardDescription>
-          Assign users to a department. Approvers can move tasks into the approved/issued/PO/site-approved stages of their department.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <CardTitle className="text-base">Department members</CardTitle>
+          <CardDescription>
+            Assign users to a department. Approvers can move tasks into the approved/issued/PO/site-approved stages of their department.
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onSeed} disabled={seeding} className="shrink-0">
+          {seeding ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+          Seed demo data
+        </Button>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Add form */}
