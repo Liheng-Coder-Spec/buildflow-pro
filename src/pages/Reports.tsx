@@ -14,10 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { OrgKpis, type OrgKpiData } from "@/components/reports/OrgKpis";
-import {
-  MemberPerformanceTable,
-  type MemberRow,
-} from "@/components/reports/MemberPerformanceTable";
+import { type MemberRow } from "@/components/reports/MemberPerformanceTable";
+import { MemberPerformanceCards } from "@/components/reports/MemberPerformanceCards";
 import { MemberDetailSheet } from "@/components/reports/MemberDetailSheet";
 import {
   DepartmentBreakdown,
