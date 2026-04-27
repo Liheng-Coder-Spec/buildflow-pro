@@ -150,7 +150,7 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="task_type">Type *</Label>
+              <Label htmlFor="task_type">Discipline Type *</Label>
               <Select name="task_type" defaultValue="other">
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
