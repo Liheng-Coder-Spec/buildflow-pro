@@ -183,6 +183,43 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
               </SelectContent>
             </Select>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Task Type *</Label>
+              <Select
+                value={workflowType}
+                onValueChange={(v) => {
+                  setWorkflowType(v as TaskWorkflowType);
+                  setCategory(""); // reset category when workflow changes
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select task type" /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TASK_WORKFLOW_LABELS) as TaskWorkflowType[]).map((w) => (
+                    <SelectItem key={w} value={w}>{TASK_WORKFLOW_LABELS[w]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Task Category *</Label>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as TaskCategory)}
+                disabled={!workflowType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={workflowType ? "Select category" : "Pick task type first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflowType &&
+                    CATEGORIES_BY_WORKFLOW[workflowType as TaskWorkflowType].map((c) => (
+                      <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           {department && (
             <DisciplineMetaFields
               department={department as Department}
