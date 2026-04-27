@@ -50,6 +50,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
   const [department, setDepartment] = useState<Department | "">("");
   const [meta, setMeta] = useState<Record<string, any>>({});
+  const [workflowType, setWorkflowType] = useState<TaskWorkflowType | "">("");
+  const [category, setCategory] = useState<TaskCategory | "">("");
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
