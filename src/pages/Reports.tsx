@@ -412,75 +412,93 @@ export default function Reports() {
             Org-wide insights and per-member performance — {projectLabel}
           </p>
         </div>
-        <Filter label="Project">
-          <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.code} · {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Filter>
-        <Filter label="From">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-36"
-          />
-        </Filter>
-        <Filter label="To">
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-36"
-          />
-        </Filter>
-        {isAdmin && (
-          <Button onClick={exportReport} disabled={exporting} variant="default">
-            {exporting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4 mr-2" />
-            )}
-            Export Excel
-          </Button>
-        )}
       </div>
 
-      {loading || !kpi ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          <OrgKpis data={kpi} />
-          <DepartmentBreakdown rows={deptRows} />
-          {isAdmin ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Per-member performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MemberPerformanceTable rows={members} onSelect={setActive} />
-              </CardContent>
-            </Card>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          {canSeeWbs && <TabsTrigger value="wbs">WBS Locations</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="overview" className="flex flex-col gap-6 mt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <Filter label="Project">
+              <Select value={projectId} onValueChange={setProjectId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All projects</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.code} · {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Filter>
+            <Filter label="From">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-36"
+              />
+            </Filter>
+            <Filter label="To">
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-36"
+              />
+            </Filter>
+            {isAdmin && (
+              <Button onClick={exportReport} disabled={exporting} variant="default">
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Export Excel
+              </Button>
+            )}
+          </div>
+
+          {loading || !kpi ? (
+            <div className="flex justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
           ) : (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                Per-member breakdown is visible to admins only.
-              </CardContent>
-            </Card>
+            <>
+              <OrgKpis data={kpi} />
+              <DepartmentBreakdown rows={deptRows} />
+              {isAdmin ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Per-member performance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MemberPerformanceTable rows={members} onSelect={setActive} />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardContent className="py-6 text-sm text-muted-foreground">
+                    Per-member breakdown is visible to admins only.
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
-        </>
-      )}
+        </TabsContent>
+
+        {canSeeWbs && (
+          <TabsContent value="wbs" className="mt-4">
+            <WbsLocationsDashboard />
+          </TabsContent>
+        )}
+      </Tabs>
 
       <MemberDetailSheet
         member={active}
