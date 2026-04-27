@@ -37,7 +37,8 @@ interface ProjectOpt {
 export default function Reports() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
-
+  const isPM = hasRole("project_manager");
+  const canSeeWbs = isAdmin || isPM;
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [projects, setProjects] = useState<ProjectOpt[]>([]);
