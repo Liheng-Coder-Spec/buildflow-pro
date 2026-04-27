@@ -25,6 +25,8 @@ import {
 } from "@/components/reports/DepartmentBreakdown";
 import { invokeXlsxDownload } from "@/lib/xlsxDownload";
 import type { Department } from "@/lib/departmentMeta";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WbsLocationsDashboard } from "@/components/reports/WbsLocationsDashboard";
 
 interface ProjectOpt {
   id: string;
