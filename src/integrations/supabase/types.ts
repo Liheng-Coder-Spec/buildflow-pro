@@ -670,6 +670,7 @@ export type Database = {
           actual_start: string | null
           approved_at: string | null
           approved_by: string | null
+          category: Database["public"]["Enums"]["task_category"] | null
           code: string | null
           created_at: string
           created_by: string | null
@@ -691,6 +692,9 @@ export type Database = {
           title: string
           updated_at: string
           wbs_node_id: string | null
+          workflow_type:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
         }
         Insert: {
           actual_end?: string | null
@@ -698,6 +702,7 @@ export type Database = {
           actual_start?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          category?: Database["public"]["Enums"]["task_category"] | null
           code?: string | null
           created_at?: string
           created_by?: string | null
@@ -719,6 +724,9 @@ export type Database = {
           title: string
           updated_at?: string
           wbs_node_id?: string | null
+          workflow_type?:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
         }
         Update: {
           actual_end?: string | null
@@ -726,6 +734,7 @@ export type Database = {
           actual_start?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          category?: Database["public"]["Enums"]["task_category"] | null
           code?: string | null
           created_at?: string
           created_by?: string | null
@@ -747,6 +756,9 @@ export type Database = {
           title?: string
           updated_at?: string
           wbs_node_id?: string | null
+          workflow_type?:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
         }
         Relationships: [
           {
@@ -1073,6 +1085,31 @@ export type Database = {
         | "on_hold"
         | "completed"
         | "cancelled"
+      task_category:
+        | "design_log_report"
+        | "design_summary_report"
+        | "calculation_note"
+        | "technical_evaluation"
+        | "technical_comparison"
+        | "cut_sheet"
+        | "design_coordination_circulation"
+        | "material_coordination_circulation"
+        | "budget_coordination_circulation"
+        | "eoi"
+        | "tender_evaluation"
+        | "tender_interview"
+        | "po_award"
+        | "kick_off"
+        | "daily_report"
+        | "weekly_report"
+        | "ncr"
+        | "instruction"
+        | "delay_notice"
+        | "claim_notice"
+        | "as_built_drawing_rfa"
+        | "test_report_rfa"
+        | "material_rfa"
+        | "method_statement_rfa"
       task_priority: "low" | "medium" | "high" | "critical"
       task_status:
         | "open"
@@ -1091,6 +1128,12 @@ export type Database = {
         | "excavation"
         | "inspection"
         | "other"
+      task_workflow_type:
+        | "design"
+        | "coordination"
+        | "procurement"
+        | "execution"
+        | "approval"
       timesheet_status: "draft" | "submitted" | "approved" | "rejected"
       wbs_node_type:
         | "building"
@@ -1291,6 +1334,32 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      task_category: [
+        "design_log_report",
+        "design_summary_report",
+        "calculation_note",
+        "technical_evaluation",
+        "technical_comparison",
+        "cut_sheet",
+        "design_coordination_circulation",
+        "material_coordination_circulation",
+        "budget_coordination_circulation",
+        "eoi",
+        "tender_evaluation",
+        "tender_interview",
+        "po_award",
+        "kick_off",
+        "daily_report",
+        "weekly_report",
+        "ncr",
+        "instruction",
+        "delay_notice",
+        "claim_notice",
+        "as_built_drawing_rfa",
+        "test_report_rfa",
+        "material_rfa",
+        "method_statement_rfa",
+      ],
       task_priority: ["low", "medium", "high", "critical"],
       task_status: [
         "open",
@@ -1310,6 +1379,13 @@ export const Constants = {
         "excavation",
         "inspection",
         "other",
+      ],
+      task_workflow_type: [
+        "design",
+        "coordination",
+        "procurement",
+        "execution",
+        "approval",
       ],
       timesheet_status: ["draft", "submitted", "approved", "rejected"],
       wbs_node_type: [

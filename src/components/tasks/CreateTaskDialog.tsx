@@ -26,6 +26,10 @@ import {
   Department, DEPARTMENT_LABELS, DEPT_INITIAL_STAGE,
 } from "@/lib/departmentMeta";
 import { DisciplineMetaFields } from "@/components/tasks/DisciplineMetaFields";
+import {
+  TaskWorkflowType, TaskCategory,
+  TASK_WORKFLOW_LABELS, TASK_CATEGORY_LABELS, CATEGORIES_BY_WORKFLOW,
+} from "@/lib/taskCategoryMeta";
 
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(200),
@@ -46,6 +50,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
   const [department, setDepartment] = useState<Department | "">("");
   const [meta, setMeta] = useState<Record<string, any>>({});
+  const [workflowType, setWorkflowType] = useState<TaskWorkflowType | "">("");
+  const [category, setCategory] = useState<TaskCategory | "">("");
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,6 +65,14 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     }
     if (!department) {
       toast.error("Pick a department for this task");
+      return;
+    }
+    if (!workflowType) {
+      toast.error("Pick a Task Type (workflow)");
+      return;
+    }
+    if (!category) {
+      toast.error("Pick a Task Category");
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -88,6 +102,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       department: department as Department,
       dept_status: DEPT_INITIAL_STAGE[department as Department],
       discipline_meta: meta,
+      workflow_type: workflowType as TaskWorkflowType,
+      category: category as TaskCategory,
       planned_start: parsed.data.planned_start || null,
       planned_end: parsed.data.planned_end || null,
       estimated_hours: parsed.data.estimated_hours ? Number(parsed.data.estimated_hours) : 0,
@@ -104,6 +120,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     setWbsNode(null);
     setDepartment("");
     setMeta({});
+    setWorkflowType("");
+    setCategory("");
     onCreated?.();
   };
 
@@ -132,7 +150,7 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="task_type">Type *</Label>
+              <Label htmlFor="task_type">Discipline Type *</Label>
               <Select name="task_type" defaultValue="other">
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -164,6 +182,43 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Task Type *</Label>
+              <Select
+                value={workflowType}
+                onValueChange={(v) => {
+                  setWorkflowType(v as TaskWorkflowType);
+                  setCategory(""); // reset category when workflow changes
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select task type" /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(TASK_WORKFLOW_LABELS) as TaskWorkflowType[]).map((w) => (
+                    <SelectItem key={w} value={w}>{TASK_WORKFLOW_LABELS[w]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Task Category *</Label>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as TaskCategory)}
+                disabled={!workflowType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={workflowType ? "Select category" : "Pick task type first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {workflowType &&
+                    CATEGORIES_BY_WORKFLOW[workflowType as TaskWorkflowType].map((c) => (
+                      <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           {department && (
             <DisciplineMetaFields
