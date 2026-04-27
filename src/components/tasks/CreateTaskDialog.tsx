@@ -67,6 +67,14 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       toast.error("Pick a department for this task");
       return;
     }
+    if (!workflowType) {
+      toast.error("Pick a Task Type (workflow)");
+      return;
+    }
+    if (!category) {
+      toast.error("Pick a Task Category");
+      return;
+    }
     const fd = new FormData(e.currentTarget);
     const parsed = taskSchema.safeParse({
       title: fd.get("title"),
@@ -94,6 +102,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
       department: department as Department,
       dept_status: DEPT_INITIAL_STAGE[department as Department],
       discipline_meta: meta,
+      workflow_type: workflowType as TaskWorkflowType,
+      category: category as TaskCategory,
       planned_start: parsed.data.planned_start || null,
       planned_end: parsed.data.planned_end || null,
       estimated_hours: parsed.data.estimated_hours ? Number(parsed.data.estimated_hours) : 0,
@@ -110,6 +120,8 @@ export function CreateTaskDialog({ onCreated }: { onCreated?: () => void }) {
     setWbsNode(null);
     setDepartment("");
     setMeta({});
+    setWorkflowType("");
+    setCategory("");
     onCreated?.();
   };
 
