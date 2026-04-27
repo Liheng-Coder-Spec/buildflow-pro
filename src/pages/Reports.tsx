@@ -477,7 +477,7 @@ export default function Reports() {
                     <CardTitle className="text-base">Per-member performance</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <MemberPerformanceTable rows={members} onSelect={setActive} />
+                    <MemberPerformanceCards rows={members} onSelect={setActive} />
                   </CardContent>
                 </Card>
               ) : (
