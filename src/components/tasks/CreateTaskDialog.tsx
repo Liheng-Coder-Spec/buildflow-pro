@@ -26,6 +26,10 @@ import {
   Department, DEPARTMENT_LABELS, DEPT_INITIAL_STAGE,
 } from "@/lib/departmentMeta";
 import { DisciplineMetaFields } from "@/components/tasks/DisciplineMetaFields";
+import {
+  TaskWorkflowType, TaskCategory,
+  TASK_WORKFLOW_LABELS, TASK_CATEGORY_LABELS, CATEGORIES_BY_WORKFLOW,
+} from "@/lib/taskCategoryMeta";
 
 const taskSchema = z.object({
   title: z.string().trim().min(2).max(200),
