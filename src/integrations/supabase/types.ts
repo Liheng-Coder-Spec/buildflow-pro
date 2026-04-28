@@ -779,11 +779,17 @@ export type Database = {
       }
       timesheet_entries: {
         Row: {
+          afternoon_end: string | null
+          afternoon_start: string | null
           created_at: string
           end_time: string | null
           flags: Json
           id: string
+          morning_end: string | null
+          morning_start: string | null
           notes: string | null
+          ot_end: string | null
+          ot_start: string | null
           overtime_hours: number
           project_id: string
           regular_hours: number
@@ -799,11 +805,17 @@ export type Database = {
           work_date: string
         }
         Insert: {
+          afternoon_end?: string | null
+          afternoon_start?: string | null
           created_at?: string
           end_time?: string | null
           flags?: Json
           id?: string
+          morning_end?: string | null
+          morning_start?: string | null
           notes?: string | null
+          ot_end?: string | null
+          ot_start?: string | null
           overtime_hours?: number
           project_id: string
           regular_hours?: number
@@ -819,11 +831,17 @@ export type Database = {
           work_date: string
         }
         Update: {
+          afternoon_end?: string | null
+          afternoon_start?: string | null
           created_at?: string
           end_time?: string | null
           flags?: Json
           id?: string
+          morning_end?: string | null
+          morning_start?: string | null
           notes?: string | null
+          ot_end?: string | null
+          ot_start?: string | null
           overtime_hours?: number
           project_id?: string
           regular_hours?: number
