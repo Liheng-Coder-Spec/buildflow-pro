@@ -59,6 +59,15 @@ interface TaskOpt {
   id: string;
   title: string;
   code: string | null;
+  wbs_node_id?: string | null;
+}
+
+interface TaskInfo {
+  id: string;
+  title: string;
+  code: string | null;
+  wbs_path: string | null;
+  wbs_code: string | null;
 }
 
 const WEEK_DAYS = 7;
@@ -69,6 +78,7 @@ export default function Timesheets() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [tasks, setTasks] = useState<TaskOpt[]>([]);
+  const [taskInfo, setTaskInfo] = useState<Map<string, TaskInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
@@ -93,6 +103,37 @@ export default function Timesheets() {
   }, [user, weekStart, weekEnd]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Resolve task + WBS info for all entries shown this week
+  useEffect(() => {
+    const ids = Array.from(new Set(entries.map((e) => e.task_id).filter(Boolean))) as string[];
+    if (ids.length === 0) { setTaskInfo(new Map()); return; }
+    (async () => {
+      const { data: ts } = await supabase
+        .from("tasks")
+        .select("id, title, code, wbs_node_id")
+        .in("id", ids);
+      const wbsIds = Array.from(new Set((ts ?? []).map((t) => t.wbs_node_id).filter(Boolean))) as string[];
+      let wbsMap = new Map<string, { code: string; path_text: string }>();
+      if (wbsIds.length > 0) {
+        const { data: ws } = await supabase
+          .from("wbs_nodes")
+          .select("id, code, path_text")
+          .in("id", wbsIds);
+        for (const w of ws ?? []) wbsMap.set(w.id, { code: w.code, path_text: w.path_text });
+      }
+      const map = new Map<string, TaskInfo>();
+      for (const t of ts ?? []) {
+        const w = t.wbs_node_id ? wbsMap.get(t.wbs_node_id) : null;
+        map.set(t.id, {
+          id: t.id, title: t.title, code: t.code,
+          wbs_code: w?.code ?? null,
+          wbs_path: w?.path_text ?? null,
+        });
+      }
+      setTaskInfo(map);
+    })();
+  }, [entries]);
 
   // Load tasks for active project that are assigned to the current user
   useEffect(() => {
@@ -330,7 +371,10 @@ export default function Timesheets() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Project / Task</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead>WBS Location</TableHead>
+                  <TableHead>Note</TableHead>
                   <TableHead className="text-right">Regular</TableHead>
                   <TableHead className="text-right">OT</TableHead>
                   <TableHead>Status</TableHead>
@@ -342,6 +386,7 @@ export default function Timesheets() {
                 {entries.map((e) => {
                   const project = projects.find((p) => p.id === e.project_id);
                   const editable = e.status === "draft" || e.status === "rejected";
+                  const ti = e.task_id ? taskInfo.get(e.task_id) : null;
                   return (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">
@@ -349,7 +394,25 @@ export default function Timesheets() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm font-medium">{project?.code ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[280px]">
+                      </TableCell>
+                      <TableCell>
+                        {ti ? (
+                          <div>
+                            {ti.code && <div className="text-[11px] text-muted-foreground num">{ti.code}</div>}
+                            <div className="text-sm truncate max-w-[220px]">{ti.title}</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        {ti?.wbs_path ? (
+                          <div>
+                            {ti.wbs_code && <div className="text-[11px] text-muted-foreground num">{ti.wbs_code}</div>}
+                            <div className="text-xs truncate max-w-[200px]" title={ti.wbs_path}>{ti.wbs_path}</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground truncate max-w-[220px]" title={e.notes ?? ""}>
                           {e.notes || "—"}
                         </div>
                       </TableCell>
