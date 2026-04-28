@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { format, startOfWeek, endOfWeek, addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -107,6 +107,7 @@ export default function Timesheets() {
   const [editing, setEditing] = useState<Entry | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [taskFilter, setTaskFilter] = useState<"all" | "today" | "yesterday">("all");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const weekEnd = useMemo(() => endOfWeek(weekStart, { weekStartsOn: 1 }), [weekStart]);
 
@@ -740,9 +741,9 @@ export default function Timesheets() {
               <div className="space-y-3">
                 <div className="grid grid-cols-12 gap-4 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   <div className="col-span-3">Period</div>
-                  <div className="col-span-4">Assigned Task</div>
+                  <div className="col-span-3">Assigned Task</div>
                   <div className="col-span-2">Start</div>
-                  <div className="col-span-1">End</div>
+                  <div className="col-span-2">End</div>
                   <div className="col-span-1 text-center">Hours</div>
                   <div className="col-span-1 text-center">Non Work</div>
                 </div>
@@ -762,7 +763,7 @@ export default function Timesheets() {
                         <div className="col-span-3 pl-2">
                           <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tighter">{p.label}</span>
                         </div>
-                        <div className="col-span-4">
+                        <div className="col-span-3">
                           <Select
                             value={editing[p.task as keyof Entry] as string || "none"}
                             onValueChange={(v) => setEditing({ ...editing, [p.task]: v === "none" ? null : v })}
@@ -786,7 +787,7 @@ export default function Timesheets() {
                             onChange={(e) => setEditing({ ...editing, [p.start]: e.target.value })}
                           />
                         </div>
-                        <div className="col-span-1">
+                        <div className="col-span-2">
                           <Input
                             type="time"
                             className="h-10 bg-slate-50 dark:bg-slate-900 border-slate-100 text-xs"
@@ -855,7 +856,21 @@ export default function Timesheets() {
                 <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                   📎 Attachments (images / PDF)
                 </Label>
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-white dark:bg-slate-800/30 hover:border-sky-400 transition-colors cursor-pointer group">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  multiple 
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    toast.info(`${files.length} file(s) selected (upload logic to be implemented)`);
+                  }}
+                />
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-white dark:bg-slate-800/30 hover:border-sky-400 transition-colors cursor-pointer group"
+                >
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-10 w-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
                       <Plus className="h-5 w-5" />
