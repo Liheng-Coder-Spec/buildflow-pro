@@ -450,43 +450,56 @@ export default function Timesheets() {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Regular Hours</Label>
-                  <Input
-                    type="number" min={0} max={24} step={0.25}
-                    value={editing.regular_hours}
-                    onChange={(e) => setEditing({ ...editing, regular_hours: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Overtime Hours</Label>
-                  <Input
-                    type="number" min={0} max={24} step={0.25}
-                    value={editing.overtime_hours}
-                    onChange={(e) => setEditing({ ...editing, overtime_hours: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Start (optional)</Label>
-                  <Input
-                    type="time"
-                    value={editing.start_time ?? ""}
-                    onChange={(e) => setEditing({ ...editing, start_time: e.target.value || null })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>End (optional)</Label>
-                  <Input
-                    type="time"
-                    value={editing.end_time ?? ""}
-                    onChange={(e) => setEditing({ ...editing, end_time: e.target.value || null })}
-                  />
-                </div>
-              </div>
+              {(() => {
+                const morningH = diffHours(editing.morning_start, editing.morning_end);
+                const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
+                const otH = diffHours(editing.ot_start, editing.ot_end);
+                const blocks = [
+                  { key: "morning", label: "Morning", tone: "text-info", start: editing.morning_start, end: editing.morning_end, h: morningH,
+                    setStart: (v: string) => setEditing({ ...editing, morning_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, morning_end: v || null }) },
+                  { key: "afternoon", label: "Afternoon", tone: "text-primary", start: editing.afternoon_start, end: editing.afternoon_end, h: afternoonH,
+                    setStart: (v: string) => setEditing({ ...editing, afternoon_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, afternoon_end: v || null }) },
+                  { key: "ot", label: "Overtime", tone: "text-warning", start: editing.ot_start, end: editing.ot_end, h: otH,
+                    setStart: (v: string) => setEditing({ ...editing, ot_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, ot_end: v || null }) },
+                ];
+                return (
+                  <div className="space-y-2">
+                    <Label>Time Blocks</Label>
+                    <div className="rounded-lg border divide-y">
+                      {blocks.map((b) => (
+                        <div key={b.key} className="grid grid-cols-12 items-center gap-2 p-2.5">
+                          <div className={cn("col-span-3 text-xs font-semibold uppercase tracking-wider", b.tone)}>
+                            {b.label}
+                          </div>
+                          <Input
+                            className="col-span-4 h-9"
+                            type="time"
+                            value={b.start ?? ""}
+                            onChange={(e) => b.setStart(e.target.value)}
+                          />
+                          <Input
+                            className="col-span-4 h-9"
+                            type="time"
+                            value={b.end ?? ""}
+                            onChange={(e) => b.setEnd(e.target.value)}
+                          />
+                          <div className="col-span-1 text-xs num text-right text-muted-foreground">
+                            {formatHours(b.h)}h
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground px-1">
+                      <span>Regular: <span className="num text-foreground font-medium">{formatHours(morningH + afternoonH)}h</span></span>
+                      <span>Overtime: <span className="num text-warning font-medium">{formatHours(otH)}h</span></span>
+                      <span>Total: <span className="num text-foreground font-semibold">{formatHours(morningH + afternoonH + otH)}h</span></span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1.5">
                 <Label>Notes</Label>
