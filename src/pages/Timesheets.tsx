@@ -59,6 +59,15 @@ interface TaskOpt {
   id: string;
   title: string;
   code: string | null;
+  wbs_node_id?: string | null;
+}
+
+interface TaskInfo {
+  id: string;
+  title: string;
+  code: string | null;
+  wbs_path: string | null;
+  wbs_code: string | null;
 }
 
 const WEEK_DAYS = 7;
