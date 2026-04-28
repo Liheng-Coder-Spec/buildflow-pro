@@ -78,6 +78,7 @@ export default function Timesheets() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [tasks, setTasks] = useState<TaskOpt[]>([]);
+  const [taskInfo, setTaskInfo] = useState<Map<string, TaskInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
