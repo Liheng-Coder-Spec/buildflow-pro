@@ -138,7 +138,7 @@ export default function Auth() {
 
         <div className="space-y-4 max-w-md">
           <h1 className="text-4xl font-bold leading-tight">
-            Construction project control, end-to-end.
+            Digital Construction Operating System Control, end-to-end.
           </h1>
           <p className="text-base text-primary-foreground/80">
             Tasks, timesheets, approvals, and audit-ready reporting — built for
