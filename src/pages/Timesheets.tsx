@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TimesheetStatusBadge } from "@/components/timesheets/TimesheetStatusBadge";
 import { formatHours, TimesheetFlag, TimesheetStatus } from "@/lib/timesheetMeta";
-import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert, Calendar, Users, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert, Calendar, Users, CheckCircle2, File } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -104,9 +104,9 @@ export default function Timesheets() {
   const [taskInfo, setTaskInfo] = useState<Map<string, TaskInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Entry | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [taskFilter, setTaskFilter] = useState<"all" | "today" | "yesterday">("all");
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const weekEnd = useMemo(() => endOfWeek(weekStart, { weekStartsOn: 1 }), [weekStart]);
@@ -171,19 +171,35 @@ export default function Timesheets() {
     })();
   }, []);
 
-  // Load tasks for active project
+  // Load tasks for the selected member in the project
   useEffect(() => {
-    if (!activeProject) { setTasks([]); return; }
+    if (!editing?.user_id || !editing?.project_id) return;
     (async () => {
+      // 1. Get task IDs assigned to this member
+      const { data: assignments } = await supabase
+        .from("task_assignments")
+        .select("task_id")
+        .eq("user_id", editing.user_id)
+        .is("unassigned_at", null);
+      
+      const assignedIds = (assignments ?? []).map(a => a.task_id);
+      
+      if (assignedIds.length === 0) {
+        setTasks([]);
+        return;
+      }
+
+      // 2. Fetch the actual tasks
       const { data } = await supabase
         .from("tasks")
         .select("id, title, code, created_at")
-        .eq("project_id", activeProject.id)
-        .order("created_at", { ascending: false })
-        .limit(300);
+        .eq("project_id", editing.project_id)
+        .in("id", assignedIds)
+        .order("created_at", { ascending: false });
+      
       setTasks((data ?? []) as TaskOpt[]);
     })();
-  }, [activeProject]);
+  }, [editing?.user_id, editing?.project_id]);
 
   const totals = useMemo(() => {
     const reg = entries.reduce((s, e) => s + Number(e.regular_hours), 0);
@@ -203,6 +219,7 @@ export default function Timesheets() {
   const openCreate = (date?: Date) => {
     const d = date ?? new Date();
     const isSun = d.getDay() === 0;
+    setStagedFiles([]);
     setEditing({
       id: "",
       user_id: user!.id,
@@ -573,23 +590,23 @@ export default function Timesheets() {
 
       {/* Create/Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl bg-slate-50 dark:bg-slate-900">
-          <DialogHeader className="p-6 bg-slate-900 text-white">
+        <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl bg-slate-50 dark:bg-slate-900 flex flex-col max-h-[95vh]">
+          <DialogHeader className="p-5 bg-slate-900 text-white shrink-0">
             <div className="flex items-center justify-between">
               <div>
-                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
                   <Clock className="h-5 w-5 text-sky-400" />
-                  Hybrid Time Entry · Sunday & Public Holiday Ticks
+                  Hybrid Time Entry
                 </DialogTitle>
-                <DialogDescription className="text-slate-400 mt-1">
-                  Member selection • Task filters (All/Today/Yesterday) • Sunday/Holiday ticks • Multi-period tasks
+                <DialogDescription className="text-slate-400 text-xs mt-0.5">
+                  Log daily hours with multi-period task tracking and holiday support.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
           {editing && (
-            <div className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
               {/* Meta Row: Date, Project, Member */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
@@ -760,8 +777,8 @@ export default function Timesheets() {
                     
                     return (
                       <div key={p.id} className="grid grid-cols-12 items-center gap-4 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                        <div className="col-span-3 pl-2">
-                          <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tighter">{p.label}</span>
+                        <div className="col-span-3 pl-3">
+                          <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 tracking-tight">{p.label}</span>
                         </div>
                         <div className="col-span-3">
                           <Select
@@ -864,19 +881,37 @@ export default function Timesheets() {
                   accept="image/*,.pdf"
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []);
-                    toast.info(`${files.length} file(s) selected (upload logic to be implemented)`);
+                    setStagedFiles(prev => [...prev, ...files]);
                   }}
                 />
+                
+                {stagedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {stagedFiles.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-sky-50 dark:bg-sky-900/30 border border-sky-100 px-3 py-1.5 rounded-lg text-xs">
+                        <File className="h-3 w-3 text-sky-600" />
+                        <span className="max-w-[120px] truncate text-sky-900 dark:text-sky-200">{f.name}</span>
+                        <button 
+                          onClick={() => setStagedFiles(prev => prev.filter((_, idx) => idx !== i))}
+                          className="hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div 
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-white dark:bg-slate-800/30 hover:border-sky-400 transition-colors cursor-pointer group"
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-white dark:bg-slate-800/30 hover:border-sky-400 transition-colors cursor-pointer group"
                 >
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="h-10 w-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
-                      <Plus className="h-5 w-5" />
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="h-8 w-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
+                      <Plus className="h-4 w-4" />
                     </div>
-                    <span className="text-sm font-semibold text-slate-600 group-hover:text-sky-600">Add files</span>
-                    <span className="text-[10px] text-slate-400">Supported files: JPG, PNG, PDF (Max 10MB)</span>
+                    <span className="text-xs font-semibold text-slate-600 group-hover:text-sky-600">Add files</span>
+                    <span className="text-[9px] text-slate-400">JPG, PNG, PDF (Max 10MB)</span>
                   </div>
                 </div>
               </div>
