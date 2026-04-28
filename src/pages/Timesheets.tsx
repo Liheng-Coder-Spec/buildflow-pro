@@ -33,12 +33,26 @@ interface Entry {
   work_date: string;
   start_time: string | null;
   end_time: string | null;
+  morning_start: string | null;
+  morning_end: string | null;
+  afternoon_start: string | null;
+  afternoon_end: string | null;
+  ot_start: string | null;
+  ot_end: string | null;
   regular_hours: number;
   overtime_hours: number;
   notes: string | null;
   status: TimesheetStatus;
   flags: TimesheetFlag[];
   rejection_reason: string | null;
+}
+
+function diffHours(start: string | null, end: string | null): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  return mins > 0 ? Math.round((mins / 60) * 100) / 100 : 0;
 }
 
 interface TaskOpt {
@@ -80,17 +94,27 @@ export default function Timesheets() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load tasks for active project (for selector)
+  // Load tasks for active project that are assigned to the current user
   useEffect(() => {
-    if (!activeProject) { setTasks([]); return; }
-    supabase
-      .from("tasks")
-      .select("id, title, code")
-      .eq("project_id", activeProject.id)
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data }) => setTasks((data ?? []) as TaskOpt[]));
-  }, [activeProject]);
+    if (!activeProject || !user) { setTasks([]); return; }
+    (async () => {
+      const { data: assigns } = await supabase
+        .from("task_assignments")
+        .select("task_id")
+        .eq("user_id", user.id)
+        .is("unassigned_at", null);
+      const ids = (assigns ?? []).map((a) => a.task_id);
+      if (ids.length === 0) { setTasks([]); return; }
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, title, code")
+        .eq("project_id", activeProject.id)
+        .in("id", ids)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setTasks((data ?? []) as TaskOpt[]);
+    })();
+  }, [activeProject, user]);
 
   const totals = useMemo(() => {
     const reg = entries.reduce((s, e) => s + Number(e.regular_hours), 0);
@@ -116,6 +140,12 @@ export default function Timesheets() {
       work_date: format(date ?? new Date(), "yyyy-MM-dd"),
       start_time: null,
       end_time: null,
+      morning_start: "08:00",
+      morning_end: "12:00",
+      afternoon_start: "13:00",
+      afternoon_end: "17:00",
+      ot_start: null,
+      ot_end: null,
       regular_hours: 8,
       overtime_hours: 0,
       notes: "",
@@ -134,16 +164,32 @@ export default function Timesheets() {
   const save = async () => {
     if (!editing || !user) return;
     if (!editing.project_id) { toast.error("Pick a project"); return; }
+    const morningH = diffHours(editing.morning_start, editing.morning_end);
+    const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
+    const otH = diffHours(editing.ot_start, editing.ot_end);
+    const reg = morningH + afternoonH;
+    if (reg + otH <= 0) { toast.error("Enter at least one valid time block"); return; }
     setSubmitting(true);
+    // Pick earliest start / latest end across all blocks for legacy start/end fields
+    const allStarts = [editing.morning_start, editing.afternoon_start, editing.ot_start].filter(Boolean) as string[];
+    const allEnds = [editing.morning_end, editing.afternoon_end, editing.ot_end].filter(Boolean) as string[];
+    const startTime = allStarts.length ? allStarts.sort()[0] : null;
+    const endTime = allEnds.length ? allEnds.sort().slice(-1)[0] : null;
     const payload = {
       user_id: user.id,
       project_id: editing.project_id,
       task_id: editing.task_id || null,
       work_date: editing.work_date,
-      start_time: editing.start_time || null,
-      end_time: editing.end_time || null,
-      regular_hours: Number(editing.regular_hours) || 0,
-      overtime_hours: Number(editing.overtime_hours) || 0,
+      start_time: startTime,
+      end_time: endTime,
+      morning_start: editing.morning_start || null,
+      morning_end: editing.morning_end || null,
+      afternoon_start: editing.afternoon_start || null,
+      afternoon_end: editing.afternoon_end || null,
+      ot_start: editing.ot_start || null,
+      ot_end: editing.ot_end || null,
+      regular_hours: reg,
+      overtime_hours: otH,
       notes: editing.notes || null,
       status: editing.status,
     };
@@ -387,7 +433,9 @@ export default function Timesheets() {
                   value={editing.task_id ?? "none"}
                   onValueChange={(v) => setEditing({ ...editing, task_id: v === "none" ? null : v })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={tasks.length ? "Select a task assigned to you" : "No tasks assigned to you in this project"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— No specific task —</SelectItem>
                     {tasks.map((t) => (
@@ -397,45 +445,61 @@ export default function Timesheets() {
                     ))}
                   </SelectContent>
                 </Select>
+                {tasks.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">Only tasks in the active project that are assigned to you appear here.</p>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Regular Hours</Label>
-                  <Input
-                    type="number" min={0} max={24} step={0.25}
-                    value={editing.regular_hours}
-                    onChange={(e) => setEditing({ ...editing, regular_hours: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Overtime Hours</Label>
-                  <Input
-                    type="number" min={0} max={24} step={0.25}
-                    value={editing.overtime_hours}
-                    onChange={(e) => setEditing({ ...editing, overtime_hours: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Start (optional)</Label>
-                  <Input
-                    type="time"
-                    value={editing.start_time ?? ""}
-                    onChange={(e) => setEditing({ ...editing, start_time: e.target.value || null })}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>End (optional)</Label>
-                  <Input
-                    type="time"
-                    value={editing.end_time ?? ""}
-                    onChange={(e) => setEditing({ ...editing, end_time: e.target.value || null })}
-                  />
-                </div>
-              </div>
+              {(() => {
+                const morningH = diffHours(editing.morning_start, editing.morning_end);
+                const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
+                const otH = diffHours(editing.ot_start, editing.ot_end);
+                const blocks = [
+                  { key: "morning", label: "Morning", tone: "text-info", start: editing.morning_start, end: editing.morning_end, h: morningH,
+                    setStart: (v: string) => setEditing({ ...editing, morning_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, morning_end: v || null }) },
+                  { key: "afternoon", label: "Afternoon", tone: "text-primary", start: editing.afternoon_start, end: editing.afternoon_end, h: afternoonH,
+                    setStart: (v: string) => setEditing({ ...editing, afternoon_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, afternoon_end: v || null }) },
+                  { key: "ot", label: "Overtime", tone: "text-warning", start: editing.ot_start, end: editing.ot_end, h: otH,
+                    setStart: (v: string) => setEditing({ ...editing, ot_start: v || null }),
+                    setEnd: (v: string) => setEditing({ ...editing, ot_end: v || null }) },
+                ];
+                return (
+                  <div className="space-y-2">
+                    <Label>Time Blocks</Label>
+                    <div className="rounded-lg border divide-y">
+                      {blocks.map((b) => (
+                        <div key={b.key} className="grid grid-cols-12 items-center gap-2 p-2.5">
+                          <div className={cn("col-span-3 text-xs font-semibold uppercase tracking-wider", b.tone)}>
+                            {b.label}
+                          </div>
+                          <Input
+                            className="col-span-4 h-9"
+                            type="time"
+                            value={b.start ?? ""}
+                            onChange={(e) => b.setStart(e.target.value)}
+                          />
+                          <Input
+                            className="col-span-4 h-9"
+                            type="time"
+                            value={b.end ?? ""}
+                            onChange={(e) => b.setEnd(e.target.value)}
+                          />
+                          <div className="col-span-1 text-xs num text-right text-muted-foreground">
+                            {formatHours(b.h)}h
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground px-1">
+                      <span>Regular: <span className="num text-foreground font-medium">{formatHours(morningH + afternoonH)}h</span></span>
+                      <span>Overtime: <span className="num text-warning font-medium">{formatHours(otH)}h</span></span>
+                      <span>Total: <span className="num text-foreground font-semibold">{formatHours(morningH + afternoonH + otH)}h</span></span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1.5">
                 <Label>Notes</Label>
