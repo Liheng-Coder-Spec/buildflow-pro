@@ -478,41 +478,28 @@ export default function Timesheets() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <TooltipProvider delayDuration={150}>
-                          <div className="inline-flex items-center rounded-md border bg-background shadow-sm overflow-hidden">
-                            {editable ? (
-                              <>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button
-                                      onClick={() => openEdit(e)}
-                                      className="h-8 w-8 inline-flex items-center justify-center hover:bg-accent transition-colors"
-                                      aria-label="Edit entry"
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">Edit</TooltipContent>
-                                </Tooltip>
-                                <div className="h-5 w-px bg-border" />
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <button
-                                      onClick={() => remove(e.id)}
-                                      className="h-8 w-8 inline-flex items-center justify-center hover:bg-destructive/10 text-destructive transition-colors"
-                                      aria-label="Delete entry"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">Delete</TooltipContent>
-                                </Tooltip>
-                              </>
-                            ) : (
-                              <span className="px-2.5 py-1 text-[11px] text-muted-foreground italic">Locked</span>
-                            )}
+                        {editable ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              onClick={() => openEdit(e)}
+                              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border bg-background text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors shadow-sm"
+                              aria-label="Edit entry"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => remove(e.id)}
+                              className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-destructive/20 bg-background text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors shadow-sm"
+                              aria-label="Delete entry"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete</span>
+                            </button>
                           </div>
-                        </TooltipProvider>
+                        ) : (
+                          <span className="inline-flex items-center h-8 px-2.5 rounded-md bg-muted text-[11px] text-muted-foreground italic">Locked</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
