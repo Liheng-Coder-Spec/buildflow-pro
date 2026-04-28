@@ -433,7 +433,9 @@ export default function Timesheets() {
                   value={editing.task_id ?? "none"}
                   onValueChange={(v) => setEditing({ ...editing, task_id: v === "none" ? null : v })}
                 >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={tasks.length ? "Select a task assigned to you" : "No tasks assigned to you in this project"} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— No specific task —</SelectItem>
                     {tasks.map((t) => (
@@ -443,6 +445,9 @@ export default function Timesheets() {
                     ))}
                   </SelectContent>
                 </Select>
+                {tasks.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">Only tasks in the active project that are assigned to you appear here.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
