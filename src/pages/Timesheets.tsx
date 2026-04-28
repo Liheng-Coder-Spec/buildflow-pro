@@ -371,7 +371,10 @@ export default function Timesheets() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Project / Task</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Task</TableHead>
+                  <TableHead>WBS Location</TableHead>
+                  <TableHead>Note</TableHead>
                   <TableHead className="text-right">Regular</TableHead>
                   <TableHead className="text-right">OT</TableHead>
                   <TableHead>Status</TableHead>
@@ -383,6 +386,7 @@ export default function Timesheets() {
                 {entries.map((e) => {
                   const project = projects.find((p) => p.id === e.project_id);
                   const editable = e.status === "draft" || e.status === "rejected";
+                  const ti = e.task_id ? taskInfo.get(e.task_id) : null;
                   return (
                     <TableRow key={e.id}>
                       <TableCell className="font-medium">
@@ -390,7 +394,25 @@ export default function Timesheets() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm font-medium">{project?.code ?? "—"}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[280px]">
+                      </TableCell>
+                      <TableCell>
+                        {ti ? (
+                          <div>
+                            {ti.code && <div className="text-[11px] text-muted-foreground num">{ti.code}</div>}
+                            <div className="text-sm truncate max-w-[220px]">{ti.title}</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        {ti?.wbs_path ? (
+                          <div>
+                            {ti.wbs_code && <div className="text-[11px] text-muted-foreground num">{ti.wbs_code}</div>}
+                            <div className="text-xs truncate max-w-[200px]" title={ti.wbs_path}>{ti.wbs_path}</div>
+                          </div>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground truncate max-w-[220px]" title={e.notes ?? ""}>
                           {e.notes || "—"}
                         </div>
                       </TableCell>
