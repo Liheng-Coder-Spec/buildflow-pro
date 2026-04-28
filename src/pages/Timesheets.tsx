@@ -94,17 +94,27 @@ export default function Timesheets() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load tasks for active project (for selector)
+  // Load tasks for active project that are assigned to the current user
   useEffect(() => {
-    if (!activeProject) { setTasks([]); return; }
-    supabase
-      .from("tasks")
-      .select("id, title, code")
-      .eq("project_id", activeProject.id)
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data }) => setTasks((data ?? []) as TaskOpt[]));
-  }, [activeProject]);
+    if (!activeProject || !user) { setTasks([]); return; }
+    (async () => {
+      const { data: assigns } = await supabase
+        .from("task_assignments")
+        .select("task_id")
+        .eq("user_id", user.id)
+        .is("unassigned_at", null);
+      const ids = (assigns ?? []).map((a) => a.task_id);
+      if (ids.length === 0) { setTasks([]); return; }
+      const { data } = await supabase
+        .from("tasks")
+        .select("id, title, code")
+        .eq("project_id", activeProject.id)
+        .in("id", ids)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      setTasks((data ?? []) as TaskOpt[]);
+    })();
+  }, [activeProject, user]);
 
   const totals = useMemo(() => {
     const reg = entries.reduce((s, e) => s + Number(e.regular_hours), 0);
@@ -130,6 +140,12 @@ export default function Timesheets() {
       work_date: format(date ?? new Date(), "yyyy-MM-dd"),
       start_time: null,
       end_time: null,
+      morning_start: "08:00",
+      morning_end: "12:00",
+      afternoon_start: "13:00",
+      afternoon_end: "17:00",
+      ot_start: null,
+      ot_end: null,
       regular_hours: 8,
       overtime_hours: 0,
       notes: "",
