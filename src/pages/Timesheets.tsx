@@ -164,16 +164,32 @@ export default function Timesheets() {
   const save = async () => {
     if (!editing || !user) return;
     if (!editing.project_id) { toast.error("Pick a project"); return; }
+    const morningH = diffHours(editing.morning_start, editing.morning_end);
+    const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
+    const otH = diffHours(editing.ot_start, editing.ot_end);
+    const reg = morningH + afternoonH;
+    if (reg + otH <= 0) { toast.error("Enter at least one valid time block"); return; }
     setSubmitting(true);
+    // Pick earliest start / latest end across all blocks for legacy start/end fields
+    const allStarts = [editing.morning_start, editing.afternoon_start, editing.ot_start].filter(Boolean) as string[];
+    const allEnds = [editing.morning_end, editing.afternoon_end, editing.ot_end].filter(Boolean) as string[];
+    const startTime = allStarts.length ? allStarts.sort()[0] : null;
+    const endTime = allEnds.length ? allEnds.sort().slice(-1)[0] : null;
     const payload = {
       user_id: user.id,
       project_id: editing.project_id,
       task_id: editing.task_id || null,
       work_date: editing.work_date,
-      start_time: editing.start_time || null,
-      end_time: editing.end_time || null,
-      regular_hours: Number(editing.regular_hours) || 0,
-      overtime_hours: Number(editing.overtime_hours) || 0,
+      start_time: startTime,
+      end_time: endTime,
+      morning_start: editing.morning_start || null,
+      morning_end: editing.morning_end || null,
+      afternoon_start: editing.afternoon_start || null,
+      afternoon_end: editing.afternoon_end || null,
+      ot_start: editing.ot_start || null,
+      ot_end: editing.ot_end || null,
+      regular_hours: reg,
+      overtime_hours: otH,
       notes: editing.notes || null,
       status: editing.status,
     };
