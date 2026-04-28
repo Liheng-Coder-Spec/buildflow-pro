@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TimesheetStatusBadge } from "@/components/timesheets/TimesheetStatusBadge";
 import { formatHours, TimesheetFlag, TimesheetStatus } from "@/lib/timesheetMeta";
-import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert, Calendar, Users, CheckCircle2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,12 +40,26 @@ interface Entry {
   afternoon_end: string | null;
   ot_start: string | null;
   ot_end: string | null;
+  break_start: string | null;
+  break_end: string | null;
+  morning_task_id: string | null;
+  afternoon_task_id: string | null;
+  ot_task_id: string | null;
+  break_task_id: string | null;
+  morning_non_work: boolean;
+  afternoon_non_work: boolean;
+  ot_non_work: boolean;
+  break_non_work: boolean;
+  is_sunday: boolean;
+  is_public_holiday: boolean;
+  ticked_task_ids: string[];
   regular_hours: number;
   overtime_hours: number;
   notes: string | null;
   status: TimesheetStatus;
   flags: TimesheetFlag[];
   rejection_reason: string | null;
+  attachments?: any[];
 }
 
 function diffHours(start: string | null, end: string | null): number {
@@ -61,6 +75,13 @@ interface TaskOpt {
   title: string;
   code: string | null;
   wbs_node_id?: string | null;
+  created_at?: string;
+}
+
+interface Member {
+  id: string;
+  full_name: string;
+  job_title: string | null;
 }
 
 interface TaskInfo {
@@ -79,11 +100,13 @@ export default function Timesheets() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [tasks, setTasks] = useState<TaskOpt[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [taskInfo, setTaskInfo] = useState<Map<string, TaskInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Entry | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<"all" | "today" | "yesterday">("all");
 
   const weekEnd = useMemo(() => endOfWeek(weekStart, { weekStartsOn: 1 }), [weekStart]);
 
@@ -136,27 +159,30 @@ export default function Timesheets() {
     })();
   }, [entries]);
 
-  // Load tasks for active project that are assigned to the current user
+  // Load members
   useEffect(() => {
-    if (!activeProject || !user) { setTasks([]); return; }
     (async () => {
-      const { data: assigns } = await supabase
-        .from("task_assignments")
-        .select("task_id")
-        .eq("user_id", user.id)
-        .is("unassigned_at", null);
-      const ids = (assigns ?? []).map((a) => a.task_id);
-      if (ids.length === 0) { setTasks([]); return; }
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, job_title")
+        .order("full_name");
+      setMembers((data ?? []) as Member[]);
+    })();
+  }, []);
+
+  // Load tasks for active project
+  useEffect(() => {
+    if (!activeProject) { setTasks([]); return; }
+    (async () => {
       const { data } = await supabase
         .from("tasks")
-        .select("id, title, code")
+        .select("id, title, code, created_at")
         .eq("project_id", activeProject.id)
-        .in("id", ids)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(300);
       setTasks((data ?? []) as TaskOpt[]);
     })();
-  }, [activeProject, user]);
+  }, [activeProject]);
 
   const totals = useMemo(() => {
     const reg = entries.reduce((s, e) => s + Number(e.regular_hours), 0);
@@ -174,12 +200,14 @@ export default function Timesheets() {
   }, [entries]);
 
   const openCreate = (date?: Date) => {
+    const d = date ?? new Date();
+    const isSun = d.getDay() === 0;
     setEditing({
       id: "",
       user_id: user!.id,
       project_id: activeProject?.id ?? "",
       task_id: null,
-      work_date: format(date ?? new Date(), "yyyy-MM-dd"),
+      work_date: format(d, "yyyy-MM-dd"),
       start_time: null,
       end_time: null,
       morning_start: "08:00",
@@ -188,6 +216,19 @@ export default function Timesheets() {
       afternoon_end: "17:00",
       ot_start: null,
       ot_end: null,
+      break_start: null,
+      break_end: null,
+      morning_task_id: null,
+      afternoon_task_id: null,
+      ot_task_id: null,
+      break_task_id: null,
+      morning_non_work: false,
+      afternoon_non_work: false,
+      ot_non_work: false,
+      break_non_work: false,
+      is_sunday: isSun,
+      is_public_holiday: false,
+      ticked_task_ids: [],
       regular_hours: 8,
       overtime_hours: 0,
       notes: "",
@@ -206,21 +247,27 @@ export default function Timesheets() {
   const save = async () => {
     if (!editing || !user) return;
     if (!editing.project_id) { toast.error("Pick a project"); return; }
-    const morningH = diffHours(editing.morning_start, editing.morning_end);
-    const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
-    const otH = diffHours(editing.ot_start, editing.ot_end);
+    
+    const morningH = editing.morning_non_work ? 0 : diffHours(editing.morning_start, editing.morning_end);
+    const afternoonH = editing.afternoon_non_work ? 0 : diffHours(editing.afternoon_start, editing.afternoon_end);
+    const otH = editing.ot_non_work ? 0 : diffHours(editing.ot_start, editing.ot_end);
+    const breakH = editing.break_non_work ? 0 : diffHours(editing.break_start, editing.break_end);
+    
     const reg = morningH + afternoonH;
-    if (reg + otH <= 0) { toast.error("Enter at least one valid time block"); return; }
+    const total = reg + otH + breakH;
+    
+    if (total <= 0) { toast.error("Enter at least one valid time block"); return; }
+    
     setSubmitting(true);
-    // Pick earliest start / latest end across all blocks for legacy start/end fields
-    const allStarts = [editing.morning_start, editing.afternoon_start, editing.ot_start].filter(Boolean) as string[];
-    const allEnds = [editing.morning_end, editing.afternoon_end, editing.ot_end].filter(Boolean) as string[];
+    const allStarts = [editing.morning_start, editing.afternoon_start, editing.ot_start, editing.break_start].filter(Boolean) as string[];
+    const allEnds = [editing.morning_end, editing.afternoon_end, editing.ot_end, editing.break_end].filter(Boolean) as string[];
     const startTime = allStarts.length ? allStarts.sort()[0] : null;
     const endTime = allEnds.length ? allEnds.sort().slice(-1)[0] : null;
+
     const payload = {
-      user_id: user.id,
+      user_id: editing.user_id,
       project_id: editing.project_id,
-      task_id: editing.task_id || null,
+      task_id: editing.morning_task_id || editing.task_id || null, // fallback
       work_date: editing.work_date,
       start_time: startTime,
       end_time: endTime,
@@ -230,6 +277,19 @@ export default function Timesheets() {
       afternoon_end: editing.afternoon_end || null,
       ot_start: editing.ot_start || null,
       ot_end: editing.ot_end || null,
+      break_start: editing.break_start || null,
+      break_end: editing.break_end || null,
+      morning_task_id: editing.morning_task_id || null,
+      afternoon_task_id: editing.afternoon_task_id || null,
+      ot_task_id: editing.ot_task_id || null,
+      break_task_id: editing.break_task_id || null,
+      morning_non_work: editing.morning_non_work,
+      afternoon_non_work: editing.afternoon_non_work,
+      ot_non_work: editing.ot_non_work,
+      break_non_work: editing.break_non_work,
+      is_sunday: editing.is_sunday,
+      is_public_holiday: editing.is_public_holiday,
+      ticked_task_ids: editing.ticked_task_ids,
       regular_hours: reg,
       overtime_hours: otH,
       notes: editing.notes || null,
@@ -512,30 +572,51 @@ export default function Timesheets() {
 
       {/* Create/Edit dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editing?.id ? "Edit Entry" : "New Time Entry"}</DialogTitle>
-            <DialogDescription>Log hours worked on a specific day.</DialogDescription>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden border-none shadow-2xl bg-slate-50 dark:bg-slate-900">
+          <DialogHeader className="p-6 bg-slate-900 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-sky-400" />
+                  Hybrid Time Entry · Sunday & Public Holiday Ticks
+                </DialogTitle>
+                <DialogDescription className="text-slate-400 mt-1">
+                  Member selection • Task filters (All/Today/Yesterday) • Sunday/Holiday ticks • Multi-period tasks
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+
           {editing && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="p-6 space-y-6 max-h-[85vh] overflow-y-auto">
+              {/* Meta Row: Date, Project, Member */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                  <Label>Date</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> Date
+                  </Label>
                   <Input
                     type="date"
+                    className="bg-white dark:bg-slate-800 border-slate-200"
                     value={editing.work_date}
                     max={format(new Date(), "yyyy-MM-dd")}
-                    onChange={(e) => setEditing({ ...editing, work_date: e.target.value })}
+                    onChange={(e) => {
+                      const d = parseISO(e.target.value);
+                      setEditing({ ...editing, work_date: e.target.value, is_sunday: d.getDay() === 0 });
+                    }}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Project</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> Project
+                  </Label>
                   <Select
                     value={editing.project_id}
-                    onValueChange={(v) => setEditing({ ...editing, project_id: v, task_id: null })}
+                    onValueChange={(v) => setEditing({ ...editing, project_id: v })}
                   >
-                    <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                    <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
                     <SelectContent>
                       {projects.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.code} · {p.name}</SelectItem>
@@ -543,107 +624,269 @@ export default function Timesheets() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Task (optional)</Label>
-                <Select
-                  value={editing.task_id ?? "none"}
-                  onValueChange={(v) => setEditing({ ...editing, task_id: v === "none" ? null : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={tasks.length ? "Select a task assigned to you" : "No tasks assigned to you in this project"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— No specific task —</SelectItem>
-                    {tasks.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.code ? `${t.code} · ` : ""}{t.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {tasks.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">Only tasks in the active project that are assigned to you appear here.</p>
-                )}
-              </div>
-
-              {(() => {
-                const morningH = diffHours(editing.morning_start, editing.morning_end);
-                const afternoonH = diffHours(editing.afternoon_start, editing.afternoon_end);
-                const otH = diffHours(editing.ot_start, editing.ot_end);
-                const blocks = [
-                  { key: "morning", label: "Morning", tone: "text-info", start: editing.morning_start, end: editing.morning_end, h: morningH,
-                    setStart: (v: string) => setEditing({ ...editing, morning_start: v || null }),
-                    setEnd: (v: string) => setEditing({ ...editing, morning_end: v || null }) },
-                  { key: "afternoon", label: "Afternoon", tone: "text-primary", start: editing.afternoon_start, end: editing.afternoon_end, h: afternoonH,
-                    setStart: (v: string) => setEditing({ ...editing, afternoon_start: v || null }),
-                    setEnd: (v: string) => setEditing({ ...editing, afternoon_end: v || null }) },
-                  { key: "ot", label: "Overtime", tone: "text-warning", start: editing.ot_start, end: editing.ot_end, h: otH,
-                    setStart: (v: string) => setEditing({ ...editing, ot_start: v || null }),
-                    setEnd: (v: string) => setEditing({ ...editing, ot_end: v || null }) },
-                ];
-                return (
-                  <div className="space-y-2">
-                    <Label>Time Blocks</Label>
-                    <div className="rounded-lg border divide-y">
-                      {blocks.map((b) => (
-                        <div key={b.key} className="grid grid-cols-12 items-center gap-2 p-2.5">
-                          <div className={cn("col-span-3 text-xs font-semibold uppercase tracking-wider", b.tone)}>
-                            {b.label}
-                          </div>
-                          <Input
-                            className="col-span-4 h-9"
-                            type="time"
-                            value={b.start ?? ""}
-                            onChange={(e) => b.setStart(e.target.value)}
-                          />
-                          <Input
-                            className="col-span-4 h-9"
-                            type="time"
-                            value={b.end ?? ""}
-                            onChange={(e) => b.setEnd(e.target.value)}
-                          />
-                          <div className="col-span-1 text-xs num text-right text-muted-foreground">
-                            {formatHours(b.h)}h
-                          </div>
-                        </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
+                    <Users className="h-3 w-3" /> Member
+                  </Label>
+                  <Select
+                    value={editing.user_id}
+                    onValueChange={(v) => setEditing({ ...editing, user_id: v })}
+                  >
+                    <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-200">
+                      <SelectValue placeholder="Select member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {members.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Holiday Toggles Bar */}
+              <div className="flex items-center gap-6 p-4 rounded-xl bg-amber-50 border border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/30">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_sunday"
+                    className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    checked={editing.is_sunday}
+                    onChange={(e) => setEditing({ ...editing, is_sunday: e.target.checked })}
+                  />
+                  <Label htmlFor="is_sunday" className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-red-600 text-[10px]">-</span>
+                    SUNDAY <span className="text-[10px] font-normal text-amber-700/70 opacity-70">(premium rate applies)</span>
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 border-l border-amber-200 dark:border-amber-900/50 pl-6">
+                  <input
+                    type="checkbox"
+                    id="is_public_holiday"
+                    className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    checked={editing.is_public_holiday}
+                    onChange={(e) => setEditing({ ...editing, is_public_holiday: e.target.checked })}
+                  />
+                  <Label htmlFor="is_public_holiday" className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-100 text-orange-600 text-[10px]">🎉</span>
+                    PUBLIC HOLIDAY <span className="text-[10px] font-normal text-amber-700/70 opacity-70">(holiday rate + premium)</span>
+                  </Label>
+                </div>
+                <div className="ml-auto flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full dark:bg-emerald-950/30">
+                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Regular working day
+                </div>
+              </div>
+
+              {/* Task Ticking Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    📋 Tasks with tick (select tasks for this entry)
+                  </Label>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant={taskFilter === "all" ? "default" : "outline"} 
+                      size="sm" className="h-7 text-[10px] px-2.5 bg-slate-600"
+                      onClick={() => setTaskFilter("all")}
+                    >All Tasks</Button>
+                    <Button 
+                      variant={taskFilter === "today" ? "default" : "outline"} 
+                      size="sm" className="h-7 text-[10px] px-2.5"
+                      onClick={() => setTaskFilter("today")}
+                    >Today</Button>
+                    <Button 
+                      variant={taskFilter === "yesterday" ? "default" : "outline"} 
+                      size="sm" className="h-7 text-[10px] px-2.5"
+                      onClick={() => setTaskFilter("yesterday")}
+                    >Yesterday</Button>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 p-4 min-h-[80px]">
+                  <div className="flex flex-wrap gap-3">
+                    {tasks.filter(t => {
+                      if (taskFilter === "all") return true;
+                      const date = t.created_at ? format(parseISO(t.created_at), "yyyy-MM-dd") : "";
+                      const today = format(new Date(), "yyyy-MM-dd");
+                      const yesterday = format(addDays(new Date(), -1), "yyyy-MM-dd");
+                      return taskFilter === "today" ? date === today : date === yesterday;
+                    }).map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-slate-300 transition-colors cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-sky-600"
+                          checked={editing.ticked_task_ids.includes(t.id)}
+                          onChange={(e) => {
+                            const ids = e.target.checked 
+                              ? [...editing.ticked_task_ids, t.id]
+                              : editing.ticked_task_ids.filter(id => id !== t.id);
+                            setEditing({ ...editing, ticked_task_ids: ids });
+                          }}
+                        />
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                          {t.code ? `${t.code} · ` : ""}{t.title}
+                        </span>
+                      </div>
+                    ))}
+                    {tasks.length === 0 && <p className="text-xs text-slate-400 italic">No tasks found for this project</p>}
+                  </div>
+                  <p className="text-[10px] text-sky-600 mt-3 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3 w-3" /> Tick tasks – they appear in period dropdowns
+                  </p>
+                </div>
+              </div>
+
+              {/* Periods Table */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-12 gap-4 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="col-span-3">Period</div>
+                  <div className="col-span-4">Assigned Task</div>
+                  <div className="col-span-2">Start</div>
+                  <div className="col-span-1">End</div>
+                  <div className="col-span-1 text-center">Hours</div>
+                  <div className="col-span-1 text-center">Non Work</div>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    { id: "morning", label: "Morning (AM)", start: "morning_start", end: "morning_end", task: "morning_task_id", nonWork: "morning_non_work" },
+                    { id: "afternoon", label: "Afternoon (PM)", start: "afternoon_start", end: "afternoon_end", task: "afternoon_task_id", nonWork: "afternoon_non_work" },
+                    { id: "ot", label: "Overtime (OT)", start: "ot_start", end: "ot_end", task: "ot_task_id", nonWork: "ot_non_work" },
+                    { id: "break", label: "Break / Non Work (N/W)", start: "break_start", end: "break_end", task: "break_task_id", nonWork: "break_non_work" },
+                  ].map((p) => {
+                    const h = editing[p.nonWork as keyof Entry] ? 0 : diffHours(editing[p.start as keyof Entry] as string, editing[p.end as keyof Entry] as string);
+                    const tickedTasks = tasks.filter(t => editing.ticked_task_ids.includes(t.id));
+                    
+                    return (
+                      <div key={p.id} className="grid grid-cols-12 items-center gap-4 bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                        <div className="col-span-3 pl-2">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tighter">{p.label}</span>
+                        </div>
+                        <div className="col-span-4">
+                          <Select
+                            value={editing[p.task as keyof Entry] as string || "none"}
+                            onValueChange={(v) => setEditing({ ...editing, [p.task]: v === "none" ? null : v })}
+                          >
+                            <SelectTrigger className="h-10 bg-slate-50 dark:bg-slate-900 border-slate-100">
+                              <SelectValue placeholder="Tick tasks above" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— Select a ticked task —</SelectItem>
+                              {tickedTasks.map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.code ? `${t.code} · ` : ""}{t.title}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="time"
+                            className="h-10 bg-slate-50 dark:bg-slate-900 border-slate-100 text-xs"
+                            value={editing[p.start as keyof Entry] as string || ""}
+                            onChange={(e) => setEditing({ ...editing, [p.start]: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <Input
+                            type="time"
+                            className="h-10 bg-slate-50 dark:bg-slate-900 border-slate-100 text-xs"
+                            value={editing[p.end as keyof Entry] as string || ""}
+                            onChange={(e) => setEditing({ ...editing, [p.end]: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-span-1 text-center text-sm font-bold text-slate-700 dark:text-slate-300">
+                          {h.toFixed(2)}h
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-slate-300 text-sky-600"
+                            checked={editing[p.nonWork as keyof Entry] as boolean}
+                            onChange={(e) => setEditing({ ...editing, [p.nonWork]: e.target.checked })}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Totals Bar */}
+              {(() => {
+                const morningH = editing.morning_non_work ? 0 : diffHours(editing.morning_start, editing.morning_end);
+                const afternoonH = editing.afternoon_non_work ? 0 : diffHours(editing.afternoon_start, editing.afternoon_end);
+                const otH = editing.ot_non_work ? 0 : diffHours(editing.ot_start, editing.ot_end);
+                const breakH = editing.break_non_work ? 0 : diffHours(editing.break_start, editing.break_end);
+                const reg = morningH + afternoonH;
+                const total = reg + otH + breakH;
+                
+                return (
+                  <div className="grid grid-cols-4 gap-4 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200">
+                    <div className="flex flex-col items-center border-r border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar className="h-3 w-3" /> Regular
+                      </span>
+                      <span className="text-xl font-black text-slate-800 dark:text-slate-100">{reg.toFixed(2)}h</span>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground px-1">
-                      <span>Regular: <span className="num text-foreground font-medium">{formatHours(morningH + afternoonH)}h</span></span>
-                      <span>Overtime: <span className="num text-warning font-medium">{formatHours(otH)}h</span></span>
-                      <span>Total: <span className="num text-foreground font-semibold">{formatHours(morningH + afternoonH + otH)}h</span></span>
+                    <div className="flex flex-col items-center border-r border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Clock className="h-3 w-3" /> Overtime
+                      </span>
+                      <span className="text-xl font-black text-slate-800 dark:text-slate-100">{otH.toFixed(2)}h</span>
+                    </div>
+                    <div className="flex flex-col items-center border-r border-slate-200 dark:border-slate-700">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Trash2 className="h-3 w-3" /> Break
+                      </span>
+                      <span className="text-xl font-black text-slate-800 dark:text-slate-100">{breakH.toFixed(2)}h</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] font-bold text-sky-600 uppercase tracking-widest flex items-center gap-2">
+                        <CheckCircle2 className="h-3 w-3" /> Total
+                      </span>
+                      <span className="text-2xl font-black text-sky-600">{total.toFixed(2)}h</span>
                     </div>
                   </div>
                 );
               })()}
 
-              <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea
-                  rows={3}
-                  value={editing.notes ?? ""}
-                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
-                  placeholder="What did you work on?"
-                />
+              {/* Attachments Section */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  📎 Attachments (images / PDF)
+                </Label>
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-white dark:bg-slate-800/30 hover:border-sky-400 transition-colors cursor-pointer group">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-10 w-10 rounded-full bg-sky-50 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
+                      <Plus className="h-5 w-5" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-600 group-hover:text-sky-600">Add files</span>
+                    <span className="text-[10px] text-slate-400">Supported files: JPG, PNG, PDF (Max 10MB)</span>
+                  </div>
+                </div>
               </div>
 
-              {editing.flags?.length > 0 && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    {editing.flags.map((f) => f.message).join(" · ")}
-                  </AlertDescription>
-                </Alert>
-              )}
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  📝 Notes
+                </Label>
+                <Textarea
+                  className="bg-white dark:bg-slate-800 border-slate-200"
+                  rows={4}
+                  value={editing.notes ?? ""}
+                  onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
+                  placeholder="Work description, progress..."
+                />
+              </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={save} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              Save
+
+          <DialogFooter className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 gap-3">
+            <Button variant="ghost" className="font-bold text-slate-500" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={save} disabled={submitting} className="bg-slate-900 text-white dark:bg-sky-600 dark:hover:bg-sky-500 px-8 py-6 rounded-xl font-bold text-base shadow-xl hover:scale-105 active:scale-95 transition-all">
+              {submitting && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
+              Save Entry
             </Button>
           </DialogFooter>
         </DialogContent>
