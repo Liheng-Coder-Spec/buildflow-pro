@@ -104,6 +104,37 @@ export default function Timesheets() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Resolve task + WBS info for all entries shown this week
+  useEffect(() => {
+    const ids = Array.from(new Set(entries.map((e) => e.task_id).filter(Boolean))) as string[];
+    if (ids.length === 0) { setTaskInfo(new Map()); return; }
+    (async () => {
+      const { data: ts } = await supabase
+        .from("tasks")
+        .select("id, title, code, wbs_node_id")
+        .in("id", ids);
+      const wbsIds = Array.from(new Set((ts ?? []).map((t) => t.wbs_node_id).filter(Boolean))) as string[];
+      let wbsMap = new Map<string, { code: string; path_text: string }>();
+      if (wbsIds.length > 0) {
+        const { data: ws } = await supabase
+          .from("wbs_nodes")
+          .select("id, code, path_text")
+          .in("id", wbsIds);
+        for (const w of ws ?? []) wbsMap.set(w.id, { code: w.code, path_text: w.path_text });
+      }
+      const map = new Map<string, TaskInfo>();
+      for (const t of ts ?? []) {
+        const w = t.wbs_node_id ? wbsMap.get(t.wbs_node_id) : null;
+        map.set(t.id, {
+          id: t.id, title: t.title, code: t.code,
+          wbs_code: w?.code ?? null,
+          wbs_path: w?.path_text ?? null,
+        });
+      }
+      setTaskInfo(map);
+    })();
+  }, [entries]);
+
   // Load tasks for active project that are assigned to the current user
   useEffect(() => {
     if (!activeProject || !user) { setTasks([]); return; }
