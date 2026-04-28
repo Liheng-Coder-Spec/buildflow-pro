@@ -21,7 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TimesheetStatusBadge } from "@/components/timesheets/TimesheetStatusBadge";
 import { formatHours, TimesheetFlag, TimesheetStatus } from "@/lib/timesheetMeta";
-import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -425,26 +426,93 @@ export default function Timesheets() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {e.flags?.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {e.flags.map((f, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 rounded bg-warning-soft text-warning px-1.5 py-0.5 text-[10px]">
-                                <AlertTriangle className="h-2.5 w-2.5" />
-                                {f.type.replace(/_/g, " ")}
-                              </span>
-                            ))}
-                          </div>
+                        {e.flags?.length > 0 ? (
+                          <TooltipProvider delayDuration={150}>
+                            <div className="flex flex-wrap gap-1">
+                              {e.flags.slice(0, 2).map((f, i) => {
+                                const sev = (f as { severity?: string }).severity ?? "warning";
+                                const isError = sev === "error" || sev === "critical";
+                                const Icon = isError ? ShieldAlert : AlertTriangle;
+                                const cls = isError
+                                  ? "bg-destructive/10 text-destructive ring-1 ring-destructive/20"
+                                  : "bg-warning-soft text-warning ring-1 ring-warning/20";
+                                return (
+                                  <Tooltip key={i}>
+                                    <TooltipTrigger asChild>
+                                      <span className={cn(
+                                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide cursor-help",
+                                        cls,
+                                      )}>
+                                        <Icon className="h-2.5 w-2.5" />
+                                        {f.type.replace(/_/g, " ")}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[240px]">
+                                      <p className="text-xs">{f.message || f.type.replace(/_/g, " ")}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                              {e.flags.length > 2 && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[10px] font-medium cursor-help">
+                                      +{e.flags.length - 2}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-[240px]">
+                                    <ul className="text-xs space-y-0.5">
+                                      {e.flags.slice(2).map((f, i) => (
+                                        <li key={i}>• {f.message || f.type.replace(/_/g, " ")}</li>
+                                      ))}
+                                    </ul>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/60">
+                            <Flag className="h-3 w-3" /> Clean
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editable && (
-                          <div className="flex justify-end gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => openEdit(e)}>Edit</Button>
-                            <Button size="sm" variant="ghost" onClick={() => remove(e.id)}>
-                              <Trash2 className="h-3 w-3 text-destructive" />
-                            </Button>
+                        <TooltipProvider delayDuration={150}>
+                          <div className="inline-flex items-center rounded-md border bg-background shadow-sm overflow-hidden">
+                            {editable ? (
+                              <>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={() => openEdit(e)}
+                                      className="h-8 w-8 inline-flex items-center justify-center hover:bg-accent transition-colors"
+                                      aria-label="Edit entry"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">Edit</TooltipContent>
+                                </Tooltip>
+                                <div className="h-5 w-px bg-border" />
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      onClick={() => remove(e.id)}
+                                      className="h-8 w-8 inline-flex items-center justify-center hover:bg-destructive/10 text-destructive transition-colors"
+                                      aria-label="Delete entry"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">Delete</TooltipContent>
+                                </Tooltip>
+                              </>
+                            ) : (
+                              <span className="px-2.5 py-1 text-[11px] text-muted-foreground italic">Locked</span>
+                            )}
                           </div>
-                        )}
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   );
