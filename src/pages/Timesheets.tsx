@@ -33,12 +33,26 @@ interface Entry {
   work_date: string;
   start_time: string | null;
   end_time: string | null;
+  morning_start: string | null;
+  morning_end: string | null;
+  afternoon_start: string | null;
+  afternoon_end: string | null;
+  ot_start: string | null;
+  ot_end: string | null;
   regular_hours: number;
   overtime_hours: number;
   notes: string | null;
   status: TimesheetStatus;
   flags: TimesheetFlag[];
   rejection_reason: string | null;
+}
+
+function diffHours(start: string | null, end: string | null): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  return mins > 0 ? Math.round((mins / 60) * 100) / 100 : 0;
 }
 
 interface TaskOpt {
