@@ -104,6 +104,7 @@ export default function Timesheets() {
   const [taskInfo, setTaskInfo] = useState<Map<string, TaskInfo>>(new Map());
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<Entry | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [taskFilter, setTaskFilter] = useState<"all" | "today" | "yesterday">("all");
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
