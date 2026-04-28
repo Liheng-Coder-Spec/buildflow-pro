@@ -21,7 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TimesheetStatusBadge } from "@/components/timesheets/TimesheetStatusBadge";
 import { formatHours, TimesheetFlag, TimesheetStatus } from "@/lib/timesheetMeta";
-import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Send, Trash2, AlertTriangle, Loader2, Clock, Pencil, Flag, ShieldAlert } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
