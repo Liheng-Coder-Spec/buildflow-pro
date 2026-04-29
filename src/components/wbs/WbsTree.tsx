@@ -3,6 +3,8 @@ import { ChevronRight, Folder, FolderOpen, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { WbsTreeNode, WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
+import { NodeRollup } from "@/lib/scheduleMeta";
+import { WbsScheduleStrip } from "@/components/wbs/WbsScheduleStrip";
 
 interface Props {
   nodes: WbsTreeNode[];
@@ -11,9 +13,10 @@ interface Props {
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
+  getRollup?: (nodeId: string) => NodeRollup | undefined;
 }
 
-export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, search }: Props) {
+export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, search, getRollup }: Props) {
   return (
     <div className="text-sm">
       {canEdit && (
