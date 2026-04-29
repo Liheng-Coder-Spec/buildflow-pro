@@ -15,7 +15,7 @@ interface UseSchedule {
 /** Fetches all tasks for a project and builds a per-WBS-node rollup
  *  (a node's rollup includes tasks attached to it AND its descendants). */
 export function useWbsSchedule(projectId: string | null | undefined, nodes: WbsNode[]): UseSchedule {
-  const [tasks, setTasks] = useState<TaskScheduleLite[]>([]);
+  const [tasks, setTasks] = useState<ScheduleTask[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -26,10 +26,10 @@ export function useWbsSchedule(projectId: string | null | undefined, nodes: WbsN
     setLoading(true);
     const { data, error } = await supabase
       .from("tasks")
-      .select("id, wbs_node_id, planned_start, planned_end, actual_start, actual_end, progress_pct, estimated_hours, status")
+      .select("id, title, code, wbs_node_id, planned_start, planned_end, actual_start, actual_end, progress_pct, estimated_hours, status")
       .eq("project_id", projectId);
     if (!error) {
-      setTasks((data ?? []) as unknown as TaskScheduleLite[]);
+      setTasks((data ?? []) as unknown as ScheduleTask[]);
     }
     setLoading(false);
   }, [projectId]);
