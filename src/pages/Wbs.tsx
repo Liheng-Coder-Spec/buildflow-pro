@@ -276,6 +276,7 @@ export default function WbsPage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </Card>
+      )}
     </div>
   );
 }
