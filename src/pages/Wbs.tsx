@@ -16,7 +16,7 @@ import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
-import { WbsTaskTable } from "@/components/wbs/WbsTaskTable";
+import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
 import { WbsGantt } from "@/components/wbs/WbsGantt";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
@@ -169,8 +169,8 @@ export default function WbsPage() {
         {mainView === "gantt" && (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             <ResizablePanel defaultSize={50} minSize={30} maxSize={70} className="overflow-auto">
-              <div className="p-3 h-full overflow-auto">
-                <WbsTaskTable nodes={nodes} tasks={tasks} />
+              <div className="h-full overflow-auto">
+                <WbsGanttTree nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
