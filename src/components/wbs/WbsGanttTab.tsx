@@ -3,30 +3,41 @@ import {
   addDays,
   differenceInDays,
   eachMonthOfInterval,
+  eachWeekOfInterval,
+  eachYearOfInterval,
   format,
   isAfter,
   isBefore,
   parseISO,
   startOfDay,
   startOfMonth,
+  startOfYear,
 } from "date-fns";
 import { ChevronRight, AlertTriangle, CheckCircle2, Clock, Ban, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWbsGantt } from "@/hooks/useWbsGantt";
 import { WbsNode } from "@/lib/wbsMeta";
+import { WbsNodeStat } from "@/hooks/useWbsTree";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Props {
   projectId: string;
   wbsNodes: WbsNode[];
+  nodeStats?: Map<string, WbsNodeStat>;
 }
 
 type DelayStatus = "completed" | "on_track" | "at_risk" | "delayed" | "no_date";
+type ZoomLevel = "day" | "week" | "month" | "year";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const PX_PER_DAY = 28; // timeline pixel density
-const LEFT_GRID_W = 560; // px width of the left data grid
+const ZOOM_PX: Record<ZoomLevel, number> = {
+  day: 28,
+  week: 12,
+  month: 4,
+  year: 1,
+};
+const LEFT_GRID_W = 500; // px width of the left data grid
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function parseDate(s: string | null | undefined): Date | null {
@@ -145,59 +156,93 @@ function ProgressCell({ pct, status }: { pct: number; status: DelayStatus }) {
 function TimelineHeader({
   minDate,
   totalDays,
+  zoom,
+  pxPerDay,
 }: {
   minDate: Date;
   totalDays: number;
+  zoom: ZoomLevel;
+  pxPerDay: number;
 }) {
   const today = startOfDay(new Date());
   const maxDate = addDays(minDate, totalDays - 1);
 
-  const months = eachMonthOfInterval({ start: startOfMonth(minDate), end: maxDate });
+  let topItems: { label: string; offsetDays: number; spanDays: number }[] = [];
+  if (zoom === "day" || zoom === "week") {
+    const months = eachMonthOfInterval({ start: startOfMonth(minDate), end: maxDate });
+    topItems = months.map((m) => {
+      const offset = Math.max(0, differenceInDays(m, minDate));
+      const endM = addDays(startOfMonth(addDays(m, 32)), -1);
+      const span = Math.min(differenceInDays(endM, m) + 1, totalDays - offset);
+      return { label: format(m, "MMM yyyy"), offsetDays: offset, spanDays: span };
+    });
+  } else {
+    const years = eachYearOfInterval({ start: startOfYear(minDate), end: maxDate });
+    topItems = years.map((y) => {
+      const offset = Math.max(0, differenceInDays(y, minDate));
+      const endY = addDays(startOfYear(addDays(y, 366)), -1);
+      const span = Math.min(differenceInDays(endY, y) + 1, totalDays - offset);
+      return { label: format(y, "yyyy"), offsetDays: offset, spanDays: span };
+    });
+  }
+
+  let bottomItems: { label: string; offsetDays: number }[] = [];
+  if (zoom === "day") {
+    const step = totalDays > 100 ? 3 : 1;
+    for(let i=0; i<totalDays; i+=step) {
+      const d = addDays(minDate, i);
+      bottomItems.push({ label: format(d, "d"), offsetDays: i });
+    }
+  } else if (zoom === "week") {
+    const weeks = eachWeekOfInterval({ start: minDate, end: maxDate });
+    bottomItems = weeks.map((w) => ({
+      label: format(w, "d MMM"),
+      offsetDays: Math.max(0, differenceInDays(w, minDate)),
+    }));
+  } else if (zoom === "month") {
+    const months = eachMonthOfInterval({ start: startOfMonth(minDate), end: maxDate });
+    bottomItems = months.map((m) => ({
+      label: format(m, "MMM"),
+      offsetDays: Math.max(0, differenceInDays(m, minDate)),
+    }));
+  } else if (zoom === "year") {
+    const months = eachMonthOfInterval({ start: startOfMonth(minDate), end: maxDate });
+    bottomItems = months.filter((m) => m.getMonth() % 3 === 0).map((m) => ({
+      label: `Q${Math.floor(m.getMonth() / 3) + 1}`,
+      offsetDays: Math.max(0, differenceInDays(m, minDate)),
+    }));
+  }
 
   return (
-    <div className="relative h-10 bg-muted/40 border-b" style={{ width: totalDays * PX_PER_DAY }}>
-      {/* Month labels */}
-      {months.map((m) => {
-        const offset = Math.max(0, differenceInDays(m, minDate));
-        const daysInView = Math.min(
-          differenceInDays(addDays(m, 31), m),
-          totalDays - offset,
-        );
-        return (
-          <div
-            key={m.toISOString()}
-            className="absolute top-0 h-5 flex items-center border-r border-border/60 px-1.5"
-            style={{ left: offset * PX_PER_DAY, width: daysInView * PX_PER_DAY }}
-          >
-            <span className="text-[10px] font-medium text-muted-foreground truncate">
-              {format(m, "MMM yyyy")}
-            </span>
-          </div>
-        );
-      })}
+    <div className="relative h-10 bg-muted/40 border-b overflow-hidden" style={{ width: totalDays * pxPerDay }}>
+      {topItems.map((item, i) => (
+        <div
+          key={`top-${i}`}
+          className="absolute top-0 h-5 flex items-center border-r border-border/60 px-1.5 overflow-hidden"
+          style={{ left: item.offsetDays * pxPerDay, width: item.spanDays * pxPerDay }}
+        >
+          <span className="text-[10px] font-medium text-muted-foreground truncate">
+            {item.label}
+          </span>
+        </div>
+      ))}
 
-      {/* Day ticks (every 7 days) */}
-      {Array.from({ length: Math.ceil(totalDays / 7) }, (_, i) => {
-        const dayOffset = i * 7;
-        const d = addDays(minDate, dayOffset);
-        return (
-          <div
-            key={i}
-            className="absolute bottom-0 h-5 border-l border-border/40 flex items-end pb-0.5 pl-0.5"
-            style={{ left: dayOffset * PX_PER_DAY }}
-          >
-            <span className="text-[9px] text-muted-foreground/60">
-              {format(d, "d")}
-            </span>
-          </div>
-        );
-      })}
+      {bottomItems.map((item, i) => (
+        <div
+          key={`bot-${i}`}
+          className="absolute bottom-0 h-5 border-l border-border/40 flex items-end pb-0.5 pl-0.5"
+          style={{ left: item.offsetDays * pxPerDay }}
+        >
+          <span className="text-[9px] text-muted-foreground/60 whitespace-nowrap">
+            {item.label}
+          </span>
+        </div>
+      ))}
 
-      {/* Today marker */}
       {!isBefore(today, minDate) && !isAfter(today, maxDate) && (
         <div
           className="absolute top-0 bottom-0 w-px bg-rose-500/70 z-10"
-          style={{ left: differenceInDays(today, minDate) * PX_PER_DAY }}
+          style={{ left: differenceInDays(today, minDate) * pxPerDay }}
         />
       )}
     </div>
@@ -215,6 +260,7 @@ function TaskBar({
   minDate: Date;
   totalDays: number;
   rowH: number;
+  pxPerDay: number;
 }) {
   const pStart = parseDate(task.planned_start);
   const pEnd = parseDate(task.planned_end);
@@ -228,10 +274,10 @@ function TaskBar({
   return (
     <div
       className="relative flex items-center"
-      style={{ width: totalDays * PX_PER_DAY, height: rowH }}
+      style={{ width: totalDays * pxPerDay, height: rowH }}
     >
       {/* Today vertical line */}
-      <TodayLine minDate={minDate} totalDays={totalDays} />
+      <TodayLine minDate={minDate} totalDays={totalDays} pxPerDay={pxPerDay} />
 
       {/* Planned Bar (Baseline) */}
       {pStart && pEnd && (
@@ -243,8 +289,8 @@ function TaskBar({
           )}
           style={{ 
             top: 6,
-            left: differenceInDays(isBefore(pStart, minDate) ? minDate : pStart, minDate) * PX_PER_DAY, 
-            width: Math.max(differenceInDays(pEnd, pStart) + 1, 1) * PX_PER_DAY 
+            left: differenceInDays(isBefore(pStart, minDate) ? minDate : pStart, minDate) * pxPerDay, 
+            width: Math.max(differenceInDays(pEnd, pStart) + 1, 1) * pxPerDay 
           }}
         />
       )}
@@ -260,8 +306,8 @@ function TaskBar({
           )}
           style={{ 
             top: 10,
-            left: differenceInDays(isBefore(aStart, minDate) ? minDate : aStart, minDate) * PX_PER_DAY, 
-            width: Math.max(differenceInDays(aEnd || today, aStart) + 1, 1) * PX_PER_DAY 
+            left: differenceInDays(isBefore(aStart, minDate) ? minDate : aStart, minDate) * pxPerDay, 
+            width: Math.max(differenceInDays(aEnd || today, aStart) + 1, 1) * pxPerDay 
           }}
         >
           {/* Progress fill */}
@@ -283,10 +329,10 @@ function TaskBar({
   );
 }
 
-function TodayLine({ minDate, totalDays }: { minDate: Date; totalDays: number }) {
+function TodayLine({ minDate, totalDays, pxPerDay }: { minDate: Date; totalDays: number; pxPerDay: number }) {
   const today = startOfDay(new Date());
   const todayLeft = !isBefore(today, minDate) && !isAfter(today, addDays(minDate, totalDays - 1))
-      ? differenceInDays(today, minDate) * PX_PER_DAY
+      ? differenceInDays(today, minDate) * pxPerDay
       : null;
 
   if (todayLeft === null) return null;
@@ -299,10 +345,13 @@ function TodayLine({ minDate, totalDays }: { minDate: Date; totalDays: number })
 }
 
 // ─── Main Gantt Component ─────────────────────────────────────────────────────
-export function WbsGanttTab({ projectId, wbsNodes }: Props) {
+export function WbsGanttTab({ projectId, wbsNodes, nodeStats }: Props) {
   const { tasks, loading } = useWbsGantt(projectId);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [zoom, setZoom] = useState<ZoomLevel>("day");
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  const pxPerDay = ZOOM_PX[zoom];
 
   const nodeMap = useMemo(
     () => new Map(wbsNodes.map((n) => [n.id, n])),
@@ -362,6 +411,17 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
     });
   };
 
+  const scrollToToday = () => {
+    if (!timelineRef.current) return;
+    const today = startOfDay(new Date());
+    if (isBefore(today, minDate) || isAfter(today, addDays(minDate, totalDays))) return;
+    
+    const offset = differenceInDays(today, minDate) * pxPerDay;
+    // Account for left grid and give some padding
+    const scrollPos = Math.max(0, offset - LEFT_GRID_W + 100);
+    timelineRef.current.scrollTo({ left: scrollPos, behavior: "smooth" });
+  };
+
   const ROW_H = 36; // px per task row
   const GROUP_H = 32; // px per group header
 
@@ -385,18 +445,44 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {/* ── Toolbar ── */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/20 shrink-0">
+        <button
+          onClick={scrollToToday}
+          className="text-xs font-medium px-3 py-1.5 rounded border bg-background hover:bg-accent hover:text-accent-foreground transition-colors shadow-sm"
+        >
+          Today
+        </button>
+        <div className="flex items-center rounded-md border bg-muted/40 p-0.5 gap-0.5 ml-auto">
+          {(["day", "week", "month", "year"] as ZoomLevel[]).map((lvl) => (
+            <button
+              key={lvl}
+              onClick={() => setZoom(lvl)}
+              className={cn(
+                "px-2.5 py-1 text-xs capitalize rounded transition-colors",
+                zoom === lvl
+                  ? "bg-background shadow-sm text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              )}
+            >
+              {lvl}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Horizontal scroll wrapper */}
       <div className="flex-1 overflow-auto" ref={timelineRef}>
         <table className="border-collapse text-sm" style={{ tableLayout: "fixed" }}>
           {/* ── Column definitions ── */}
           <colgroup>
             <col style={{ width: 220 }} /> {/* Name */}
-            <col style={{ width: 70 }} />  {/* Duration */}
-            <col style={{ width: 90 }} />  {/* Start */}
-            <col style={{ width: 90 }} />  {/* Finish */}
+            <col style={{ width: 50 }} />  {/* Duration */}
+            <col style={{ width: 80 }} />  {/* Start */}
+            <col style={{ width: 80 }} />  {/* Finish */}
             <col style={{ width: 90 }} />  {/* Status */}
-            <col style={{ width: 100 }} /> {/* Progress */}
-            <col style={{ width: totalDays * PX_PER_DAY }} /> {/* Timeline */}
+            <col style={{ width: 80 }} /> {/* Progress */}
+            <col style={{ width: totalDays * pxPerDay }} /> {/* Timeline */}
           </colgroup>
 
           {/* ── Sticky header ── */}
@@ -422,7 +508,7 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
               ))}
               {/* Timeline header cell */}
               <th className="border border-border/60 bg-muted/50 p-0">
-                <TimelineHeader minDate={minDate} totalDays={totalDays} />
+                <TimelineHeader minDate={minDate} totalDays={totalDays} zoom={zoom} pxPerDay={pxPerDay} />
               </th>
             </tr>
           </thead>
@@ -435,30 +521,26 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
                 : "Unassigned";
               const isCollapsed = nodeId ? collapsed.has(nodeId) : false;
 
-              // Group-level aggregates
-              const groupProgress =
-                groupTasks.length > 0
-                  ? Math.round(
-                      groupTasks.reduce((s, t) => s + t.progress_pct, 0) /
-                        groupTasks.length,
-                    )
-                  : 0;
+              // Group-level aggregates (Using nodeStats if available)
+              const stat = nodeId && nodeStats ? nodeStats.get(nodeId) : null;
+              
+              const groupProgress = stat?.avgProgress ?? 
+                (groupTasks.length > 0
+                  ? Math.round(groupTasks.reduce((s, t) => s + t.progress_pct, 0) / groupTasks.length)
+                  : 0);
 
               // Earliest start / latest end for the group bar
-              const gStarts = groupTasks
-                .map((t) => parseDate(t.planned_start))
-                .filter(Boolean) as Date[];
-              const gEnds = groupTasks
-                .map((t) => parseDate(t.planned_end))
-                .filter(Boolean) as Date[];
-              const gStartDate =
-                gStarts.length > 0
-                  ? new Date(Math.min(...gStarts.map((d) => d.getTime())))
-                  : null;
-              const gEndDate =
-                gEnds.length > 0
-                  ? new Date(Math.max(...gEnds.map((d) => d.getTime())))
-                  : null;
+              let gStartDate = stat?.minStart ? new Date(stat.minStart) : null;
+              let gEndDate = stat?.maxEnd ? new Date(stat.maxEnd) : null;
+              
+              if (!gStartDate && groupTasks.length > 0) {
+                 const gStarts = groupTasks.map((t) => parseDate(t.planned_start)).filter(Boolean) as Date[];
+                 if(gStarts.length > 0) gStartDate = new Date(Math.min(...gStarts.map((d) => d.getTime())));
+              }
+              if (!gEndDate && groupTasks.length > 0) {
+                 const gEnds = groupTasks.map((t) => parseDate(t.planned_end)).filter(Boolean) as Date[];
+                 if(gEnds.length > 0) gEndDate = new Date(Math.max(...gEnds.map((d) => d.getTime())));
+              }
 
               const gDuration =
                 gStartDate && gEndDate
@@ -502,9 +584,6 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
                         />
                       )}
                       <span className="font-semibold text-[12px] truncate">{groupLabel}</span>
-                      <span className="ml-auto text-[10px] text-muted-foreground shrink-0">
-                        {groupTasks.length}t
-                      </span>
                     </button>
                   </td>
 
@@ -538,7 +617,7 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
                     {gStartDate && gEndDate ? (
                       <div
                         className="relative flex items-center"
-                        style={{ width: totalDays * PX_PER_DAY, height: GROUP_H }}
+                        style={{ width: totalDays * pxPerDay, height: GROUP_H }}
                       >
                         <div
                           className={cn(
@@ -548,15 +627,15 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
                           style={{
                             left:
                               Math.max(0, differenceInDays(gStartDate, minDate)) *
-                              PX_PER_DAY,
+                              pxPerDay,
                             width:
                               Math.max(4, differenceInDays(gEndDate, gStartDate) + 1) *
-                              PX_PER_DAY,
+                              pxPerDay,
                           }}
                         />
                       </div>
                     ) : (
-                      <div style={{ width: totalDays * PX_PER_DAY, height: GROUP_H }} />
+                      <div style={{ width: totalDays * pxPerDay, height: GROUP_H }} />
                     )}
                   </td>
                 </tr>,
@@ -597,40 +676,17 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
 
                           {/* Duration */}
                           <td className="border border-border/60 px-2 py-1 text-center text-[11px] tabular-nums text-muted-foreground">
-                            <div className="flex flex-col">
-                              <span>{duration != null ? `${duration}d` : "—"}</span>
-                              {task.actual_start && (
-                                <span className="text-[9px] opacity-60">
-                                  Act: {calcDuration(task.actual_start, task.actual_end || new Date().toISOString())}d
-                                </span>
-                              )}
-                            </div>
+                            <span>{duration != null ? `${duration}d` : "—"}</span>
                           </td>
 
                           {/* Start */}
                           <td className="border border-border/60 px-2 py-1 text-center text-[11px] tabular-nums text-muted-foreground whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <span className="font-medium text-foreground/80">{start ? format(start, "dd MMM yy") : "—"}</span>
-                              {task.actual_start && (
-                                <span className="text-[9px] text-emerald-600 dark:text-emerald-400">
-                                  A: {format(parseISO(task.actual_start), "dd MMM")}
-                                </span>
-                              )}
-                            </div>
+                            <span className="font-medium text-foreground/80">{start ? format(start, "dd MMM") : "—"}</span>
                           </td>
 
                           {/* Finish */}
                           <td className="border border-border/60 px-2 py-1 text-center text-[11px] tabular-nums text-muted-foreground whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <span className="font-medium text-foreground/80">{end ? format(end, "dd MMM yy") : "—"}</span>
-                              {task.actual_end ? (
-                                <span className="text-[9px] text-emerald-600 dark:text-emerald-400">
-                                  A: {format(parseISO(task.actual_end), "dd MMM")}
-                                </span>
-                              ) : task.actual_start ? (
-                                <span className="text-[9px] italic">In progress</span>
-                              ) : null}
-                            </div>
+                            <span className="font-medium text-foreground/80">{end ? format(end, "dd MMM") : "—"}</span>
                           </td>
 
                           {/* Status badge */}
@@ -657,6 +713,7 @@ export function WbsGanttTab({ projectId, wbsNodes }: Props) {
                               minDate={minDate}
                               totalDays={totalDays}
                               rowH={ROW_H}
+                              pxPerDay={pxPerDay}
                             />
                           </td>
                         </tr>

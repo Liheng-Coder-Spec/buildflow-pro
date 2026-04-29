@@ -156,14 +156,14 @@ export default function WbsPage() {
 
       <Card className="flex-1 min-h-0 overflow-hidden">
         {mainView === "gantt" && (
-          <WbsGanttTab projectId={projectId!} wbsNodes={nodes} />
+          <WbsGanttTab projectId={projectId!} wbsNodes={nodes} nodeStats={nodeStats} />
         )}
 
         {mainView === "tree" && (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {treeOpen && (
               <>
-                <ResizablePanel defaultSize={32} minSize={20} maxSize={55} className="flex flex-col">
+                <ResizablePanel defaultSize={25} minSize={20} maxSize={55} className="flex flex-col">
                   <div className="p-2 border-b">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -204,8 +204,8 @@ export default function WbsPage() {
               </>
             )}
 
-            <ResizablePanel defaultSize={treeOpen ? 68 : 100} minSize={40}>
-              <div className="h-full overflow-auto p-4">
+            <ResizablePanel defaultSize={treeOpen ? 75 : 100} minSize={40}>
+              <div className="h-full overflow-auto p-2">
                 {mode.kind === "create" ? (
                   <WbsNodeEditor
                     projectId={projectId!}

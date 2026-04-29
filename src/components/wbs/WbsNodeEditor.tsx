@@ -106,8 +106,8 @@ export function WbsNodeEditor({
   };
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-0 shadow-none bg-transparent">
+      <CardHeader className="px-0 pt-0 pb-4">
         <CardTitle>{isCreate ? "New WBS node" : "Edit node"}</CardTitle>
         <CardDescription>
           {isCreate
@@ -117,7 +117,7 @@ export function WbsNodeEditor({
             : <span className="font-mono text-xs">{node?.path_text}</span>}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0 pb-0">
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div>

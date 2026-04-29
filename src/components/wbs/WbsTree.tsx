@@ -149,9 +149,9 @@ function TreeRow({
         )}
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Name row */}
-          <div className="flex items-baseline gap-1.5">
+        <div className="flex-1 min-w-0 flex items-center gap-3 pr-2">
+          {/* Name & Code */}
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
             <span className="font-mono text-[11px] text-muted-foreground shrink-0">
               {node.code}
             </span>
@@ -161,8 +161,8 @@ function TreeRow({
             </span>
           </div>
 
-          {/* Progress bar row */}
-          <div className="flex items-center gap-1.5 mt-1">
+          {/* Progress bar */}
+          <div className="flex items-center gap-1.5 w-24 shrink-0">
             <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
               <div
                 className={cn(
@@ -181,11 +181,6 @@ function TreeRow({
             <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right shrink-0">
               {progress}%
             </span>
-            {taskCount > 0 && (
-              <span className="text-[9px] font-medium bg-muted text-muted-foreground rounded px-1 py-0.5 leading-none shrink-0">
-                {taskCount}t
-              </span>
-            )}
           </div>
         </div>
 
