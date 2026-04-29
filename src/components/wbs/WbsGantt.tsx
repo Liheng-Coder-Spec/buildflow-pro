@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WbsNode } from "@/lib/wbsMeta";
+import { WbsNode, buildNodePathMap } from "@/lib/wbsMeta";
 import { TaskScheduleLite, taskStatus, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
 import {
   addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay,
@@ -124,6 +124,8 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
     });
     return m;
   }, [rows]);
+
+  const pathMap = useMemo(() => buildNodePathMap(nodes), [nodes]);
 
   const today = startOfDay(new Date());
   const todayX = differenceInCalendarDays(today, range.start) * dayWidth;
@@ -247,7 +249,12 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
                     {r.task.code && (
                       <span className="font-mono text-[11px] text-muted-foreground">{r.task.code}</span>
                     )}
-                    <span className="truncate">{r.task.title}</span>
+                    <span className="truncate">
+                      {(() => {
+                        const pathInfo = r.task.wbs_node_id ? pathMap.get(r.task.wbs_node_id) : undefined;
+                        return pathInfo?.fullPath ? `${pathInfo.fullPath} > ${r.task.title}` : r.task.title;
+                      })()}
+                    </span>
                   </Link>
                 )}
               </div>

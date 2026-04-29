@@ -19,6 +19,7 @@ import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
 import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { WbsTaskTable } from "@/components/wbs/WbsTaskTable";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from "lucide-react";
@@ -53,6 +54,7 @@ export default function WbsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"tree" | "gantt">("tree");
+  const [ganttTab, setGanttTab] = useState<"table" | "chart">("table");
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
@@ -120,7 +122,25 @@ export default function WbsPage() {
 
       {view === "gantt" ? (
         <Card className="flex-1 min-h-0 overflow-hidden p-0">
-          <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+          <div className="p-3 border-b flex items-center gap-2">
+            <div className="inline-flex rounded-md border p-0.5">
+              <button
+                onClick={() => setGanttTab("table")}
+                className={`px-3 h-8 text-xs rounded ${ganttTab === "table" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >Table</button>
+              <button
+                onClick={() => setGanttTab("chart")}
+                className={`px-3 h-8 text-xs rounded ${ganttTab === "chart" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              >Gantt Chart</button>
+            </div>
+          </div>
+          {ganttTab === "table" ? (
+            <div className="p-4 overflow-auto">
+              <WbsTaskTable nodes={nodes} tasks={tasks} />
+            </div>
+          ) : (
+            <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+          )}
         </Card>
       ) : (
 
