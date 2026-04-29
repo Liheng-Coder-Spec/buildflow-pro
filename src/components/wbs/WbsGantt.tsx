@@ -30,7 +30,7 @@ const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 12, month: 4 };
 
 const ROW_H = 32;
 const HEADER_H = 48;
-const LEFT_W = 320;
+const CHART_LEFT = 0;
 
 function safeDate(s: string | null) {
   if (!s) return null;
@@ -40,7 +40,7 @@ function safeDate(s: string | null) {
 
 export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setcollapsed] = useState<Set<string>>(new Set());
 
   // Determine date range across all tasks
   const range = useMemo(() => {
@@ -158,7 +158,7 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
   }, [dayHeaders]);
 
   const toggle = (id: string) => {
-    setCollapsed((prev) => {
+    setcollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
@@ -198,69 +198,7 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
       </div>
 
       <div className="flex-1 overflow-auto relative">
-        <div className="flex" style={{ minWidth: LEFT_W + chartWidth }}>
-          {/* Left column */}
-          <div
-            className="sticky left-0 z-20 bg-card border-r"
-            style={{ width: LEFT_W, flexShrink: 0 }}
-          >
-            <div className="border-b bg-muted/40" style={{ height: HEADER_H }}>
-              <div className="px-3 h-full flex items-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                WBS / Task
-              </div>
-            </div>
-            {rows.map((r) => (
-              <div
-                key={r.kind + r.id}
-                className={cn(
-                  "border-b flex items-center px-2 text-sm",
-                  r.kind === "node" && "bg-muted/30 font-medium",
-                )}
-                style={{ height: ROW_H, paddingLeft: r.depth * 14 + 8 }}
-              >
-                {r.kind === "node" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => toggle(r.id)}
-                      className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "h-3.5 w-3.5 transition-transform",
-                          !collapsed.has(r.id) && "rotate-90",
-                        )}
-                      />
-                    </button>
-                    <span className="font-mono text-[11px] text-muted-foreground ml-1">{r.node.code}</span>
-                    <span className="ml-2 truncate">{r.node.name}</span>
-                  </>
-                ) : (
-                  <Link
-                    to={`/tasks/${r.task.id}`}
-                    className="ml-5 truncate hover:text-primary inline-flex items-center gap-2"
-                  >
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full shrink-0",
-                        SCHEDULE_STATUS_DOT[taskStatus(r.task, today)],
-                      )}
-                    />
-                    {r.task.code && (
-                      <span className="font-mono text-[11px] text-muted-foreground">{r.task.code}</span>
-                    )}
-                    <span className="truncate">
-                      {(() => {
-                        const pathInfo = r.task.wbs_node_id ? pathMap.get(r.task.wbs_node_id) : undefined;
-                        return pathInfo?.fullPath ? `${pathInfo.fullPath} > ${r.task.title}` : r.task.title;
-                      })()}
-                    </span>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
-
+        <div className="flex" style={{ minWidth: chartWidth }}>
           {/* Right chart area */}
           <div className="relative" style={{ width: chartWidth }}>
             {/* Header */}
