@@ -1,0 +1,1527 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      department_members: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"]
+          id: string
+          role_in_dept: Database["public"]["Enums"]["dept_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department: Database["public"]["Enums"]["department"]
+          id?: string
+          role_in_dept?: Database["public"]["Enums"]["dept_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"]
+          id?: string
+          role_in_dept?: Database["public"]["Enums"]["dept_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      document_versions: {
+        Row: {
+          change_note: string | null
+          document_id: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          uploaded_at: string
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          change_note?: string | null
+          document_id: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version: number
+        }
+        Update: {
+          change_note?: string | null
+          document_id?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          current_version: number
+          description: string | null
+          id: string
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          description?: string | null
+          id?: string
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          current_version?: number
+          description?: string | null
+          id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json
+          priority: Database["public"]["Enums"]["notification_priority"]
+          project_id: string | null
+          read_at: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          project_id?: string | null
+          read_at?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json
+          priority?: Database["public"]["Enums"]["notification_priority"]
+          project_id?: string | null
+          read_at?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pay_rates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          hourly_rate: number
+          id: string
+          overtime_multiplier: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          hourly_rate: number
+          id?: string
+          overtime_multiplier?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          hourly_rate?: number
+          id?: string
+          overtime_multiplier?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payroll_lines: {
+        Row: {
+          created_at: string
+          currency: string
+          hourly_rate: number
+          id: string
+          overtime_hours: number
+          overtime_multiplier: number
+          overtime_pay: number
+          period_id: string
+          regular_hours: number
+          regular_pay: number
+          total_pay: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          hourly_rate?: number
+          id?: string
+          overtime_hours?: number
+          overtime_multiplier?: number
+          overtime_pay?: number
+          period_id: string
+          regular_hours?: number
+          regular_pay?: number
+          total_pay?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          hourly_rate?: number
+          id?: string
+          overtime_hours?: number
+          overtime_multiplier?: number
+          overtime_pay?: number
+          period_id?: string
+          regular_hours?: number
+          regular_pay?: number
+          total_pay?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_lines_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          name: string
+          notes: string | null
+          paid_at: string | null
+          period_end: string
+          period_start: string
+          status: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end: string
+          period_start: string
+          status?: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name?: string
+          notes?: string | null
+          paid_at?: string | null
+          period_end?: string
+          period_start?: string
+          status?: Database["public"]["Enums"]["payroll_period_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          employee_id: string | null
+          full_name: string
+          id: string
+          job_title: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          employee_id?: string | null
+          full_name?: string
+          id: string
+          job_title?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          employee_id?: string | null
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          holiday_date: string
+          id: string
+          label: string | null
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date: string
+          id?: string
+          label?: string | null
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date?: string
+          id?: string
+          label?: string | null
+          project_id?: string
+        }
+        Relationships: []
+      }
+      project_members: {
+        Row: {
+          added_at: string
+          id: string
+          project_id: string
+          project_role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          id?: string
+          project_id: string
+          project_role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          project_id?: string
+          project_role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          budget: number | null
+          client_name: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          location: string | null
+          name: string
+          start_date: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+        }
+        Insert: {
+          budget?: number | null
+          client_name?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Update: {
+          budget?: number | null
+          client_name?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      task_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          id: string
+          reason: string | null
+          task_id: string
+          unassigned_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          reason?: string | null
+          task_id: string
+          unassigned_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          id?: string
+          reason?: string | null
+          task_id?: string
+          unassigned_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_predecessors: {
+        Row: {
+          id: string
+          is_hard_block: boolean
+          lag_days: number
+          note: string | null
+          predecessor_id: string
+          relation_type: Database["public"]["Enums"]["dep_relation_type"]
+          task_id: string
+        }
+        Insert: {
+          id?: string
+          is_hard_block?: boolean
+          lag_days?: number
+          note?: string | null
+          predecessor_id: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
+          task_id: string
+        }
+        Update: {
+          id?: string
+          is_hard_block?: boolean
+          lag_days?: number
+          note?: string | null
+          predecessor_id?: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_predecessors_predecessor_id_fkey"
+            columns: ["predecessor_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_predecessors_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_status_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          from_status: Database["public"]["Enums"]["task_status"] | null
+          id: string
+          reason: string | null
+          task_id: string
+          to_status: Database["public"]["Enums"]["task_status"]
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["task_status"] | null
+          id?: string
+          reason?: string | null
+          task_id: string
+          to_status: Database["public"]["Enums"]["task_status"]
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["task_status"] | null
+          id?: string
+          reason?: string | null
+          task_id?: string
+          to_status?: Database["public"]["Enums"]["task_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_status_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_updates: {
+        Row: {
+          created_at: string
+          hours_worked: number | null
+          id: string
+          is_blocker: boolean
+          note: string | null
+          progress_pct: number | null
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hours_worked?: number | null
+          id?: string
+          is_blocker?: boolean
+          note?: string | null
+          progress_pct?: number | null
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hours_worked?: number | null
+          id?: string
+          is_blocker?: boolean
+          note?: string | null
+          progress_pct?: number | null
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          actual_end: string | null
+          actual_hours: number | null
+          actual_start: string | null
+          approved_at: string | null
+          approved_by: string | null
+          category: Database["public"]["Enums"]["task_category"] | null
+          code: string | null
+          created_at: string
+          created_by: string | null
+          department: Database["public"]["Enums"]["department"] | null
+          dept_status: Database["public"]["Enums"]["dept_status"] | null
+          description: string | null
+          discipline_meta: Json
+          estimated_hours: number | null
+          id: string
+          location_zone: string | null
+          planned_end: string | null
+          planned_start: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          progress_pct: number
+          project_id: string
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          task_type: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at: string
+          wbs_node_id: string | null
+          workflow_type:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_hours?: number | null
+          actual_start?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: Database["public"]["Enums"]["task_category"] | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          dept_status?: Database["public"]["Enums"]["dept_status"] | null
+          description?: string | null
+          discipline_meta?: Json
+          estimated_hours?: number | null
+          id?: string
+          location_zone?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress_pct?: number
+          project_id: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type?: Database["public"]["Enums"]["task_type"]
+          title: string
+          updated_at?: string
+          wbs_node_id?: string | null
+          workflow_type?:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
+        }
+        Update: {
+          actual_end?: string | null
+          actual_hours?: number | null
+          actual_start?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: Database["public"]["Enums"]["task_category"] | null
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          department?: Database["public"]["Enums"]["department"] | null
+          dept_status?: Database["public"]["Enums"]["dept_status"] | null
+          description?: string | null
+          discipline_meta?: Json
+          estimated_hours?: number | null
+          id?: string
+          location_zone?: string | null
+          planned_end?: string | null
+          planned_start?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          progress_pct?: number
+          project_id?: string
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          task_type?: Database["public"]["Enums"]["task_type"]
+          title?: string
+          updated_at?: string
+          wbs_node_id?: string | null
+          workflow_type?:
+            | Database["public"]["Enums"]["task_workflow_type"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_wbs_node_id_fkey"
+            columns: ["wbs_node_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timesheet_entries: {
+        Row: {
+          afternoon_end: string | null
+          afternoon_non_work: boolean | null
+          afternoon_start: string | null
+          afternoon_task_id: string | null
+          attachments: Json | null
+          break_end: string | null
+          break_non_work: boolean | null
+          break_start: string | null
+          break_task_id: string | null
+          created_at: string
+          end_time: string | null
+          flags: Json
+          id: string
+          is_public_holiday: boolean | null
+          is_sunday: boolean | null
+          morning_end: string | null
+          morning_non_work: boolean | null
+          morning_start: string | null
+          morning_task_id: string | null
+          notes: string | null
+          ot_end: string | null
+          ot_non_work: boolean | null
+          ot_start: string | null
+          ot_task_id: string | null
+          overtime_hours: number
+          project_id: string
+          regular_hours: number
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_time: string | null
+          status: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at: string | null
+          task_id: string | null
+          ticked_task_ids: string[] | null
+          updated_at: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          afternoon_end?: string | null
+          afternoon_non_work?: boolean | null
+          afternoon_start?: string | null
+          afternoon_task_id?: string | null
+          attachments?: Json | null
+          break_end?: string | null
+          break_non_work?: boolean | null
+          break_start?: string | null
+          break_task_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          flags?: Json
+          id?: string
+          is_public_holiday?: boolean | null
+          is_sunday?: boolean | null
+          morning_end?: string | null
+          morning_non_work?: boolean | null
+          morning_start?: string | null
+          morning_task_id?: string | null
+          notes?: string | null
+          ot_end?: string | null
+          ot_non_work?: boolean | null
+          ot_start?: string | null
+          ot_task_id?: string | null
+          overtime_hours?: number
+          project_id: string
+          regular_hours?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          task_id?: string | null
+          ticked_task_ids?: string[] | null
+          updated_at?: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          afternoon_end?: string | null
+          afternoon_non_work?: boolean | null
+          afternoon_start?: string | null
+          afternoon_task_id?: string | null
+          attachments?: Json | null
+          break_end?: string | null
+          break_non_work?: boolean | null
+          break_start?: string | null
+          break_task_id?: string | null
+          created_at?: string
+          end_time?: string | null
+          flags?: Json
+          id?: string
+          is_public_holiday?: boolean | null
+          is_sunday?: boolean | null
+          morning_end?: string | null
+          morning_non_work?: boolean | null
+          morning_start?: string | null
+          morning_task_id?: string | null
+          notes?: string | null
+          ot_end?: string | null
+          ot_non_work?: boolean | null
+          ot_start?: string | null
+          ot_task_id?: string | null
+          overtime_hours?: number
+          project_id?: string
+          regular_hours?: number
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_time?: string | null
+          status?: Database["public"]["Enums"]["timesheet_status"]
+          submitted_at?: string | null
+          task_id?: string | null
+          ticked_task_ids?: string[] | null
+          updated_at?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheet_entries_afternoon_task_id_fkey"
+            columns: ["afternoon_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_break_task_id_fkey"
+            columns: ["break_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_morning_task_id_fkey"
+            columns: ["morning_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_ot_task_id_fkey"
+            columns: ["ot_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wbs_assignments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          permission: Database["public"]["Enums"]["wbs_permission"]
+          user_id: string
+          wbs_node_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["wbs_permission"]
+          user_id: string
+          wbs_node_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["wbs_permission"]
+          user_id?: string
+          wbs_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wbs_assignments_wbs_node_id_fkey"
+            columns: ["wbs_node_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wbs_nodes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          depth: number
+          description: string | null
+          id: string
+          name: string
+          node_type: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id: string | null
+          path: string[]
+          path_text: string
+          project_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          depth?: number
+          description?: string | null
+          id?: string
+          name: string
+          node_type?: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id?: string | null
+          path?: string[]
+          path_text?: string
+          project_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          depth?: number
+          description?: string | null
+          id?: string
+          name?: string
+          node_type?: Database["public"]["Enums"]["wbs_node_type"]
+          parent_id?: string | null
+          path?: string[]
+          path_text?: string
+          project_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wbs_nodes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "wbs_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wbs_nodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      compute_payroll_lines: {
+        Args: { _period_id: string }
+        Returns: undefined
+      }
+      create_notification: {
+        Args: {
+          _actor_id?: string
+          _body: string
+          _entity_id: string
+          _entity_type: string
+          _metadata?: Json
+          _priority?: Database["public"]["Enums"]["notification_priority"]
+          _project_id: string
+          _title: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      get_project_planners: { Args: { _project_id: string }; Returns: string[] }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_dept_member: {
+        Args: {
+          _dept: Database["public"]["Enums"]["department"]
+          _min_role?: Database["public"]["Enums"]["dept_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      seed_demo_run: { Args: never; Returns: Json }
+      wbs_user_can: {
+        Args: {
+          _node_id: string
+          _perm: Database["public"]["Enums"]["wbs_permission"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      app_role:
+        | "admin"
+        | "project_manager"
+        | "engineer"
+        | "supervisor"
+        | "worker"
+        | "qaqc_inspector"
+        | "accountant"
+      dep_relation_type: "FS" | "SS" | "FF" | "SF"
+      department:
+        | "architecture"
+        | "structure"
+        | "mep"
+        | "procurement"
+        | "construction"
+      dept_role: "member" | "reviewer" | "approver"
+      dept_status:
+        | "draft"
+        | "internal_review"
+        | "coordination"
+        | "dept_approved"
+        | "issued"
+        | "request"
+        | "rfq"
+        | "quotation_received"
+        | "evaluation"
+        | "po_issued"
+        | "delivered"
+        | "assigned"
+        | "in_progress"
+        | "inspection"
+        | "site_approved"
+        | "completed"
+        | "rejected"
+        | "cancelled"
+      notification_priority: "low" | "normal" | "high" | "critical"
+      notification_type:
+        | "task_assigned"
+        | "task_unassigned"
+        | "task_started"
+        | "task_submitted_for_approval"
+        | "task_approved"
+        | "task_rejected"
+        | "task_completed"
+        | "task_closed"
+        | "task_reopened"
+        | "task_blocker_reported"
+        | "timesheet_submitted"
+        | "timesheet_approved"
+        | "timesheet_rejected"
+        | "timesheet_flagged"
+      payroll_period_status: "open" | "locked" | "paid"
+      project_status:
+        | "planning"
+        | "active"
+        | "on_hold"
+        | "completed"
+        | "cancelled"
+      task_category:
+        | "design_log_report"
+        | "design_summary_report"
+        | "calculation_note"
+        | "technical_evaluation"
+        | "technical_comparison"
+        | "cut_sheet"
+        | "design_coordination_circulation"
+        | "material_coordination_circulation"
+        | "budget_coordination_circulation"
+        | "eoi"
+        | "tender_evaluation"
+        | "tender_interview"
+        | "po_award"
+        | "kick_off"
+        | "daily_report"
+        | "weekly_report"
+        | "ncr"
+        | "instruction"
+        | "delay_notice"
+        | "claim_notice"
+        | "as_built_drawing_rfa"
+        | "test_report_rfa"
+        | "material_rfa"
+        | "method_statement_rfa"
+      task_priority: "low" | "medium" | "high" | "critical"
+      task_status:
+        | "open"
+        | "assigned"
+        | "in_progress"
+        | "pending_approval"
+        | "approved"
+        | "rejected"
+        | "completed"
+        | "closed"
+      task_type:
+        | "concrete"
+        | "steel"
+        | "mep"
+        | "finishing"
+        | "excavation"
+        | "inspection"
+        | "other"
+      task_workflow_type:
+        | "design"
+        | "coordination"
+        | "procurement"
+        | "execution"
+        | "approval"
+      timesheet_status: "draft" | "submitted" | "approved" | "rejected"
+      wbs_node_type:
+        | "building"
+        | "level"
+        | "zone"
+        | "sub_zone"
+        | "area"
+        | "system"
+        | "package"
+        | "other"
+      wbs_permission: "view" | "edit" | "manage"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: [
+        "admin",
+        "project_manager",
+        "engineer",
+        "supervisor",
+        "worker",
+        "qaqc_inspector",
+        "accountant",
+      ],
+      dep_relation_type: ["FS", "SS", "FF", "SF"],
+      department: [
+        "architecture",
+        "structure",
+        "mep",
+        "procurement",
+        "construction",
+      ],
+      dept_role: ["member", "reviewer", "approver"],
+      dept_status: [
+        "draft",
+        "internal_review",
+        "coordination",
+        "dept_approved",
+        "issued",
+        "request",
+        "rfq",
+        "quotation_received",
+        "evaluation",
+        "po_issued",
+        "delivered",
+        "assigned",
+        "in_progress",
+        "inspection",
+        "site_approved",
+        "completed",
+        "rejected",
+        "cancelled",
+      ],
+      notification_priority: ["low", "normal", "high", "critical"],
+      notification_type: [
+        "task_assigned",
+        "task_unassigned",
+        "task_started",
+        "task_submitted_for_approval",
+        "task_approved",
+        "task_rejected",
+        "task_completed",
+        "task_closed",
+        "task_reopened",
+        "task_blocker_reported",
+        "timesheet_submitted",
+        "timesheet_approved",
+        "timesheet_rejected",
+        "timesheet_flagged",
+      ],
+      payroll_period_status: ["open", "locked", "paid"],
+      project_status: [
+        "planning",
+        "active",
+        "on_hold",
+        "completed",
+        "cancelled",
+      ],
+      task_category: [
+        "design_log_report",
+        "design_summary_report",
+        "calculation_note",
+        "technical_evaluation",
+        "technical_comparison",
+        "cut_sheet",
+        "design_coordination_circulation",
+        "material_coordination_circulation",
+        "budget_coordination_circulation",
+        "eoi",
+        "tender_evaluation",
+        "tender_interview",
+        "po_award",
+        "kick_off",
+        "daily_report",
+        "weekly_report",
+        "ncr",
+        "instruction",
+        "delay_notice",
+        "claim_notice",
+        "as_built_drawing_rfa",
+        "test_report_rfa",
+        "material_rfa",
+        "method_statement_rfa",
+      ],
+      task_priority: ["low", "medium", "high", "critical"],
+      task_status: [
+        "open",
+        "assigned",
+        "in_progress",
+        "pending_approval",
+        "approved",
+        "rejected",
+        "completed",
+        "closed",
+      ],
+      task_type: [
+        "concrete",
+        "steel",
+        "mep",
+        "finishing",
+        "excavation",
+        "inspection",
+        "other",
+      ],
+      task_workflow_type: [
+        "design",
+        "coordination",
+        "procurement",
+        "execution",
+        "approval",
+      ],
+      timesheet_status: ["draft", "submitted", "approved", "rejected"],
+      wbs_node_type: [
+        "building",
+        "level",
+        "zone",
+        "sub_zone",
+        "area",
+        "system",
+        "package",
+        "other",
+      ],
+      wbs_permission: ["view", "edit", "manage"],
+    },
+  },
+} as const
