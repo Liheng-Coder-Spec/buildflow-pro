@@ -98,11 +98,31 @@ export default function WbsPage() {
             <span className="ml-2 text-xs">{nodes.length} node{nodes.length === 1 ? "" : "s"}</span>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={toggleTree}>
-          {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-          {treeOpen ? "Hide tree" : "Show tree"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border p-0.5">
+            <button
+              onClick={() => setView("tree")}
+              className={`px-3 h-8 text-xs rounded ${view === "tree" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >Tree</button>
+            <button
+              onClick={() => setView("gantt")}
+              className={`px-3 h-8 text-xs rounded ${view === "gantt" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >Gantt</button>
+          </div>
+          {view === "tree" && (
+            <Button variant="outline" size="sm" onClick={toggleTree}>
+              {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              {treeOpen ? "Hide tree" : "Show tree"}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {view === "gantt" ? (
+        <Card className="flex-1 min-h-0 overflow-hidden p-0">
+          <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+        </Card>
+      ) : (
 
       <Card className="flex-1 min-h-0 overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full">
