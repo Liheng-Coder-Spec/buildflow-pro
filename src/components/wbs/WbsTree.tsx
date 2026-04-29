@@ -43,6 +43,7 @@ export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, sear
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search.toLowerCase()}
+              getRollup={getRollup}
             />
           ))}
         </ul>
