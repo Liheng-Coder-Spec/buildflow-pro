@@ -255,6 +255,7 @@ function TaskBar({
   minDate,
   totalDays,
   rowH,
+  pxPerDay,
 }: {
   task: ReturnType<typeof useWbsGantt>["tasks"][number];
   minDate: Date;
