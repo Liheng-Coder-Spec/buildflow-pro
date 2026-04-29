@@ -315,8 +315,8 @@ export default function Timesheets() {
       status: editing.status,
     };
     const op = editing.id
-      ? supabase.from("timesheet_entries").update(payload).eq("id", editing.id)
-      : supabase.from("timesheet_entries").insert(payload);
+      ? supabase.from("timesheet_entries").update(payload as any).eq("id", editing.id)
+      : supabase.from("timesheet_entries").insert(payload as any);
     const { error } = await op;
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
