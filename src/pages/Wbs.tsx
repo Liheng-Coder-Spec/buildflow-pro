@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useProjects } from "@/contexts/ProjectContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWbsTree } from "@/hooks/useWbsTree";
@@ -8,7 +8,6 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "@/components/ui/resizable";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,13 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
-import { WbsGanttTab } from "@/components/wbs/WbsGanttTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
 import { WbsTaskTable } from "@/components/wbs/WbsTaskTable";
 import { WbsGantt } from "@/components/wbs/WbsGantt";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
-  LayoutList, GanttChart, Loader2,
+  LayoutList, GanttChart,
 } from "lucide-react";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,7 +59,6 @@ export default function WbsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [mainView, setMainView] = useState<MainView>("tree");
-  const [ganttTab, setGanttTab] = useState<"table" | "chart">("table");
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
@@ -170,29 +167,19 @@ export default function WbsPage() {
 
       <Card className="flex-1 min-h-0 overflow-hidden">
         {mainView === "gantt" && (
-          <div className="h-full flex flex-col">
-            <div className="p-3 border-b flex items-center gap-2">
-              <div className="inline-flex rounded-md border p-0.5">
-                <button
-                  onClick={() => setGanttTab("table")}
-                  className={`px-3 h-8 text-xs rounded ${ganttTab === "table" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >Table</button>
-                <button
-                  onClick={() => setGanttTab("chart")}
-                  className={`px-3 h-8 text-xs rounded ${ganttTab === "chart" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                >Gantt Chart</button>
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanel defaultSize={50} minSize={30} maxSize={70} className="overflow-auto">
+              <div className="p-3 h-full overflow-auto">
+                <WbsTaskTable nodes={nodes} tasks={tasks} />
               </div>
-            </div>
-            <div className="flex-1 overflow-auto">
-              {ganttTab === "table" ? (
-                <div className="p-4">
-                  <WbsTaskTable nodes={nodes} tasks={tasks} />
-                </div>
-              ) : (
-                <WbsGanttTab projectId={projectId!} wbsNodes={nodes} nodeStats={nodeStats} />
-              )}
-            </div>
-          </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={50} minSize={30} maxSize={70} className="overflow-auto">
+              <div className="h-full overflow-hidden">
+                <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         )}
 
         {mainView === "tree" && (
