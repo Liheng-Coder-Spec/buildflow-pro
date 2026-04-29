@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { WbsNode } from "@/lib/wbsMeta";
 import { TaskScheduleLite, NodeRollup, rollupTasks } from "@/lib/scheduleMeta";
 
+export type ScheduleTask = TaskScheduleLite & { title: string; code: string | null };
+
 interface UseSchedule {
-  tasks: TaskScheduleLite[];
+  tasks: ScheduleTask[];
   rollupByNode: Map<string, NodeRollup>;
   loading: boolean;
   refresh: () => Promise<void>;
