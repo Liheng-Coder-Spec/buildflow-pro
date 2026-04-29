@@ -125,6 +125,11 @@ function TreeRow({
             {WBS_NODE_TYPE_LABELS[node.node_type]}
           </span>
         </div>
+        {getRollup && (
+          <div className="ml-2 shrink-0">
+            <WbsScheduleStrip rollup={getRollup(node.id)} compact />
+          </div>
+        )}
         {canEdit && (
           <button
             type="button"
