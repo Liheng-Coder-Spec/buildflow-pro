@@ -60,6 +60,7 @@ function TreeRow({
   onAddChild,
   canEdit,
   search,
+  getRollup,
 }: {
   node: WbsTreeNode;
   depth: number;
@@ -68,6 +69,7 @@ function TreeRow({
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
+  getRollup?: (nodeId: string) => import("@/lib/scheduleMeta").NodeRollup | undefined;
 }) {
   const [open, setOpen] = useState(true);
   const hasChildren = node.children.length > 0;
