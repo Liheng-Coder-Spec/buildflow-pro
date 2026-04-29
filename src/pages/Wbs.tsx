@@ -220,7 +220,8 @@ export default function WbsPage() {
                       <TabsTrigger value="permissions">Permissions</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="details" className="mt-4">
+                    <TabsContent value="details" className="mt-4 space-y-4">
+                      <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
                       <Card>
                         <CardContent className="p-6 space-y-3 text-sm">
                           <Row label="Type">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Row>
