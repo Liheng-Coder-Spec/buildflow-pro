@@ -36,9 +36,23 @@ export default function WbsPage() {
   const { roles } = useAuth();
   const projectId = activeProject?.id ?? null;
   const { nodes, tree, loading, refresh } = useWbsTree(projectId);
+  const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
+  const { dateSet: holidaySet } = useProjectHolidays(projectId);
+  const [predecessors, setPredecessors] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!projectId || tasks.length === 0) { setPredecessors([]); return; }
+    const ids = tasks.map((t) => t.id);
+    supabase
+      .from("task_predecessors")
+      .select("task_id, predecessor_id, relation_type, lag_days")
+      .in("task_id", ids)
+      .then(({ data }) => setPredecessors(data ?? []));
+  }, [projectId, tasks]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"tree" | "gantt">("tree");
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
@@ -53,7 +67,7 @@ export default function WbsPage() {
     [nodes, selectedId],
   );
 
-  const taskCountByNode = useMemo(() => new Map<string, number>(), []); // placeholder for future
+  const getRollup = (id: string) => rollupByNode.get(id);
 
   const toggleTree = () => {
     const next = !treeOpen;
