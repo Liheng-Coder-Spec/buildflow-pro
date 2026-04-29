@@ -3,6 +3,8 @@ import { ChevronRight, Folder, FolderOpen, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { WbsTreeNode, WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
+import { NodeRollup } from "@/lib/scheduleMeta";
+import { WbsScheduleStrip } from "@/components/wbs/WbsScheduleStrip";
 
 interface Props {
   nodes: WbsTreeNode[];
@@ -11,9 +13,10 @@ interface Props {
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
+  getRollup?: (nodeId: string) => NodeRollup | undefined;
 }
 
-export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, search }: Props) {
+export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, search, getRollup }: Props) {
   return (
     <div className="text-sm">
       {canEdit && (
@@ -40,6 +43,7 @@ export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, sear
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search.toLowerCase()}
+              getRollup={getRollup}
             />
           ))}
         </ul>
@@ -56,6 +60,7 @@ function TreeRow({
   onAddChild,
   canEdit,
   search,
+  getRollup,
 }: {
   node: WbsTreeNode;
   depth: number;
@@ -64,6 +69,7 @@ function TreeRow({
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
+  getRollup?: (nodeId: string) => import("@/lib/scheduleMeta").NodeRollup | undefined;
 }) {
   const [open, setOpen] = useState(true);
   const hasChildren = node.children.length > 0;
@@ -119,6 +125,11 @@ function TreeRow({
             {WBS_NODE_TYPE_LABELS[node.node_type]}
           </span>
         </div>
+        {getRollup && (
+          <div className="ml-2 shrink-0">
+            <WbsScheduleStrip rollup={getRollup(node.id)} compact />
+          </div>
+        )}
         {canEdit && (
           <button
             type="button"
@@ -146,6 +157,7 @@ function TreeRow({
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search}
+              getRollup={getRollup}
             />
           ))}
         </ul>

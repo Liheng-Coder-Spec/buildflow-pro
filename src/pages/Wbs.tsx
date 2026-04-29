@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProjects } from "@/contexts/ProjectContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWbsTree } from "@/hooks/useWbsTree";
+import { useWbsSchedule } from "@/hooks/useWbsSchedule";
+import { useProjectHolidays } from "@/hooks/useProjectHolidays";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "@/components/ui/resizable";
@@ -14,6 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
+import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
+import { WbsGantt } from "@/components/wbs/WbsGantt";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from "lucide-react";
@@ -31,9 +36,23 @@ export default function WbsPage() {
   const { roles } = useAuth();
   const projectId = activeProject?.id ?? null;
   const { nodes, tree, loading, refresh } = useWbsTree(projectId);
+  const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
+  const { dateSet: holidaySet } = useProjectHolidays(projectId);
+  const [predecessors, setPredecessors] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!projectId || tasks.length === 0) { setPredecessors([]); return; }
+    const ids = tasks.map((t) => t.id);
+    supabase
+      .from("task_predecessors")
+      .select("task_id, predecessor_id, relation_type, lag_days")
+      .in("task_id", ids)
+      .then(({ data }) => setPredecessors(data ?? []));
+  }, [projectId, tasks]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"tree" | "gantt">("tree");
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
@@ -48,7 +67,7 @@ export default function WbsPage() {
     [nodes, selectedId],
   );
 
-  const taskCountByNode = useMemo(() => new Map<string, number>(), []); // placeholder for future
+  const getRollup = (id: string) => rollupByNode.get(id);
 
   const toggleTree = () => {
     const next = !treeOpen;
@@ -79,11 +98,31 @@ export default function WbsPage() {
             <span className="ml-2 text-xs">{nodes.length} node{nodes.length === 1 ? "" : "s"}</span>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={toggleTree}>
-          {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-          {treeOpen ? "Hide tree" : "Show tree"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border p-0.5">
+            <button
+              onClick={() => setView("tree")}
+              className={`px-3 h-8 text-xs rounded ${view === "tree" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >Tree</button>
+            <button
+              onClick={() => setView("gantt")}
+              className={`px-3 h-8 text-xs rounded ${view === "gantt" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >Gantt</button>
+          </div>
+          {view === "tree" && (
+            <Button variant="outline" size="sm" onClick={toggleTree}>
+              {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              {treeOpen ? "Hide tree" : "Show tree"}
+            </Button>
+          )}
+        </div>
       </div>
+
+      {view === "gantt" ? (
+        <Card className="flex-1 min-h-0 overflow-hidden p-0">
+          <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+        </Card>
+      ) : (
 
       <Card className="flex-1 min-h-0 overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -120,6 +159,7 @@ export default function WbsPage() {
                       }}
                       canEdit={canEdit}
                       search={search}
+                      getRollup={getRollup}
                     />
                   )}
                 </div>
@@ -180,7 +220,8 @@ export default function WbsPage() {
                       <TabsTrigger value="permissions">Permissions</TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="details" className="mt-4">
+                    <TabsContent value="details" className="mt-4 space-y-4">
+                      <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
                       <Card>
                         <CardContent className="p-6 space-y-3 text-sm">
                           <Row label="Type">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Row>
@@ -236,6 +277,7 @@ export default function WbsPage() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </Card>
+      )}
     </div>
   );
 }

@@ -386,6 +386,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          holiday_date: string
+          id: string
+          label: string | null
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date: string
+          id?: string
+          label?: string | null
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date?: string
+          id?: string
+          label?: string | null
+          project_id?: string
+        }
+        Relationships: []
+      }
       project_members: {
         Row: {
           added_at: string
@@ -549,22 +576,28 @@ export type Database = {
         Row: {
           id: string
           is_hard_block: boolean
+          lag_days: number
           note: string | null
           predecessor_id: string
+          relation_type: Database["public"]["Enums"]["dep_relation_type"]
           task_id: string
         }
         Insert: {
           id?: string
           is_hard_block?: boolean
+          lag_days?: number
           note?: string | null
           predecessor_id: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
           task_id: string
         }
         Update: {
           id?: string
           is_hard_block?: boolean
+          lag_days?: number
           note?: string | null
           predecessor_id?: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
           task_id?: string
         }
         Relationships: [
@@ -780,16 +813,29 @@ export type Database = {
       timesheet_entries: {
         Row: {
           afternoon_end: string | null
+          afternoon_non_work: boolean | null
           afternoon_start: string | null
+          afternoon_task_id: string | null
+          attachments: Json | null
+          break_end: string | null
+          break_non_work: boolean | null
+          break_start: string | null
+          break_task_id: string | null
           created_at: string
           end_time: string | null
           flags: Json
           id: string
+          is_public_holiday: boolean | null
+          is_sunday: boolean | null
           morning_end: string | null
+          morning_non_work: boolean | null
           morning_start: string | null
+          morning_task_id: string | null
           notes: string | null
           ot_end: string | null
+          ot_non_work: boolean | null
           ot_start: string | null
+          ot_task_id: string | null
           overtime_hours: number
           project_id: string
           regular_hours: number
@@ -800,22 +846,36 @@ export type Database = {
           status: Database["public"]["Enums"]["timesheet_status"]
           submitted_at: string | null
           task_id: string | null
+          ticked_task_ids: string[] | null
           updated_at: string
           user_id: string
           work_date: string
         }
         Insert: {
           afternoon_end?: string | null
+          afternoon_non_work?: boolean | null
           afternoon_start?: string | null
+          afternoon_task_id?: string | null
+          attachments?: Json | null
+          break_end?: string | null
+          break_non_work?: boolean | null
+          break_start?: string | null
+          break_task_id?: string | null
           created_at?: string
           end_time?: string | null
           flags?: Json
           id?: string
+          is_public_holiday?: boolean | null
+          is_sunday?: boolean | null
           morning_end?: string | null
+          morning_non_work?: boolean | null
           morning_start?: string | null
+          morning_task_id?: string | null
           notes?: string | null
           ot_end?: string | null
+          ot_non_work?: boolean | null
           ot_start?: string | null
+          ot_task_id?: string | null
           overtime_hours?: number
           project_id: string
           regular_hours?: number
@@ -826,22 +886,36 @@ export type Database = {
           status?: Database["public"]["Enums"]["timesheet_status"]
           submitted_at?: string | null
           task_id?: string | null
+          ticked_task_ids?: string[] | null
           updated_at?: string
           user_id: string
           work_date: string
         }
         Update: {
           afternoon_end?: string | null
+          afternoon_non_work?: boolean | null
           afternoon_start?: string | null
+          afternoon_task_id?: string | null
+          attachments?: Json | null
+          break_end?: string | null
+          break_non_work?: boolean | null
+          break_start?: string | null
+          break_task_id?: string | null
           created_at?: string
           end_time?: string | null
           flags?: Json
           id?: string
+          is_public_holiday?: boolean | null
+          is_sunday?: boolean | null
           morning_end?: string | null
+          morning_non_work?: boolean | null
           morning_start?: string | null
+          morning_task_id?: string | null
           notes?: string | null
           ot_end?: string | null
+          ot_non_work?: boolean | null
           ot_start?: string | null
+          ot_task_id?: string | null
           overtime_hours?: number
           project_id?: string
           regular_hours?: number
@@ -852,11 +926,40 @@ export type Database = {
           status?: Database["public"]["Enums"]["timesheet_status"]
           submitted_at?: string | null
           task_id?: string | null
+          ticked_task_ids?: string[] | null
           updated_at?: string
           user_id?: string
           work_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "timesheet_entries_afternoon_task_id_fkey"
+            columns: ["afternoon_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_break_task_id_fkey"
+            columns: ["break_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_morning_task_id_fkey"
+            columns: ["morning_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheet_entries_ot_task_id_fkey"
+            columns: ["ot_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "timesheet_entries_project_id_fkey"
             columns: ["project_id"]
@@ -1054,6 +1157,7 @@ export type Database = {
         | "worker"
         | "qaqc_inspector"
         | "accountant"
+      dep_relation_type: "FS" | "SS" | "FF" | "SF"
       department:
         | "architecture"
         | "structure"
@@ -1299,6 +1403,7 @@ export const Constants = {
         "qaqc_inspector",
         "accountant",
       ],
+      dep_relation_type: ["FS", "SS", "FF", "SF"],
       department: [
         "architecture",
         "structure",
