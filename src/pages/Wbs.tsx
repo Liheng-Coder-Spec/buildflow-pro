@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useProjects } from "@/contexts/ProjectContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWbsTree } from "@/hooks/useWbsTree";
+import { useWbsSchedule } from "@/hooks/useWbsSchedule";
+import { useProjectHolidays } from "@/hooks/useProjectHolidays";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "@/components/ui/resizable";
@@ -14,6 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
+import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
+import { WbsGantt } from "@/components/wbs/WbsGantt";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from "lucide-react";
