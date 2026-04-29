@@ -3,8 +3,7 @@ import { ChevronRight, Folder, FolderOpen, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { WbsTreeNode, WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
-import { NodeRollup } from "@/lib/scheduleMeta";
-import { WbsScheduleStrip } from "@/components/wbs/WbsScheduleStrip";
+import { WbsNodeStat } from "@/hooks/useWbsTree";
 
 interface Props {
   nodes: WbsTreeNode[];
@@ -13,15 +12,30 @@ interface Props {
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
-  getRollup?: (nodeId: string) => NodeRollup | undefined;
+  nodeStats: Map<string, WbsNodeStat>;
+  onMove?: (id: string, direction: "up" | "down") => void;
 }
 
-export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, search, getRollup }: Props) {
+export function WbsTree({
+  nodes,
+  selectedId,
+  onSelect,
+  onAddChild,
+  canEdit,
+  search,
+  nodeStats,
+  onMove,
+}: Props) {
   return (
     <div className="text-sm">
       {canEdit && (
         <div className="px-2 py-2 border-b mb-1">
-          <Button size="sm" variant="ghost" className="w-full justify-start gap-2" onClick={() => onAddChild?.(null)}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="w-full justify-start gap-2"
+            onClick={() => onAddChild?.(null)}
+          >
             <Plus className="h-3.5 w-3.5" /> Add root node
           </Button>
         </div>
@@ -43,7 +57,8 @@ export function WbsTree({ nodes, selectedId, onSelect, onAddChild, canEdit, sear
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search.toLowerCase()}
-              getRollup={getRollup}
+              nodeStats={nodeStats}
+              onMove={onMove}
             />
           ))}
         </ul>
@@ -60,7 +75,8 @@ function TreeRow({
   onAddChild,
   canEdit,
   search,
-  getRollup,
+  nodeStats,
+  onMove,
 }: {
   node: WbsTreeNode;
   depth: number;
@@ -69,7 +85,8 @@ function TreeRow({
   onAddChild?: (parentId: string | null) => void;
   canEdit: boolean;
   search: string;
-  getRollup?: (nodeId: string) => import("@/lib/scheduleMeta").NodeRollup | undefined;
+  nodeStats: Map<string, WbsNodeStat>;
+  onMove?: (id: string, direction: "up" | "down") => void;
 }) {
   const [open, setOpen] = useState(true);
   const hasChildren = node.children.length > 0;
@@ -79,9 +96,12 @@ function TreeRow({
     node.code.toLowerCase().includes(search) ||
     node.path_text.toLowerCase().includes(search);
 
-  // If searching and this branch has no match anywhere, hide
   const branchMatches = matches || branchHasMatch(node, search);
   if (!branchMatches) return null;
+
+  const stat = nodeStats.get(node.id);
+  const progress = stat?.avgProgress ?? 0;
+  const taskCount = stat?.taskCount ?? 0;
 
   return (
     <li>
@@ -93,11 +113,13 @@ function TreeRow({
           if (e.key === "Enter") onSelect(node.id);
         }}
         className={cn(
-          "group flex items-center gap-1 px-1.5 py-1 rounded-md cursor-pointer hover:bg-muted/60 transition-colors",
-          selectedId === node.id && "bg-accent text-accent-foreground hover:bg-accent",
+          "group flex items-start gap-1 px-1.5 py-1.5 rounded-md cursor-pointer hover:bg-muted/60 transition-colors",
+          selectedId === node.id &&
+            "bg-accent text-accent-foreground hover:bg-accent",
         )}
         style={{ paddingLeft: `${depth * 14 + 6}px` }}
       >
+        {/* Expand/collapse toggle */}
         {hasChildren ? (
           <button
             type="button"
@@ -105,46 +127,98 @@ function TreeRow({
               e.stopPropagation();
               setOpen((o) => !o);
             }}
-            className="h-4 w-4 inline-flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground"
+            className="mt-0.5 h-4 w-4 inline-flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground"
             aria-label={open ? "Collapse" : "Expand"}
           >
-            <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")} />
+            <ChevronRight
+              className={cn(
+                "h-3.5 w-3.5 transition-transform",
+                open && "rotate-90",
+              )}
+            />
           </button>
         ) : (
-          <span className="h-4 w-4 inline-block shrink-0" />
+          <span className="mt-0.5 h-4 w-4 inline-block shrink-0" />
         )}
+
+        {/* Folder icon */}
         {open && hasChildren ? (
-          <FolderOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <FolderOpen className="mt-0.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
         ) : (
-          <Folder className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Folder className="mt-0.5 h-3.5 w-3.5 text-muted-foreground shrink-0" />
         )}
-        <div className="flex-1 min-w-0 flex items-baseline gap-2">
-          <span className="font-mono text-[11px] text-muted-foreground">{node.code}</span>
-          <span className="truncate">{node.name}</span>
-          <span className="text-[10px] text-muted-foreground/70 hidden sm:inline">
-            {WBS_NODE_TYPE_LABELS[node.node_type]}
-          </span>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 flex items-center gap-3 pr-2">
+          {/* Name & Code */}
+          <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+            <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+              {node.code}
+            </span>
+            <span className="truncate text-[13px]">{node.name}</span>
+            <span className="text-[10px] text-muted-foreground/60 hidden sm:inline shrink-0">
+              {WBS_NODE_TYPE_LABELS[node.node_type]}
+            </span>
+          </div>
+
+          {/* Progress bar */}
+          <div className="flex items-center gap-1.5 w-24 shrink-0">
+            <div className="flex-1 h-1.5 rounded-full bg-muted/80 overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  progress >= 100
+                    ? "bg-emerald-500"
+                    : progress > 50
+                      ? "bg-primary"
+                      : progress > 0
+                        ? "bg-primary/70"
+                        : "bg-transparent",
+                )}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] tabular-nums text-muted-foreground w-7 text-right shrink-0">
+              {progress}%
+            </span>
+          </div>
         </div>
-        {getRollup && (
-          <div className="ml-2 shrink-0">
-            <WbsScheduleStrip rollup={getRollup(node.id)} compact />
+
+        {/* Action buttons (Add child, Move Up, Move Down) */}
+        {canEdit && (
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onMove?.(node.id, "up"); }}
+              className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/60 text-muted-foreground"
+              title="Move Up"
+            >
+              <ChevronRight className="h-3 w-3 -rotate-90" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onMove?.(node.id, "down"); }}
+              className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/60 text-muted-foreground"
+              title="Move Down"
+            >
+              <ChevronRight className="h-3 w-3 rotate-90" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild?.(node.id);
+              }}
+              className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/60 text-primary/80"
+              aria-label="Add child"
+              title="Add child"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
-        {canEdit && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddChild?.(node.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 h-5 w-5 inline-flex items-center justify-center rounded hover:bg-background/60"
-            aria-label="Add child"
-            title="Add child"
-          >
-            <Plus className="h-3 w-3" />
-          </button>
-        )}
       </div>
+
       {hasChildren && open && (
         <ul className="space-y-0.5">
           {node.children.map((c) => (
@@ -157,7 +231,8 @@ function TreeRow({
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search}
-              getRollup={getRollup}
+              nodeStats={nodeStats}
+              onMove={onMove}
             />
           ))}
         </ul>
