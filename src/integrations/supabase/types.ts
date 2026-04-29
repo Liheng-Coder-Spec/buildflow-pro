@@ -386,6 +386,33 @@ export type Database = {
         }
         Relationships: []
       }
+      project_holidays: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          holiday_date: string
+          id: string
+          label: string | null
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date: string
+          id?: string
+          label?: string | null
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          holiday_date?: string
+          id?: string
+          label?: string | null
+          project_id?: string
+        }
+        Relationships: []
+      }
       project_members: {
         Row: {
           added_at: string
@@ -549,22 +576,28 @@ export type Database = {
         Row: {
           id: string
           is_hard_block: boolean
+          lag_days: number
           note: string | null
           predecessor_id: string
+          relation_type: Database["public"]["Enums"]["dep_relation_type"]
           task_id: string
         }
         Insert: {
           id?: string
           is_hard_block?: boolean
+          lag_days?: number
           note?: string | null
           predecessor_id: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
           task_id: string
         }
         Update: {
           id?: string
           is_hard_block?: boolean
+          lag_days?: number
           note?: string | null
           predecessor_id?: string
+          relation_type?: Database["public"]["Enums"]["dep_relation_type"]
           task_id?: string
         }
         Relationships: [
@@ -1124,6 +1157,7 @@ export type Database = {
         | "worker"
         | "qaqc_inspector"
         | "accountant"
+      dep_relation_type: "FS" | "SS" | "FF" | "SF"
       department:
         | "architecture"
         | "structure"
@@ -1369,6 +1403,7 @@ export const Constants = {
         "qaqc_inspector",
         "accountant",
       ],
+      dep_relation_type: ["FS", "SS", "FF", "SF"],
       department: [
         "architecture",
         "structure",
