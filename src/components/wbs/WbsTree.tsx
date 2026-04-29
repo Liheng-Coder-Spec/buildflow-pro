@@ -157,6 +157,7 @@ function TreeRow({
               onAddChild={onAddChild}
               canEdit={canEdit}
               search={search}
+              getRollup={getRollup}
             />
           ))}
         </ul>
