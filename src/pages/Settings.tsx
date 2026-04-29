@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DepartmentMembersTab } from "@/components/settings/DepartmentMembersTab";
+import { ProjectHolidaysTab } from "@/components/settings/ProjectHolidaysTab";
 
 export default function Settings() {
   const { user, profile, refreshProfile, hasRole } = useAuth();
@@ -61,8 +62,13 @@ export default function Settings() {
       <Tabs defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="holidays">Project holidays</TabsTrigger>
           {isAdmin && <TabsTrigger value="departments">Departments</TabsTrigger>}
         </TabsList>
+
+        <TabsContent value="holidays" className="mt-4">
+          <ProjectHolidaysTab />
+        </TabsContent>
 
         <TabsContent value="profile" className="mt-4">
           <Card>
