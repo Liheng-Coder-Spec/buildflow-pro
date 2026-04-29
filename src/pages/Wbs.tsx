@@ -159,6 +159,7 @@ export default function WbsPage() {
                       }}
                       canEdit={canEdit}
                       search={search}
+                      getRollup={getRollup}
                     />
                   )}
                 </div>
