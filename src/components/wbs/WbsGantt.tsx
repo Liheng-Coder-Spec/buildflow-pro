@@ -257,23 +257,22 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
 
             {/* Body grid */}
             <div className="relative">
-              {/* Background day stripes for weekends/holidays */}
+              {/* Background day stripes (weekend/holiday shading + per-day vertical grid) */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{ height: rows.length * ROW_H }}
               >
-                {dayHeaders.map((dh, i) =>
-                  dh.isWeekend || dh.isHoliday ? (
-                    <div
-                      key={i}
-                      className={cn(
-                        "absolute top-0 bottom-0",
-                        dh.isHoliday ? "bg-warning/10" : "bg-muted/30",
-                      )}
-                      style={{ left: i * dayWidth, width: dayWidth }}
-                    />
-                  ) : null,
-                )}
+                {dayHeaders.map((dh, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "absolute top-0 bottom-0 border-l border-border/30",
+                      dh.isHoliday && "bg-warning/10",
+                      !dh.isHoliday && dh.isWeekend && "bg-muted/30",
+                    )}
+                    style={{ left: i * dayWidth, width: dayWidth }}
+                  />
+                ))}
               </div>
 
               {/* Today line */}
