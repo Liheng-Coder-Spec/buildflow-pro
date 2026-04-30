@@ -33,6 +33,7 @@ export function buildGanttRows({ nodes, tasks, collapsed }: BuildRowsArgs): Gant
   }
 
   const rows: GanttRow[] = [];
+  const safeCollapsed = collapsed ?? new Set<string>();
   const walk = (parentId: string | null, depth: number) => {
     const kids = childrenOf.get(parentId) ?? [];
     for (const n of kids) {
@@ -50,7 +51,7 @@ export function buildGanttRows({ nodes, tasks, collapsed }: BuildRowsArgs): Gant
         }
       } else {
         rows.push({ kind: "node", id: n.id, node: n, depth, hasChildren: true });
-        if (collapsed.has(n.id)) continue;
+        if (safeCollapsed.has(n.id)) continue;
         walk(n.id, depth + 1);
         for (const t of nodeTasks) {
           rows.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });

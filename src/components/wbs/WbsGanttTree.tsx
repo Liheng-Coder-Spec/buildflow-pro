@@ -36,7 +36,7 @@ const fmtDate = (s: string | null) => {
   return isValid(d) ? format(d, "dd-MM-yyyy") : "—";
 };
 
-export function WbsGanttTree({ rows, collapsed, onToggle, holidaySet, rollupByNode }: Props) {
+export function WbsGanttTree({ rows, collapsed = new Set<string>(), onToggle, holidaySet, rollupByNode }: Props) {
   const today = new Date();
 
   return (
@@ -102,11 +102,11 @@ export function WbsGanttTree({ rows, collapsed, onToggle, holidaySet, rollupByNo
                     className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
                   >
                     <ChevronRight
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform",
-                        !collapsed.has(r.id) && "rotate-90",
-                      )}
-                    />
+                       className={cn(
+                         "h-3.5 w-3.5 transition-transform",
+                         !collapsed?.has(r.id) && "rotate-90",
+                       )}
+                     />
                   </button>
                   <span className="font-mono text-[11px] text-muted-foreground shrink-0">
                     {r.node.code}
