@@ -286,42 +286,42 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         row.kind === "project" ? {
                           shell: "border-slate-900 bg-slate-900/10",
                           cap: "bg-slate-900",
-                          progress: "bg-slate-900",
+                          progress: "bg-amber-400",
                         }
                         : row.node.node_type === "building" ? {
                           shell: "border-sky-950 bg-sky-950/10",
                           cap: "bg-sky-950",
-                          progress: "bg-sky-950",
+                          progress: "bg-amber-300",
                         }
                         : row.node.node_type === "level" ? {
                           shell: "border-sky-700 bg-sky-700/10",
                           cap: "bg-sky-700",
-                          progress: "bg-sky-700",
+                          progress: "bg-emerald-400",
                         }
                         : row.node.node_type === "zone" ? {
                           shell: "border-sky-500 bg-sky-500/10",
                           cap: "bg-sky-500",
-                          progress: "bg-sky-500",
+                          progress: "bg-fuchsia-400",
                         }
                         : rollup.status === "late" ? {
                           shell: "border-destructive/80 bg-destructive/10",
                           cap: "bg-destructive",
-                          progress: "bg-destructive",
+                          progress: "bg-amber-300",
                         }
                         : rollup.status === "at_risk" ? {
                           shell: "border-warning/80 bg-warning/10",
                           cap: "bg-warning",
-                          progress: "bg-warning",
+                          progress: "bg-sky-500",
                         }
                         : rollup.status === "done" ? {
                           shell: "border-primary/80 bg-primary/10",
                           cap: "bg-primary",
-                          progress: "bg-primary",
+                          progress: "bg-emerald-400",
                         }
                         : {
                           shell: "border-success/80 bg-success/10",
                           cap: "bg-success",
-                          progress: "bg-success",
+                          progress: "bg-sky-500",
                         };
                       const title =
                         row.kind === "project"
@@ -343,8 +343,11 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                           <div className={cn("absolute left-0 right-0 top-0 h-[2px]", summaryTone.cap)} />
                           <div className={cn("absolute right-0 top-0 bottom-0 w-[3px]", summaryTone.cap)} />
                           <div
-                            className={cn("absolute left-[3px] h-[2px]", summaryTone.progress)}
-                            style={{ bottom: 2, width: Math.max(0, progressWidth - 3) }}
+                            className={cn("absolute left-[3px] h-[3px] rounded-full", summaryTone.progress)}
+                            style={{
+                              top: `calc(50% - 1.5px)`,
+                              width: Math.max(0, progressWidth - 3),
+                            }}
                           />
                         </div>
                       );
