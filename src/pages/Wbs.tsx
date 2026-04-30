@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { UIEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/contexts/ProjectContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWbsTree } from "@/hooks/useWbsTree";
@@ -77,6 +77,9 @@ export default function WbsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [mainView, setMainView] = useState<MainView>("tree");
+  const leftGanttBodyRef = useRef<HTMLDivElement>(null);
+  const rightGanttBodyRef = useRef<HTMLDivElement>(null);
+  const syncingPaneRef = useRef<"left" | "right" | null>(null);
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
@@ -95,6 +98,26 @@ export default function WbsPage() {
     const next = !treeOpen;
     setTreeOpen(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ treeOpen: next }));
+  };
+
+  const syncGanttScroll = (source: "left" | "right", scrollTop: number) => {
+    const target = source === "left" ? rightGanttBodyRef.current : leftGanttBodyRef.current;
+    if (!target || target.scrollTop === scrollTop) return;
+    syncingPaneRef.current = source;
+    target.scrollTop = scrollTop;
+    requestAnimationFrame(() => {
+      syncingPaneRef.current = null;
+    });
+  };
+
+  const handleLeftGanttScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (syncingPaneRef.current === "right") return;
+    syncGanttScroll("left", event.currentTarget.scrollTop);
+  };
+
+  const handleRightGanttScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (syncingPaneRef.current === "left") return;
+    syncGanttScroll("right", event.currentTarget.scrollTop);
   };
 
   const handleMove = async (nodeId: string, direction: "up" | "down") => {
@@ -187,20 +210,22 @@ export default function WbsPage() {
         <div className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8 px-2">
           <div className="h-full rounded-md border bg-card overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full">
-              <ResizablePanel defaultSize={45} minSize={28} maxSize={70} className="overflow-auto">
-                <div className="h-full overflow-auto">
+              <ResizablePanel defaultSize={45} minSize={28} maxSize={70} className="min-h-0 overflow-hidden">
+                <div className="h-full min-h-0 overflow-hidden">
                   <WbsGanttTree
                     rows={rows}
                     collapsed={collapsed}
                     onToggle={toggleCollapse}
                     holidaySet={holidaySet}
                     rollupByNode={rollupByNode}
+                    bodyScrollRef={leftGanttBodyRef}
+                    onBodyScroll={handleLeftGanttScroll}
                   />
                 </div>
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={55} minSize={30} maxSize={72} className="overflow-auto">
-                <div className="h-full overflow-hidden">
+              <ResizablePanel defaultSize={55} minSize={30} maxSize={72} className="min-h-0 overflow-hidden">
+                <div className="h-full min-h-0 overflow-hidden">
                   <WbsGantt
                     rows={rows}
                     collapsed={collapsed}
@@ -208,6 +233,8 @@ export default function WbsPage() {
                     tasks={tasks}
                     predecessors={predecessors}
                     holidaySet={holidaySet}
+                    bodyScrollRef={rightGanttBodyRef}
+                    onBodyScroll={handleRightGanttScroll}
                   />
                 </div>
               </ResizablePanel>

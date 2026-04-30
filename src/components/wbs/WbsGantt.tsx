@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { RefObject, UIEvent, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "lucide-react";
@@ -23,6 +23,8 @@ interface Props {
   tasks: (TaskScheduleLite & { title: string; code: string | null })[];
   predecessors: DepLink[];
   holidaySet: Set<string>;
+  bodyScrollRef?: RefObject<HTMLDivElement>;
+  onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
 }
 
 type Zoom = "day" | "week" | "month";
@@ -38,7 +40,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, bodyScrollRef, onBodyScroll }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   // Determine date range across all tasks
@@ -104,9 +106,9 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
     return groups;
   }, [dayHeaders]);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const jumpToToday = () => {
-    const el = scrollRef.current;
+    const el = horizontalScrollRef.current;
     if (!el) return;
     const target = Math.max(0, todayX - el.clientWidth / 2);
     el.scrollTo({ left: target, behavior: "smooth" });
@@ -148,8 +150,8 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-auto relative">
-        <div className="flex" style={{ minWidth: chartWidth }}>
+      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="flex-1 min-h-0 overflow-auto">
+        <div ref={horizontalScrollRef} className="overflow-x-auto overflow-y-hidden relative">
           {/* Right chart area */}
           <div className="relative" style={{ width: chartWidth }}>
             {/* Header */}
