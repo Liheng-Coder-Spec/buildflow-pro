@@ -153,7 +153,7 @@ export function MemberPerformanceTable({
               </TableRow>
             ) : (
               grouped.map((group) => {
-                const isCollapsed = collapsed.has(group.key);
+                const isCollapsed = (collapsed ?? new Set<string>()).has(group.key);
                 const sub = group.rows.reduce(
                   (a, r) => ({
                     total: a.total + r.total_tasks,
