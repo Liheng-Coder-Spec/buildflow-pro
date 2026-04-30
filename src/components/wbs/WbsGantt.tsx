@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronRight, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WbsNode, buildNodePathMap } from "@/lib/wbsMeta";
 import { TaskScheduleLite, taskStatus, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
@@ -103,12 +103,24 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
       const kids = childrenOf.get(parentId) ?? [];
       for (const n of kids) {
         const nodeTasks = tasksByNode.get(n.id) ?? [];
-        const hasKids = (childrenOf.get(n.id)?.length ?? 0) > 0;
-        out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: hasKids || nodeTasks.length > 0 });
-        if (collapsed.has(n.id)) continue;
-        walk(n.id, depth + 1);
-        for (const t of nodeTasks) {
-          out.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });
+        const childNodes = childrenOf.get(n.id) ?? [];
+        const isLeaf = childNodes.length === 0;
+
+        if (isLeaf) {
+          if (nodeTasks.length === 0) {
+            out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: false });
+          } else {
+            for (const t of nodeTasks) {
+              out.push({ kind: "task", id: t.id, task: t, depth });
+            }
+          }
+        } else {
+          out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: true });
+          if (collapsed.has(n.id)) continue;
+          walk(n.id, depth + 1);
+          for (const t of nodeTasks) {
+            out.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });
+          }
         }
       }
     };
