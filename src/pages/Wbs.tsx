@@ -319,7 +319,7 @@ export default function WbsPage() {
                       </TabsList>
 
                       <TabsContent value="details" className="mt-4 space-y-4">
-                        {rollupByNode.has(selectedNode.id) && (
+                        {rollupByNode?.has(selectedNode.id) && (
                           <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
                         )}
                         <Card>

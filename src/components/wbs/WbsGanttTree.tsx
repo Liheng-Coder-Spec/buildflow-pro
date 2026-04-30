@@ -103,10 +103,10 @@ export function WbsGanttTree({ rows, collapsed = new Set<string>(), onToggle, ho
                   >
                     <ChevronRight
                        className={cn(
-                         "h-3.5 w-3.5 transition-transform",
-                         !collapsed?.has(r.id) && "rotate-90",
-                       )}
-                     />
+                          "h-3.5 w-3.5 transition-transform",
+                          !((collapsed ?? new Set<string>()).has(r.id)) && "rotate-90",
+                        )}
+                      />
                   </button>
                   <span className="font-mono text-[11px] text-muted-foreground shrink-0">
                     {r.node.code}
