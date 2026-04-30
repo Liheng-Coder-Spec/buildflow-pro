@@ -1,7 +1,6 @@
 import { RefObject, UIEvent, useMemo, useRef, useState } from "react";
 import { addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay } from "date-fns";
 import { Calendar } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GanttRow } from "@/lib/wbsGanttRows";
 import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
@@ -29,6 +28,7 @@ type Zoom = "day" | "week" | "month";
 
 const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 14, month: 6 };
 const ROW_H = 36;
+const TITLE_H = 52;
 const HEADER_H = 56;
 
 function safeDate(s: string | null) {
@@ -114,12 +114,10 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
   return (
     <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top,hsl(var(--muted))/0.4,transparent_40%)]">
       <div className="flex h-full flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b bg-muted/55 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="secondary" className="rounded-full px-2.5">
-              {tasks.length} tasks
-            </Badge>
-            <span>{format(range.start, "MMM d")} to {format(range.end, "MMM d, yyyy")}</span>
+        <div className="flex items-center justify-between gap-3 border-b bg-background/90 px-4" style={{ height: TITLE_H }}>
+          <div>
+            <div className="text-sm font-semibold text-foreground">Gantt Timeline</div>
+            <div className="text-[11px] text-muted-foreground">Aligned bars, grid lines, and dependency paths</div>
           </div>
 
           <div className="flex items-center gap-1">
@@ -321,18 +319,6 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-t bg-muted/35 px-4 py-2 text-[11px] text-muted-foreground">
-          <Badge variant="outline" className="gap-1.5 rounded-full">
-            <span className="h-2 w-2 rounded-full bg-success/80" /> On track
-          </Badge>
-          <Badge variant="outline" className="gap-1.5 rounded-full">
-            <span className="h-2 w-2 rounded-full bg-warning/80" /> At risk
-          </Badge>
-          <Badge variant="outline" className="gap-1.5 rounded-full">
-            <span className="h-2 w-2 rounded-full bg-destructive/80" /> Late
-          </Badge>
-          <span className="ml-auto">Vertical and horizontal grids stay locked to the left-side row model.</span>
-        </div>
       </div>
     </div>
   );

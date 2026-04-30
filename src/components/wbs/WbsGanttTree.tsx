@@ -24,6 +24,7 @@ interface Props {
 }
 
 const ROW_H = 36;
+const TITLE_H = 52;
 const HEADER_H = 56;
 
 const fmtDate = (s: string | null) => {
@@ -45,6 +46,12 @@ export function WbsGanttTree({
 
   return (
     <div className="h-full min-h-0 overflow-hidden bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted))/0.35)]">
+      <div className="flex items-center border-b bg-background/90 px-4" style={{ height: TITLE_H }}>
+        <div>
+          <div className="text-sm font-semibold text-foreground">WBS Schedule</div>
+          <div className="text-[11px] text-muted-foreground">Hierarchy, duration, dates, progress, and status</div>
+        </div>
+      </div>
       <div
         className="border-b bg-muted/70 grid items-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
         style={{ height: HEADER_H, gridTemplateColumns: "minmax(260px,1fr) 76px 86px 86px 108px 92px" }}
@@ -57,7 +64,7 @@ export function WbsGanttTree({
         <div className="px-3 text-right">Progress</div>
       </div>
 
-      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="h-[calc(100%-56px)] overflow-auto">
+      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="h-[calc(100%-108px)] overflow-auto">
         {rows.map((r, index) => {
           let start: string | null = null;
           let end: string | null = null;

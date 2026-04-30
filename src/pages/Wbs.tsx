@@ -209,17 +209,7 @@ export default function WbsPage() {
 
       {mainView === "gantt" ? (
         <div className="flex-1 min-h-0 overflow-hidden">
-          <Card className="border-dashed bg-muted/20">
-            <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <Badge variant="secondary" className="rounded-full px-3 py-1">{rows.length} rows</Badge>
-              <Badge variant="outline" className="rounded-full px-3 py-1">{tasks.length} tasks</Badge>
-              <span className="text-sm text-muted-foreground">
-                Two-panel schedule view with aligned WBS rows and timeline bars.
-              </span>
-            </CardContent>
-          </Card>
-
-          <div className="mt-3 h-[calc(100%-4.25rem)] rounded-2xl border bg-card shadow-sm overflow-hidden">
+          <div className="h-full rounded-2xl border bg-card shadow-sm overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full">
               <ResizablePanel defaultSize={46} minSize={30} maxSize={64} className="min-h-0 overflow-hidden">
                 <WbsGanttTree
