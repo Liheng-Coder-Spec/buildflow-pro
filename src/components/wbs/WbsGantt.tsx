@@ -267,15 +267,6 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
 
                       const left = differenceInCalendarDays(start, range.start) * dayWidth;
                       const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
-                      const levelTone =
-                        row.kind === "project" ? "border-primary bg-primary/18"
-                        : row.node.node_type === "building" ? "border-primary/90 bg-primary/16"
-                        : row.node.node_type === "level" ? "border-success/90 bg-success/14"
-                        : row.node.node_type === "zone" ? "border-warning/90 bg-warning/16"
-                        : rollup.status === "late" ? "border-destructive/80 bg-destructive/20"
-                        : rollup.status === "at_risk" ? "border-warning/80 bg-warning/20"
-                        : rollup.status === "done" ? "border-primary/80 bg-primary/20"
-                        : "border-success/80 bg-success/15";
                       const topOffset =
                         row.kind === "project" ? 6
                         : row.node.node_type === "building" ? 7
@@ -291,24 +282,69 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                       const borderWidth =
                         row.kind === "project" || row.node.node_type === "building" ? "border-[2px]"
                         : "border";
+                      const summaryTone =
+                        row.kind === "project" ? {
+                          shell: "border-slate-900 bg-slate-900/10",
+                          cap: "bg-slate-900",
+                          progress: "bg-slate-900",
+                        }
+                        : row.node.node_type === "building" ? {
+                          shell: "border-sky-950 bg-sky-950/10",
+                          cap: "bg-sky-950",
+                          progress: "bg-sky-950",
+                        }
+                        : row.node.node_type === "level" ? {
+                          shell: "border-sky-700 bg-sky-700/10",
+                          cap: "bg-sky-700",
+                          progress: "bg-sky-700",
+                        }
+                        : row.node.node_type === "zone" ? {
+                          shell: "border-sky-500 bg-sky-500/10",
+                          cap: "bg-sky-500",
+                          progress: "bg-sky-500",
+                        }
+                        : rollup.status === "late" ? {
+                          shell: "border-destructive/80 bg-destructive/10",
+                          cap: "bg-destructive",
+                          progress: "bg-destructive",
+                        }
+                        : rollup.status === "at_risk" ? {
+                          shell: "border-warning/80 bg-warning/10",
+                          cap: "bg-warning",
+                          progress: "bg-warning",
+                        }
+                        : rollup.status === "done" ? {
+                          shell: "border-primary/80 bg-primary/10",
+                          cap: "bg-primary",
+                          progress: "bg-primary",
+                        }
+                        : {
+                          shell: "border-success/80 bg-success/10",
+                          cap: "bg-success",
+                          progress: "bg-success",
+                        };
                       const title =
                         row.kind === "project"
                           ? `${row.label} ${format(start, "MMM d")} - ${format(end, "MMM d")}`
                           : `${row.node.name} ${format(start, "MMM d")} - ${format(end, "MMM d")}`;
+                      const progressWidth = Math.max(2, Math.min(width, (width * Math.min(100, rollup.progressPct)) / 100));
 
                       return (
                         <div
                           className={cn(
-                            "absolute rounded-full shadow-sm overflow-hidden",
+                            "absolute shadow-sm overflow-visible",
                             borderWidth,
-                            levelTone,
+                            summaryTone.shell,
                           )}
                           style={{ left, width, top: topOffset, height: barHeight }}
                           title={title}
                         >
+                          <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", summaryTone.cap)} />
+                          <div className={cn("absolute left-0 right-0 top-0 h-[2px]", summaryTone.cap)} />
+                          <div className={cn("absolute right-0 top-0 bottom-0 w-[3px]", summaryTone.cap)} />
                           <div
-                            className="h-full bg-foreground/10"
-                            style={{ width: `${Math.min(100, rollup.progressPct)}%` }}
+                            className={cn("absolute left-[3px] h-[2px]", summaryTone.progress)}
+                            style={{ bottom: 2, width: Math.max(0, progressWidth - 3) }}
                           />
                         </div>
                       );
