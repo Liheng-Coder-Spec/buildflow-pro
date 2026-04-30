@@ -193,6 +193,10 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
           {tasks.length} task{tasks.length === 1 ? "" : "s"} · {format(range.start, "MMM d")} → {format(range.end, "MMM d, yyyy")}
         </div>
         <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" onClick={jumpToToday} className="gap-1.5 mr-1">
+            <Calendar className="h-3.5 w-3.5" />
+            Today
+          </Button>
           <Button
             size="sm"
             variant={zoom === "day" ? "default" : "outline"}
