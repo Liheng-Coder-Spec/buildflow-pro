@@ -1,11 +1,10 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WbsNode } from "@/lib/wbsMeta";
-import { TaskScheduleLite, taskStatus, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
+import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
+import { GanttRow } from "@/lib/wbsGanttRows";
 import {
   addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay,
 } from "date-fns";
@@ -18,7 +17,9 @@ interface DepLink {
 }
 
 interface Props {
-  nodes: WbsNode[];
+  rows: GanttRow[];
+  collapsed: Set<string>;
+  onToggle: (id: string) => void;
   tasks: (TaskScheduleLite & { title: string; code: string | null })[];
   predecessors: DepLink[];
   holidaySet: Set<string>;
@@ -30,7 +31,6 @@ const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 12, month: 4 };
 
 const ROW_H = 32;
 const HEADER_H = 48;
-const LEFT_W = 320;
 
 function safeDate(s: string | null) {
   if (!s) return null;
@@ -38,9 +38,8 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   // Determine date range across all tasks
   const range = useMemo(() => {
@@ -65,56 +64,6 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
   const totalDays = differenceInCalendarDays(range.end, range.start) + 1;
   const dayWidth = ZOOM_PX[zoom];
   const chartWidth = totalDays * dayWidth;
-
-  // Build flat ordered list: nodes (depth-first) interleaved with their tasks
-  const childrenOf = useMemo(() => {
-    const m = new Map<string | null, WbsNode[]>();
-    for (const n of nodes) {
-      const arr = m.get(n.parent_id) ?? [];
-      arr.push(n);
-      m.set(n.parent_id, arr);
-    }
-    for (const arr of m.values()) {
-      arr.sort((a, b) =>
-        a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.name.localeCompare(b.name),
-      );
-    }
-    return m;
-  }, [nodes]);
-
-  const tasksByNode = useMemo(() => {
-    const m = new Map<string, typeof tasks>();
-    for (const t of tasks) {
-      if (!t.wbs_node_id) continue;
-      const arr = m.get(t.wbs_node_id) ?? [];
-      arr.push(t);
-      m.set(t.wbs_node_id, arr);
-    }
-    return m;
-  }, [tasks]);
-
-  type Row =
-    | { kind: "node"; id: string; node: WbsNode; depth: number; hasChildren: boolean }
-    | { kind: "task"; id: string; task: typeof tasks[number]; depth: number };
-
-  const rows: Row[] = useMemo(() => {
-    const out: Row[] = [];
-    const walk = (parentId: string | null, depth: number) => {
-      const kids = childrenOf.get(parentId) ?? [];
-      for (const n of kids) {
-        const nodeTasks = tasksByNode.get(n.id) ?? [];
-        const hasKids = (childrenOf.get(n.id)?.length ?? 0) > 0;
-        out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: hasKids || nodeTasks.length > 0 });
-        if (collapsed.has(n.id)) continue;
-        walk(n.id, depth + 1);
-        for (const t of nodeTasks) {
-          out.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });
-        }
-      }
-    };
-    walk(null, 0);
-    return out;
-  }, [childrenOf, tasksByNode, collapsed]);
 
   // Index task row positions for dependency arrows
   const taskRowIndex = useMemo(() => {
@@ -155,12 +104,12 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
     return groups;
   }, [dayHeaders]);
 
-  const toggle = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const jumpToToday = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = Math.max(0, todayX - el.clientWidth / 2);
+    el.scrollTo({ left: target, behavior: "smooth" });
   };
 
   return (
@@ -171,6 +120,10 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
           {tasks.length} task{tasks.length === 1 ? "" : "s"} · {format(range.start, "MMM d")} → {format(range.end, "MMM d, yyyy")}
         </div>
         <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" onClick={jumpToToday} className="gap-1.5 mr-1">
+            <Calendar className="h-3.5 w-3.5" />
+            Today
+          </Button>
           <Button
             size="sm"
             variant={zoom === "day" ? "default" : "outline"}
@@ -195,65 +148,8 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto relative">
-        <div className="flex" style={{ minWidth: LEFT_W + chartWidth }}>
-          {/* Left column */}
-          <div
-            className="sticky left-0 z-20 bg-card border-r"
-            style={{ width: LEFT_W, flexShrink: 0 }}
-          >
-            <div className="border-b bg-muted/40" style={{ height: HEADER_H }}>
-              <div className="px-3 h-full flex items-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                WBS / Task
-              </div>
-            </div>
-            {rows.map((r) => (
-              <div
-                key={r.kind + r.id}
-                className={cn(
-                  "border-b flex items-center px-2 text-sm",
-                  r.kind === "node" && "bg-muted/30 font-medium",
-                )}
-                style={{ height: ROW_H, paddingLeft: r.depth * 14 + 8 }}
-              >
-                {r.kind === "node" ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => toggle(r.id)}
-                      className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "h-3.5 w-3.5 transition-transform",
-                          !collapsed.has(r.id) && "rotate-90",
-                        )}
-                      />
-                    </button>
-                    <span className="font-mono text-[11px] text-muted-foreground ml-1">{r.node.code}</span>
-                    <span className="ml-2 truncate">{r.node.name}</span>
-                  </>
-                ) : (
-                  <Link
-                    to={`/tasks/${r.task.id}`}
-                    className="ml-5 truncate hover:text-primary inline-flex items-center gap-2"
-                  >
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full shrink-0",
-                        SCHEDULE_STATUS_DOT[taskStatus(r.task, today)],
-                      )}
-                    />
-                    {r.task.code && (
-                      <span className="font-mono text-[11px] text-muted-foreground">{r.task.code}</span>
-                    )}
-                    <span className="truncate">{r.task.title}</span>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </div>
-
+      <div ref={scrollRef} className="flex-1 overflow-auto relative">
+        <div className="flex" style={{ minWidth: chartWidth }}>
           {/* Right chart area */}
           <div className="relative" style={{ width: chartWidth }}>
             {/* Header */}
@@ -288,23 +184,22 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
 
             {/* Body grid */}
             <div className="relative">
-              {/* Background day stripes for weekends/holidays */}
+              {/* Background day stripes (weekend/holiday shading + per-day vertical grid) */}
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{ height: rows.length * ROW_H }}
               >
-                {dayHeaders.map((dh, i) =>
-                  dh.isWeekend || dh.isHoliday ? (
-                    <div
-                      key={i}
-                      className={cn(
-                        "absolute top-0 bottom-0",
-                        dh.isHoliday ? "bg-warning/10" : "bg-muted/30",
-                      )}
-                      style={{ left: i * dayWidth, width: dayWidth }}
-                    />
-                  ) : null,
-                )}
+                {dayHeaders.map((dh, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "absolute top-0 bottom-0 border-l border-border/30",
+                      dh.isHoliday && "bg-warning/10",
+                      !dh.isHoliday && dh.isWeekend && "bg-muted/30",
+                    )}
+                    style={{ left: i * dayWidth, width: dayWidth }}
+                  />
+                ))}
               </div>
 
               {/* Today line */}

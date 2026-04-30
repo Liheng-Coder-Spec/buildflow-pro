@@ -8,7 +8,6 @@ import {
   ResizablePanelGroup, ResizablePanel, ResizableHandle,
 } from "@/components/ui/resizable";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,12 +15,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
-import { WbsGanttTab } from "@/components/wbs/WbsGanttTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
+import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
+import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { buildGanttRows, GanttRow } from "@/lib/wbsGanttRows";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
-  LayoutList, GanttChart, Loader2,
+  LayoutList, GanttChart,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -40,10 +42,37 @@ export default function WbsPage() {
   const { roles } = useAuth();
   const projectId = activeProject?.id ?? null;
   const { nodes, tree, nodeStats, loading, refresh } = useWbsTree(projectId);
-  
+
   // Keep schedule data from remote branch for details tab
-  const { rollupByNode } = useWbsSchedule(projectId, nodes);
+  const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
   const { dateSet: holidaySet } = useProjectHolidays(projectId);
+  const [predecessors, setPredecessors] = useState<any[]>([]);
+
+  // Shared collapsed state for Gantt alignment
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Shared rows derived from nodes + tasks + collapsed state
+  const rows: GanttRow[] = useMemo(
+    () => buildGanttRows({ nodes, tasks, collapsed }),
+    [nodes, tasks, collapsed],
+  );
+
+  useEffect(() => {
+    if (!projectId || tasks.length === 0) { setPredecessors([]); return; }
+    const ids = tasks.map((t) => t.id);
+    supabase
+      .from("task_predecessors")
+      .select("task_id, predecessor_id, relation_type, lag_days")
+      .in("task_id", ids)
+      .then(({ data }) => setPredecessors(data ?? []));
+  }, [projectId, tasks]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -87,7 +116,7 @@ export default function WbsPage() {
     ];
 
     try {
-      const { error } = await supabase.rpc("reorder_wbs_nodes", { _updates: updates });
+      const { error } = await (supabase.rpc as any)("reorder_wbs_nodes", { _updates: updates });
       if (error) {
         for (const up of updates) {
           await supabase.from("wbs_nodes").update({ sort_order: up.sort_order }).eq("id", up.id);
@@ -154,12 +183,40 @@ export default function WbsPage() {
         </div>
       </div>
 
-      <Card className="flex-1 min-h-0 overflow-hidden">
-        {mainView === "gantt" && (
-          <WbsGanttTab projectId={projectId!} wbsNodes={nodes} wbsTree={tree} nodeStats={nodeStats} />
-        )}
+      {mainView === "gantt" && (
+        <div className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8 px-2">
+          <div className="h-full rounded-md border bg-card overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={45} minSize={28} maxSize={70} className="overflow-auto">
+                <div className="h-full overflow-auto">
+                  <WbsGanttTree
+                    rows={rows}
+                    collapsed={collapsed}
+                    onToggle={toggleCollapse}
+                    rollupByNode={rollupByNode}
+                  />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={55} minSize={30} maxSize={72} className="overflow-auto">
+                <div className="h-full overflow-hidden">
+                  <WbsGantt
+                    rows={rows}
+                    collapsed={collapsed}
+                    onToggle={toggleCollapse}
+                    tasks={tasks}
+                    predecessors={predecessors}
+                    holidaySet={holidaySet}
+                  />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        </div>
+      )}
 
-        {mainView === "tree" && (
+      {mainView === "tree" && (
+        <Card className="flex-1 min-h-0 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {treeOpen && (
               <>
@@ -262,7 +319,6 @@ export default function WbsPage() {
                       </TabsList>
 
                       <TabsContent value="details" className="mt-4 space-y-4">
-                        {/* Include the schedule card from remote if rollup exists */}
                         {rollupByNode.has(selectedNode.id) && (
                           <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
                         )}
@@ -336,8 +392,8 @@ export default function WbsPage() {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

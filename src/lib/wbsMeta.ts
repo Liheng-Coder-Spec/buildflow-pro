@@ -96,3 +96,45 @@ export function flattenTree(nodes: WbsTreeNode[]): WbsTreeNode[] {
   walk(nodes);
   return out;
 }
+
+/**
+ * Build a lookup map of nodeId -> { building, level, fullPath }
+ * given a flat list of WbsNodes.
+ */
+export function buildNodePathMap(
+  nodes: WbsNode[],
+): Map<string, { building: string; level: string; fullPath: string }> {
+  const map = new Map<string, { building: string; level: string; fullPath: string }>();
+
+  // First pass: index nodes by id with their own info
+  const byId = new Map<string, WbsNode>();
+  for (const n of nodes) byId.set(n.id, n);
+
+  // Second pass: for each node, walk up ancestors to find building and level
+  for (const n of nodes) {
+    let building = "";
+    let level = "";
+    let cur: WbsNode | undefined = n;
+    // Walk up the tree to collect ancestors
+    const ancestors: WbsNode[] = [];
+    while (cur) {
+      ancestors.unshift(cur);
+      if (cur.parent_id) {
+        cur = byId.get(cur.parent_id);
+      } else {
+        break;
+      }
+    }
+    // Now find building and level from ancestors
+    for (const a of ancestors) {
+      if (a.node_type === "building" && !building) building = a.name;
+      if (a.node_type === "level" && !level) level = a.name;
+    }
+    map.set(n.id, {
+      building,
+      level,
+      fullPath: ancestors.map((a) => a.name).join(" > "),
+    });
+  }
+  return map;
+}
