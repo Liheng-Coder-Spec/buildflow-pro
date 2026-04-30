@@ -369,8 +369,8 @@ export default function WbsPage() {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
