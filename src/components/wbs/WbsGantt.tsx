@@ -279,7 +279,7 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         : row.node.node_type === "level" ? 18
                         : row.node.node_type === "zone" ? 16
                         : 18;
-                      const edgeThickness = 6;
+                      const edgeThickness = 2;
                       const summaryTone =
                         row.kind === "project" ? {
                           shell: "border-slate-900 bg-slate-900/10",
