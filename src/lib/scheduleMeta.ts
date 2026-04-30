@@ -77,17 +77,18 @@ const maxDate = (a: Date | null, b: Date | null) =>
 export function workingDaysBetween(
   startIso: string | null,
   endIso: string | null,
-  holidayIsoSet: Set<string>,
+  holidayIsoSet?: Set<string>,
 ): number {
   const s = safe(startIso);
   const e = safe(endIso);
   if (!s || !e) return 0;
   const diff = differenceInCalendarDays(e, s);
   if (diff < 0) return 0;
+  const holidays = holidayIsoSet ?? new Set<string>();
   let count = 0;
   for (let i = 0; i <= diff; i++) {
     const d = addDays(s, i);
-    if (!holidayIsoSet.has(format(d, "yyyy-MM-dd"))) count++;
+    if (!holidays.has(format(d, "yyyy-MM-dd"))) count++;
   }
   return count;
 }

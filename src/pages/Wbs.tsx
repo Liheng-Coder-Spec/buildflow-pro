@@ -193,6 +193,7 @@ export default function WbsPage() {
                     rows={rows}
                     collapsed={collapsed}
                     onToggle={toggleCollapse}
+                    holidaySet={holidaySet}
                     rollupByNode={rollupByNode}
                   />
                 </div>
