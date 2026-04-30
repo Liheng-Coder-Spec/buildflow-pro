@@ -177,6 +177,14 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
     });
   };
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const jumpToToday = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const target = Math.max(0, todayX - el.clientWidth / 2);
+    el.scrollTo({ left: target, behavior: "smooth" });
+  };
+
   return (
     <div className="border rounded-lg bg-card flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
