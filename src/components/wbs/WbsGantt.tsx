@@ -104,12 +104,18 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
     return groups;
   }, [dayHeaders]);
 
-  const horizontalScrollRef = useRef<HTMLDivElement>(null);
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const bodyHorizontalScrollRef = useRef<HTMLDivElement>(null);
   const jumpToToday = () => {
-    const element = horizontalScrollRef.current;
+    const element = bodyHorizontalScrollRef.current;
     if (!element) return;
     const target = Math.max(0, todayX - element.clientWidth / 2);
     element.scrollTo({ left: target, behavior: "smooth" });
+  };
+
+  const syncHeaderScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!headerScrollRef.current) return;
+    headerScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
   };
 
   return (
@@ -140,43 +146,47 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
           </div>
         </div>
 
+        <div ref={headerScrollRef} className="overflow-hidden border-b bg-muted/95 backdrop-blur">
+          <div style={{ width: chartWidth, height: HEADER_H }}>
+            <div className="flex h-7 border-b border-border/60">
+              {monthHeaders.map((month, index) => (
+                <div
+                  key={index}
+                  className="flex items-center border-r border-border/60 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                  style={{ width: month.span * dayWidth, flexShrink: 0 }}
+                >
+                  {month.label}
+                </div>
+              ))}
+            </div>
+            <div className="flex h-7">
+              {dayHeaders.map((header, index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "border-r border-border/50 text-center text-[10px] leading-7 text-muted-foreground",
+                    header.isHoliday && "bg-warning/10 text-warning",
+                    !header.isHoliday && header.isWeekend && "bg-muted/55",
+                  )}
+                  style={{ width: dayWidth, flexShrink: 0 }}
+                >
+                  {zoom === "day" && format(header.date, "d")}
+                  {zoom === "week" && header.date.getDay() === 1 && format(header.date, "d")}
+                  {zoom === "month" && format(header.date, "d") === "1" && format(header.date, "MMM")}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div ref={bodyScrollRef} onScroll={onBodyScroll} className="flex-1 min-h-0 overflow-auto">
-          <div ref={horizontalScrollRef} className="overflow-x-auto overflow-y-hidden">
+          <div ref={bodyHorizontalScrollRef} onScroll={syncHeaderScroll} className="overflow-x-auto overflow-y-hidden">
             <div className="relative" style={{ width: chartWidth }}>
               <div
-                className="sticky top-0 z-20 border-b bg-muted/95 backdrop-blur"
-                style={{ height: HEADER_H }}
+                className="border-b bg-muted/50"
+                style={{ height: 0 }}
               >
-                <div className="flex h-7 border-b border-border/60">
-                  {monthHeaders.map((month, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center border-r border-border/60 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-                      style={{ width: month.span * dayWidth, flexShrink: 0 }}
-                    >
-                      {month.label}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex h-7">
-                  {dayHeaders.map((header, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "border-r border-border/50 text-center text-[10px] leading-7 text-muted-foreground",
-                        header.isHoliday && "bg-warning/10 text-warning",
-                        !header.isHoliday && header.isWeekend && "bg-muted/55",
-                      )}
-                      style={{ width: dayWidth, flexShrink: 0 }}
-                    >
-                      {zoom === "day" && format(header.date, "d")}
-                      {zoom === "week" && header.date.getDay() === 1 && format(header.date, "d")}
-                      {zoom === "month" && format(header.date, "d") === "1" && format(header.date, "MMM")}
-                    </div>
-                  ))}
-                </div>
               </div>
-
               <div className="relative" style={{ height: rows.length * ROW_H }}>
                 <div className="absolute inset-0 pointer-events-none">
                   {dayHeaders.map((header, index) => (
