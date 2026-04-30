@@ -193,16 +193,16 @@ export function WbsGanttTree({
                 </span>
               </div>
 
-              <div className="px-3 flex items-center gap-2 justify-end h-full">
-                <div className="h-1.5 w-[48px] rounded-full bg-muted overflow-hidden">
+              <div className="px-3 flex items-center justify-center h-full">
+                <div className="relative h-6 w-[64px] rounded-full bg-muted/80 ring-1 ring-border/60 overflow-hidden">
                   <div
-                    className="h-full bg-primary rounded-full"
+                    className="h-full rounded-full bg-sky-500"
                     style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                   />
+                  <span className="absolute inset-0 flex items-center justify-center tabular-nums text-[11px] font-semibold text-foreground">
+                    {Math.round(progress)}%
+                  </span>
                 </div>
-                <span className="tabular-nums text-[11px] text-muted-foreground w-8 text-right">
-                  {Math.round(progress)}%
-                </span>
               </div>
             </div>
           );
