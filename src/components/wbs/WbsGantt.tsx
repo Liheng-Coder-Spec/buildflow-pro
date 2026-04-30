@@ -209,7 +209,7 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto relative">
+      <div ref={scrollRef} className="flex-1 overflow-auto relative">
         <div className="flex" style={{ minWidth: chartWidth }}>
           {/* Right chart area */}
           <div className="relative" style={{ width: chartWidth }}>
