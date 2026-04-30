@@ -22,6 +22,7 @@ import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
   LayoutList, GanttChart,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -98,7 +99,7 @@ export default function WbsPage() {
     ];
 
     try {
-      const { error } = await supabase.rpc("reorder_wbs_nodes", { _updates: updates });
+      const { error } = await (supabase.rpc as any)("reorder_wbs_nodes", { _updates: updates });
       if (error) {
         for (const up of updates) {
           await supabase.from("wbs_nodes").update({ sort_order: up.sort_order }).eq("id", up.id);
@@ -165,24 +166,34 @@ export default function WbsPage() {
         </div>
       </div>
 
-      <Card className="flex-1 min-h-0 overflow-hidden">
-        {mainView === "gantt" && (
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            <ResizablePanel defaultSize={50} minSize={30} maxSize={70} className="overflow-auto">
-              <div className="h-full overflow-auto">
-                <WbsGanttTree nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
-              </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={50} minSize={30} maxSize={70} className="overflow-auto">
-              <div className="h-full overflow-hidden">
-                <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        )}
+      {mainView === "gantt" && (
+        <div className="flex-1 min-h-0 overflow-hidden -mx-4 sm:-mx-6 lg:-mx-8 px-2">
+          <div className="h-full rounded-md border bg-card overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={45} minSize={28} maxSize={70} className="overflow-auto">
+                <div className="h-full overflow-auto">
+                  <WbsGanttTree
+                    nodes={nodes}
+                    tasks={tasks}
+                    predecessors={predecessors}
+                    holidaySet={holidaySet}
+                    rollupByNode={rollupByNode}
+                  />
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={55} minSize={30} maxSize={72} className="overflow-auto">
+                <div className="h-full overflow-hidden">
+                  <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        </div>
+      )}
 
-        {mainView === "tree" && (
+      {mainView === "tree" && (
+        <Card className="flex-1 min-h-0 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {treeOpen && (
               <>
@@ -358,8 +369,8 @@ export default function WbsPage() {
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }
