@@ -22,6 +22,7 @@ import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
   LayoutList, GanttChart,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -98,7 +99,7 @@ export default function WbsPage() {
     ];
 
     try {
-      const { error } = await supabase.rpc("reorder_wbs_nodes", { _updates: updates });
+      const { error } = await (supabase.rpc as any)("reorder_wbs_nodes", { _updates: updates });
       if (error) {
         for (const up of updates) {
           await supabase.from("wbs_nodes").update({ sort_order: up.sort_order }).eq("id", up.id);

@@ -8,6 +8,8 @@ export interface GanttTask {
   wbs_node_id: string | null;
   planned_start: string | null;
   planned_end: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
   progress_pct: number;
   status: string;
 }
