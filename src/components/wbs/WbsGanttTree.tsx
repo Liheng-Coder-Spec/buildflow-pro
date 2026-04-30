@@ -38,7 +38,7 @@ const HEADER_H = 48;
 const fmtDate = (s: string | null) => {
   if (!s) return "—";
   const d = parseISO(s);
-  return isValid(d) ? format(d, "MMM d") : "—";
+  return isValid(d) ? format(d, "dd-MM-yyyy") : "—";
 };
 
 export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) {
