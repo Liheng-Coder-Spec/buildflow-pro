@@ -1,13 +1,11 @@
 import { RefObject, UIEvent, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay } from "date-fns";
 import { Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { GanttRow } from "@/lib/wbsGanttRows";
-import {
-  addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay,
-} from "date-fns";
+import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
+import { cn } from "@/lib/utils";
 
 interface DepLink {
   task_id: string;
@@ -29,10 +27,9 @@ interface Props {
 
 type Zoom = "day" | "week" | "month";
 
-const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 12, month: 4 };
-
-const ROW_H = 32;
-const HEADER_H = 48;
+const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 14, month: 6 };
+const ROW_H = 36;
+const HEADER_H = 56;
 
 function safeDate(s: string | null) {
   if (!s) return null;
@@ -43,15 +40,14 @@ function safeDate(s: string | null) {
 export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, bodyScrollRef, onBodyScroll }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
-  // Determine date range across all tasks
   const range = useMemo(() => {
     const starts: Date[] = [];
     const ends: Date[] = [];
-    for (const t of tasks) {
-      const s = safeDate(t.planned_start);
-      const e = safeDate(t.planned_end);
-      if (s) starts.push(s);
-      if (e) ends.push(e);
+    for (const task of tasks) {
+      const start = safeDate(task.planned_start);
+      const end = safeDate(task.planned_end);
+      if (start) starts.push(start);
+      if (end) ends.push(end);
     }
     if (starts.length === 0 || ends.length === 0) {
       const today = startOfDay(new Date());
@@ -67,13 +63,12 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
   const dayWidth = ZOOM_PX[zoom];
   const chartWidth = totalDays * dayWidth;
 
-  // Index task row positions for dependency arrows
   const taskRowIndex = useMemo(() => {
-    const m = new Map<string, number>();
-    rows.forEach((r, i) => {
-      if (r.kind === "task") m.set(r.id, i);
+    const map = new Map<string, number>();
+    rows.forEach((row, index) => {
+      if (row.kind === "task") map.set(row.id, index);
     });
-    return m;
+    return map;
   }, [rows]);
 
   const today = startOfDay(new Date());
@@ -82,11 +77,11 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
   const dayHeaders = useMemo(() => {
     const items: { date: Date; isHoliday: boolean; isWeekend: boolean }[] = [];
     for (let i = 0; i < totalDays; i++) {
-      const d = addDays(range.start, i);
+      const date = addDays(range.start, i);
       items.push({
-        date: d,
-        isHoliday: holidaySet.has(format(d, "yyyy-MM-dd")),
-        isWeekend: d.getDay() === 0 || d.getDay() === 6,
+        date,
+        isHoliday: holidaySet.has(format(date, "yyyy-MM-dd")),
+        isWeekend: date.getDay() === 0 || date.getDay() === 6,
       });
     }
     return items;
@@ -94,238 +89,250 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
 
   const monthHeaders = useMemo(() => {
     const groups: { label: string; span: number }[] = [];
-    let cur: { label: string; span: number } | null = null;
-    for (const dh of dayHeaders) {
-      const label = format(dh.date, "MMM yyyy");
-      if (!cur || cur.label !== label) {
-        if (cur) groups.push(cur);
-        cur = { label, span: 1 };
-      } else cur.span++;
+    let current: { label: string; span: number } | null = null;
+    for (const header of dayHeaders) {
+      const label = format(header.date, "MMM yyyy");
+      if (!current || current.label !== label) {
+        if (current) groups.push(current);
+        current = { label, span: 1 };
+      } else {
+        current.span++;
+      }
     }
-    if (cur) groups.push(cur);
+    if (current) groups.push(current);
     return groups;
   }, [dayHeaders]);
 
   const horizontalScrollRef = useRef<HTMLDivElement>(null);
   const jumpToToday = () => {
-    const el = horizontalScrollRef.current;
-    if (!el) return;
-    const target = Math.max(0, todayX - el.clientWidth / 2);
-    el.scrollTo({ left: target, behavior: "smooth" });
+    const element = horizontalScrollRef.current;
+    if (!element) return;
+    const target = Math.max(0, todayX - element.clientWidth / 2);
+    element.scrollTo({ left: target, behavior: "smooth" });
   };
 
   return (
-    <div className="border rounded-lg bg-card flex flex-col h-full overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-2 border-b">
-        <div className="text-sm text-muted-foreground">
-          {tasks.length} task{tasks.length === 1 ? "" : "s"} · {format(range.start, "MMM d")} → {format(range.end, "MMM d, yyyy")}
-        </div>
-        <div className="flex items-center gap-1">
-          <Button size="sm" variant="outline" onClick={jumpToToday} className="gap-1.5 mr-1">
-            <Calendar className="h-3.5 w-3.5" />
-            Today
-          </Button>
-          <Button
-            size="sm"
-            variant={zoom === "day" ? "default" : "outline"}
-            onClick={() => setZoom("day")}
-          >
-            Day
-          </Button>
-          <Button
-            size="sm"
-            variant={zoom === "week" ? "default" : "outline"}
-            onClick={() => setZoom("week")}
-          >
-            Week
-          </Button>
-          <Button
-            size="sm"
-            variant={zoom === "month" ? "default" : "outline"}
-            onClick={() => setZoom("month")}
-          >
-            Month
-          </Button>
-        </div>
-      </div>
+    <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top,hsl(var(--muted))/0.4,transparent_40%)]">
+      <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b bg-muted/55 px-4 py-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Badge variant="secondary" className="rounded-full px-2.5">
+              {tasks.length} tasks
+            </Badge>
+            <span>{format(range.start, "MMM d")} to {format(range.end, "MMM d, yyyy")}</span>
+          </div>
 
-      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="flex-1 min-h-0 overflow-auto">
-        <div ref={horizontalScrollRef} className="overflow-x-auto overflow-y-hidden relative">
-          {/* Right chart area */}
-          <div className="relative" style={{ width: chartWidth }}>
-            {/* Header */}
-            <div className="border-b bg-muted/40" style={{ height: HEADER_H }}>
-              <div className="flex h-6 border-b border-border/50">
-                {monthHeaders.map((m, i) => (
-                  <div
-                    key={i}
-                    className="text-[11px] uppercase tracking-wider text-muted-foreground border-r flex items-center px-2"
-                    style={{ width: m.span * dayWidth, flexShrink: 0 }}
-                  >
-                    {m.label}
-                  </div>
-                ))}
-              </div>
-              <div className="flex h-6">
-                {dayHeaders.map((dh, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "text-[10px] text-center border-r border-border/30",
-                      (dh.isWeekend || dh.isHoliday) && "bg-muted/40 text-muted-foreground",
-                    )}
-                    style={{ width: dayWidth, flexShrink: 0 }}
-                  >
-                    {zoom === "day" && format(dh.date, "d")}
-                    {zoom === "week" && dh.date.getDay() === 1 && format(dh.date, "MMM d")}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Body grid */}
-            <div className="relative">
-              {/* Background day stripes (weekend/holiday shading + per-day vertical grid) */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ height: rows.length * ROW_H }}
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" onClick={jumpToToday} className="gap-1.5 rounded-full">
+              <Calendar className="h-3.5 w-3.5" />
+              Today
+            </Button>
+            {(["day", "week", "month"] as const).map((value) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={zoom === value ? "default" : "outline"}
+                className="rounded-full capitalize"
+                onClick={() => setZoom(value)}
               >
-                {dayHeaders.map((dh, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "absolute top-0 bottom-0 border-l border-border/30",
-                      dh.isHoliday && "bg-warning/10",
-                      !dh.isHoliday && dh.isWeekend && "bg-muted/30",
-                    )}
-                    style={{ left: i * dayWidth, width: dayWidth }}
-                  />
-                ))}
+                {value}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div ref={bodyScrollRef} onScroll={onBodyScroll} className="flex-1 min-h-0 overflow-auto">
+          <div ref={horizontalScrollRef} className="overflow-x-auto overflow-y-hidden">
+            <div className="relative" style={{ width: chartWidth }}>
+              <div className="border-b bg-muted/50" style={{ height: HEADER_H }}>
+                <div className="flex h-7 border-b border-border/60">
+                  {monthHeaders.map((month, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center border-r border-border/60 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+                      style={{ width: month.span * dayWidth, flexShrink: 0 }}
+                    >
+                      {month.label}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex h-7">
+                  {dayHeaders.map((header, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "border-r border-border/50 text-center text-[10px] leading-7 text-muted-foreground",
+                        header.isHoliday && "bg-warning/10 text-warning",
+                        !header.isHoliday && header.isWeekend && "bg-muted/55",
+                      )}
+                      style={{ width: dayWidth, flexShrink: 0 }}
+                    >
+                      {zoom === "day" && format(header.date, "d")}
+                      {zoom === "week" && header.date.getDay() === 1 && format(header.date, "d")}
+                      {zoom === "month" && format(header.date, "d") === "1" && format(header.date, "MMM")}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Today line */}
-              {todayX >= 0 && todayX <= chartWidth && (
-                <div
-                  className="absolute top-0 bottom-0 w-px bg-primary z-10 pointer-events-none"
-                  style={{ left: todayX, height: rows.length * ROW_H }}
-                >
-                  <div className="absolute -top-2 -left-1 h-2 w-2 rounded-full bg-primary" />
-                </div>
-              )}
-
-              {/* Rows + bars */}
-              {rows.map((r, idx) => (
-                <div
-                  key={r.kind + r.id}
-                  className="border-b relative"
-                  style={{ height: ROW_H }}
-                >
-                  {r.kind === "task" && (() => {
-                    const ps = safeDate(r.task.planned_start);
-                    const pe = safeDate(r.task.planned_end);
-                    if (!ps || !pe || pe < ps) return null;
-                    const left = differenceInCalendarDays(ps, range.start) * dayWidth;
-                    const width = Math.max(dayWidth, (differenceInCalendarDays(pe, ps) + 1) * dayWidth);
-                    const status = taskStatus(r.task, today);
-                    const barColor =
-                      status === "late" ? "bg-destructive/70 border-destructive"
-                        : status === "at_risk" ? "bg-warning/70 border-warning"
-                        : status === "done" ? "bg-primary/60 border-primary"
-                        : "bg-primary/40 border-primary/60";
-                    return (
-                      <div
-                        className={cn(
-                          "absolute top-1.5 rounded-md border h-5 group cursor-pointer overflow-hidden",
-                          barColor,
-                        )}
-                        style={{ left, width }}
-                        title={`${r.task.title} · ${format(ps, "MMM d")} → ${format(pe, "MMM d")}`}
-                      >
-                        <div
-                          className="h-full bg-foreground/20"
-                          style={{ width: `${Math.min(100, r.task.progress_pct)}%` }}
-                        />
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))}
-
-              {/* Dependency arrows (SVG overlay) */}
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                style={{ width: chartWidth, height: rows.length * ROW_H }}
-              >
-                <defs>
-                  <marker
-                    id="arrow"
-                    viewBox="0 0 10 10"
-                    refX="8"
-                    refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
-                    orient="auto"
-                  >
-                    <path d="M0,0 L10,5 L0,10 z" fill="hsl(var(--muted-foreground))" />
-                  </marker>
-                </defs>
-                {predecessors.map((p, i) => {
-                  const fromIdx = taskRowIndex.get(p.predecessor_id);
-                  const toIdx = taskRowIndex.get(p.task_id);
-                  if (fromIdx === undefined || toIdx === undefined) return null;
-                  const from = rows[fromIdx];
-                  const to = rows[toIdx];
-                  if (from.kind !== "task" || to.kind !== "task") return null;
-                  const fps = safeDate(from.task.planned_start);
-                  const fpe = safeDate(from.task.planned_end);
-                  const tps = safeDate(to.task.planned_start);
-                  const tpe = safeDate(to.task.planned_end);
-                  if (!fps || !fpe || !tps || !tpe) return null;
-
-                  const fromLeft = differenceInCalendarDays(fps, range.start) * dayWidth;
-                  const fromRight = (differenceInCalendarDays(fpe, range.start) + 1) * dayWidth;
-                  const toLeft = differenceInCalendarDays(tps, range.start) * dayWidth;
-                  const toRight = (differenceInCalendarDays(tpe, range.start) + 1) * dayWidth;
-
-                  let x1 = fromRight, x2 = toLeft;
-                  if (p.relation_type === "SS") { x1 = fromLeft; x2 = toLeft; }
-                  else if (p.relation_type === "FF") { x1 = fromRight; x2 = toRight; }
-                  else if (p.relation_type === "SF") { x1 = fromLeft; x2 = toRight; }
-                  x2 += (p.lag_days ?? 0) * dayWidth;
-
-                  const y1 = fromIdx * ROW_H + ROW_H / 2;
-                  const y2 = toIdx * ROW_H + ROW_H / 2;
-                  const midX = x1 + 8;
-                  return (
-                    <polyline
-                      key={i}
-                      points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
-                      fill="none"
-                      stroke="hsl(var(--muted-foreground))"
-                      strokeWidth={1}
-                      markerEnd="url(#arrow)"
-                      opacity={0.55}
+              <div className="relative" style={{ height: rows.length * ROW_H }}>
+                <div className="absolute inset-0 pointer-events-none">
+                  {dayHeaders.map((header, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "absolute top-0 bottom-0 border-l border-border/60",
+                        header.isHoliday && "bg-warning/10",
+                        !header.isHoliday && header.isWeekend && "bg-muted/25",
+                      )}
+                      style={{ left: index * dayWidth, width: dayWidth }}
                     />
-                  );
-                })}
-              </svg>
+                  ))}
+                  {rows.map((row, index) => (
+                    <div
+                      key={row.kind + row.id}
+                      className={cn(
+                        "absolute left-0 right-0 border-t border-border/60",
+                        index % 2 === 1 && "bg-muted/10",
+                      )}
+                      style={{ top: index * ROW_H, height: ROW_H }}
+                    />
+                  ))}
+                </div>
+
+                {todayX >= 0 && todayX <= chartWidth && (
+                  <div
+                    className="absolute top-0 bottom-0 z-10 w-px bg-primary/80 pointer-events-none"
+                    style={{ left: todayX }}
+                  >
+                    <div className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-background bg-primary" />
+                  </div>
+                )}
+
+                {rows.map((row) => (
+                  <div
+                    key={row.kind + row.id}
+                    className="relative border-b border-transparent"
+                    style={{ height: ROW_H }}
+                  >
+                    {row.kind === "task" && (() => {
+                      const start = safeDate(row.task.planned_start);
+                      const end = safeDate(row.task.planned_end);
+                      if (!start || !end || end < start) return null;
+
+                      const left = differenceInCalendarDays(start, range.start) * dayWidth;
+                      const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
+                      const status = taskStatus(row.task, today);
+                      const barTone =
+                        status === "late" ? "border-destructive bg-destructive/70"
+                        : status === "at_risk" ? "border-warning bg-warning/70"
+                        : status === "done" ? "border-primary bg-primary/75"
+                        : "border-success bg-success/70";
+
+                      return (
+                        <div
+                          className={cn(
+                            "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden",
+                            barTone,
+                          )}
+                          style={{ left, width }}
+                          title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
+                        >
+                          <div
+                            className="h-full bg-foreground/20"
+                            style={{ width: `${Math.min(100, row.task.progress_pct)}%` }}
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ))}
+
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ width: chartWidth, height: rows.length * ROW_H }}
+                >
+                  <defs>
+                    <marker
+                      id="wbs-gantt-arrow"
+                      viewBox="0 0 10 10"
+                      refX="8"
+                      refY="5"
+                      markerWidth="6"
+                      markerHeight="6"
+                      orient="auto"
+                    >
+                      <path d="M0,0 L10,5 L0,10 z" fill="hsl(var(--muted-foreground))" />
+                    </marker>
+                  </defs>
+                  {predecessors.map((link, index) => {
+                    const fromIdx = taskRowIndex.get(link.predecessor_id);
+                    const toIdx = taskRowIndex.get(link.task_id);
+                    if (fromIdx === undefined || toIdx === undefined) return null;
+
+                    const from = rows[fromIdx];
+                    const to = rows[toIdx];
+                    if (from.kind !== "task" || to.kind !== "task") return null;
+
+                    const fromStart = safeDate(from.task.planned_start);
+                    const fromEnd = safeDate(from.task.planned_end);
+                    const toStart = safeDate(to.task.planned_start);
+                    const toEnd = safeDate(to.task.planned_end);
+                    if (!fromStart || !fromEnd || !toStart || !toEnd) return null;
+
+                    const fromLeft = differenceInCalendarDays(fromStart, range.start) * dayWidth;
+                    const fromRight = (differenceInCalendarDays(fromEnd, range.start) + 1) * dayWidth;
+                    const toLeft = differenceInCalendarDays(toStart, range.start) * dayWidth;
+                    const toRight = (differenceInCalendarDays(toEnd, range.start) + 1) * dayWidth;
+
+                    let x1 = fromRight;
+                    let x2 = toLeft;
+                    if (link.relation_type === "SS") {
+                      x1 = fromLeft;
+                      x2 = toLeft;
+                    } else if (link.relation_type === "FF") {
+                      x1 = fromRight;
+                      x2 = toRight;
+                    } else if (link.relation_type === "SF") {
+                      x1 = fromLeft;
+                      x2 = toRight;
+                    }
+                    x2 += (link.lag_days ?? 0) * dayWidth;
+
+                    const y1 = fromIdx * ROW_H + ROW_H / 2;
+                    const y2 = toIdx * ROW_H + ROW_H / 2;
+                    const midX = x1 + 10;
+
+                    return (
+                      <polyline
+                        key={index}
+                        points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
+                        fill="none"
+                        stroke="hsl(var(--muted-foreground))"
+                        strokeWidth={1.25}
+                        markerEnd="url(#wbs-gantt-arrow)"
+                        opacity={0.55}
+                      />
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="border-t px-3 py-2 text-[11px] text-muted-foreground flex items-center gap-4">
-        <Badge variant="outline" className="gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-primary/60" /> Planned
-        </Badge>
-        <Badge variant="outline" className="gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-warning/70" /> At risk
-        </Badge>
-        <Badge variant="outline" className="gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-destructive/70" /> Late
-        </Badge>
-        <span className="ml-auto">Today is highlighted in primary color · holiday columns shaded</span>
+        <div className="flex items-center gap-3 border-t bg-muted/35 px-4 py-2 text-[11px] text-muted-foreground">
+          <Badge variant="outline" className="gap-1.5 rounded-full">
+            <span className="h-2 w-2 rounded-full bg-success/80" /> On track
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 rounded-full">
+            <span className="h-2 w-2 rounded-full bg-warning/80" /> At risk
+          </Badge>
+          <Badge variant="outline" className="gap-1.5 rounded-full">
+            <span className="h-2 w-2 rounded-full bg-destructive/80" /> Late
+          </Badge>
+          <span className="ml-auto">Vertical and horizontal grids stay locked to the left-side row model.</span>
+        </div>
       </div>
     </div>
   );

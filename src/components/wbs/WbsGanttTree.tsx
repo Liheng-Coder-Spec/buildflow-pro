@@ -8,6 +8,7 @@ import {
   NodeRollup,
   SCHEDULE_STATUS_DOT,
   SCHEDULE_STATUS_LABEL,
+  SCHEDULE_STATUS_TONE,
   taskStatus,
   workingDaysBetween,
 } from "@/lib/scheduleMeta";
@@ -22,13 +23,13 @@ interface Props {
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
 }
 
-const ROW_H = 32;
-const HEADER_H = 48;
+const ROW_H = 36;
+const HEADER_H = 56;
 
 const fmtDate = (s: string | null) => {
   if (!s) return "-";
   const d = parseISO(s);
-  return isValid(d) ? format(d, "dd-MM-yyyy") : "-";
+  return isValid(d) ? format(d, "dd MMM") : "-";
 };
 
 export function WbsGanttTree({
@@ -43,21 +44,21 @@ export function WbsGanttTree({
   const today = new Date();
 
   return (
-    <div className="h-full min-h-0 overflow-hidden">
+    <div className="h-full min-h-0 overflow-hidden bg-[linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted))/0.35)]">
       <div
-        className="border-b border-l border-r bg-muted/50 backdrop-blur grid items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-        style={{ height: HEADER_H, gridTemplateColumns: "1fr 70px 90px 90px 100px 90px" }}
+        className="border-b bg-muted/70 grid items-center text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+        style={{ height: HEADER_H, gridTemplateColumns: "minmax(260px,1fr) 76px 86px 86px 108px 92px" }}
       >
-        <div className="px-3 border-r">WBS / Task</div>
-        <div className="px-2 text-right border-r">Dur (d)</div>
+        <div className="px-4 border-r">WBS / Task</div>
+        <div className="px-2 text-right border-r">Dur</div>
         <div className="px-2 text-right border-r">Start</div>
         <div className="px-2 text-right border-r">Finish</div>
-        <div className="px-2 border-r">Status</div>
-        <div className="px-2 pr-3 text-right">% Done</div>
+        <div className="px-3 border-r">Status</div>
+        <div className="px-3 text-right">Progress</div>
       </div>
 
-      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="h-[calc(100%-48px)] overflow-auto">
-        {rows.map((r) => {
+      <div ref={bodyScrollRef} onScroll={onBodyScroll} className="h-[calc(100%-56px)] overflow-auto">
+        {rows.map((r, index) => {
           let start: string | null = null;
           let end: string | null = null;
           let progress = 0;
@@ -84,24 +85,25 @@ export function WbsGanttTree({
             <div
               key={r.kind + r.id}
               className={cn(
-                "border-b border-l border-r grid items-center text-sm hover:bg-muted/30",
-                r.kind === "node" && "bg-muted/40 font-medium",
+                "grid items-center text-sm border-b border-border/60",
+                index % 2 === 0 ? "bg-background/80" : "bg-muted/10",
+                r.kind === "node" && "bg-muted/35",
               )}
               style={{
                 height: ROW_H,
-                gridTemplateColumns: "1fr 70px 90px 90px 100px 90px",
+                gridTemplateColumns: "minmax(260px,1fr) 76px 86px 86px 108px 92px",
               }}
             >
               <div
-                className="flex items-center gap-1 min-w-0 pr-2 border-r h-full"
-                style={{ paddingLeft: r.depth * 14 + 8 }}
+                className="flex items-center gap-1.5 min-w-0 pr-2 border-r h-full"
+                style={{ paddingLeft: r.depth * 16 + 12 }}
               >
                 {r.kind === "node" ? (
                   <>
                     <button
                       type="button"
                       onClick={() => onToggle(r.id)}
-                      className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
+                      className="h-5 w-5 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-background hover:text-foreground shrink-0"
                     >
                       <ChevronRight
                         className={cn(
@@ -110,18 +112,18 @@ export function WbsGanttTree({
                         )}
                       />
                     </button>
-                    <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+                    <span className="rounded bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shrink-0">
                       {r.node.code}
                     </span>
-                    <span className="ml-1 truncate">{r.node.name}</span>
+                    <span className="truncate font-medium">{r.node.name}</span>
                   </>
                 ) : (
                   <Link
                     to={`/tasks/${r.task.id}`}
-                    className="ml-5 truncate hover:text-primary inline-flex items-center gap-2 min-w-0"
+                    className="ml-6 truncate hover:text-primary inline-flex items-center gap-2 min-w-0"
                   >
                     {r.task.code && (
-                      <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+                      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shrink-0">
                         {r.task.code}
                       </span>
                     )}
@@ -142,23 +144,21 @@ export function WbsGanttTree({
                 {fmtDate(end)}
               </div>
 
-              <div className="px-2 border-r h-full flex items-center">
-                <span className="inline-flex items-center gap-1.5 text-xs">
-                  <span
-                    className={cn("h-2 w-2 rounded-full shrink-0", SCHEDULE_STATUS_DOT[statusKey])}
-                  />
+              <div className="px-3 border-r h-full flex items-center">
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px]", SCHEDULE_STATUS_TONE[statusKey])}>
+                  <span className={cn("h-2 w-2 rounded-full shrink-0", SCHEDULE_STATUS_DOT[statusKey])} />
                   <span className="truncate">{SCHEDULE_STATUS_LABEL[statusKey]}</span>
                 </span>
               </div>
 
-              <div className="px-2 pr-3 flex items-center gap-2 justify-end h-full">
-                <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[50px]">
+              <div className="px-3 flex items-center gap-2 justify-end h-full">
+                <div className="h-1.5 w-[48px] rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full bg-primary rounded-full"
                     style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                   />
                 </div>
-                <span className="tabular-nums text-[11px] text-muted-foreground w-7 text-right">
+                <span className="tabular-nums text-[11px] text-muted-foreground w-8 text-right">
                   {Math.round(progress)}%
                 </span>
               </div>

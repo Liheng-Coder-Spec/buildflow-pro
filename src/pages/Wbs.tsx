@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { UIEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/contexts/ProjectContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWbsTree } from "@/hooks/useWbsTree";
@@ -16,8 +16,11 @@ import { WbsTree } from "@/components/wbs/WbsTree";
 import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
+import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
+import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { buildGanttRows, GanttRow } from "@/lib/wbsGanttRows";
 import {
-  Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
+  Search, PanelLeftClose, PanelLeftOpen, ChevronRight, LayoutList, GanttChartSquare,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
@@ -29,6 +32,8 @@ type EditMode =
   | { kind: "edit"; nodeId: string }
   | { kind: "create"; parentId: string | null };
 
+type MainView = "tree" | "gantt";
+
 const STORAGE_KEY = "buildtrack.wbs.layout";
 
 export default function WbsPage() {
@@ -36,17 +41,23 @@ export default function WbsPage() {
   const { roles } = useAuth();
   const projectId = activeProject?.id ?? null;
   const { nodes, tree, nodeStats, loading, refresh } = useWbsTree(projectId);
-
-  const { rollupByNode } = useWbsSchedule(projectId, nodes);
+  const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
   const { dateSet: holidaySet } = useProjectHolidays(projectId);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [mainView, setMainView] = useState<MainView>("tree");
   const [treeOpen, setTreeOpen] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
   });
   const [mode, setMode] = useState<EditMode>({ kind: "view" });
+  const [predecessors, setPredecessors] = useState<any[]>([]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  const leftGanttBodyRef = useRef<HTMLDivElement>(null);
+  const rightGanttBodyRef = useRef<HTMLDivElement>(null);
+  const syncingPaneRef = useRef<"left" | "right" | null>(null);
 
   const canEdit = roles.includes("admin") || roles.includes("project_manager");
   const canManage = canEdit;
@@ -56,10 +67,58 @@ export default function WbsPage() {
     [nodes, selectedId],
   );
 
+  const rows: GanttRow[] = useMemo(
+    () => buildGanttRows({ nodes, tasks, collapsed }),
+    [nodes, tasks, collapsed],
+  );
+
+  useEffect(() => {
+    if (!projectId || tasks.length === 0) {
+      setPredecessors([]);
+      return;
+    }
+
+    const ids = tasks.map((task) => task.id);
+    supabase
+      .from("task_predecessors")
+      .select("task_id, predecessor_id, relation_type, lag_days")
+      .in("task_id", ids)
+      .then(({ data }) => setPredecessors(data ?? []));
+  }, [projectId, tasks]);
+
   const toggleTree = () => {
     const next = !treeOpen;
     setTreeOpen(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ treeOpen: next }));
+  };
+
+  const toggleCollapse = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const syncGanttScroll = (source: "left" | "right", scrollTop: number) => {
+    const target = source === "left" ? rightGanttBodyRef.current : leftGanttBodyRef.current;
+    if (!target || target.scrollTop === scrollTop) return;
+    syncingPaneRef.current = source;
+    target.scrollTop = scrollTop;
+    requestAnimationFrame(() => {
+      syncingPaneRef.current = null;
+    });
+  };
+
+  const handleLeftGanttScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (syncingPaneRef.current === "right") return;
+    syncGanttScroll("left", event.currentTarget.scrollTop);
+  };
+
+  const handleRightGanttScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (syncingPaneRef.current === "left") return;
+    syncGanttScroll("right", event.currentTarget.scrollTop);
   };
 
   const handleMove = async (nodeId: string, direction: "up" | "down") => {
@@ -118,190 +177,256 @@ export default function WbsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={toggleTree}>
-            {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-            {treeOpen ? "Hide tree" : "Show tree"}
-          </Button>
+          <div className="flex items-center rounded-xl border bg-muted/40 p-1">
+            <Button
+              size="sm"
+              variant={mainView === "tree" ? "secondary" : "ghost"}
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => setMainView("tree")}
+            >
+              <LayoutList className="mr-1.5 h-3.5 w-3.5" />
+              Tree
+            </Button>
+            <Button
+              size="sm"
+              variant={mainView === "gantt" ? "secondary" : "ghost"}
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => setMainView("gantt")}
+            >
+              <GanttChartSquare className="mr-1.5 h-3.5 w-3.5" />
+              Gantt
+            </Button>
+          </div>
+
+          {mainView === "tree" && (
+            <Button variant="outline" size="sm" onClick={toggleTree}>
+              {treeOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              {treeOpen ? "Hide tree" : "Show tree"}
+            </Button>
+          )}
         </div>
       </div>
 
-      <Card className="flex-1 min-h-0 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="h-full">
-          {treeOpen && (
-            <>
-              <ResizablePanel defaultSize={25} minSize={20} maxSize={55} className="flex flex-col">
-                <div className="p-2 border-b">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search nodes..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-9 h-9"
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto p-2">
-                  {loading ? (
-                    <div className="space-y-2 px-2">
-                      {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-                    </div>
-                  ) : (
-                    <WbsTree
-                      nodes={tree}
-                      selectedId={selectedId}
-                      nodeStats={nodeStats}
-                      onSelect={(id) => {
-                        setSelectedId(id);
-                        setMode({ kind: "view" });
-                      }}
-                      onAddChild={(parentId) => {
-                        setSelectedId(parentId);
-                        setMode({ kind: "create", parentId });
-                      }}
-                      onMove={handleMove}
-                      canEdit={canEdit}
-                      search={search}
-                    />
-                  )}
-                </div>
+      {mainView === "gantt" ? (
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <Card className="border-dashed bg-muted/20">
+            <CardContent className="flex flex-wrap items-center gap-3 px-4 py-3">
+              <Badge variant="secondary" className="rounded-full px-3 py-1">{rows.length} rows</Badge>
+              <Badge variant="outline" className="rounded-full px-3 py-1">{tasks.length} tasks</Badge>
+              <span className="text-sm text-muted-foreground">
+                Two-panel schedule view with aligned WBS rows and timeline bars.
+              </span>
+            </CardContent>
+          </Card>
+
+          <div className="mt-3 h-[calc(100%-4.25rem)] rounded-2xl border bg-card shadow-sm overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              <ResizablePanel defaultSize={46} minSize={30} maxSize={64} className="min-h-0 overflow-hidden">
+                <WbsGanttTree
+                  rows={rows}
+                  collapsed={collapsed}
+                  onToggle={toggleCollapse}
+                  holidaySet={holidaySet}
+                  rollupByNode={rollupByNode}
+                  bodyScrollRef={leftGanttBodyRef}
+                  onBodyScroll={handleLeftGanttScroll}
+                />
               </ResizablePanel>
               <ResizableHandle withHandle />
-            </>
-          )}
-
-          <ResizablePanel defaultSize={treeOpen ? 75 : 100} minSize={40}>
-            <div className="h-full overflow-auto p-2">
-              {mode.kind === "create" ? (
-                <WbsNodeEditor
-                  projectId={projectId!}
-                  node={null}
-                  parentId={mode.parentId}
-                  parentPath={mode.parentId ? nodes.find((n) => n.id === mode.parentId)?.path_text ?? null : null}
-                  canEdit={canEdit}
-                  onSaved={async () => {
-                    await refresh();
-                    setMode({ kind: "view" });
-                  }}
-                  onDeleted={() => setMode({ kind: "view" })}
-                  onCancel={() => setMode({ kind: "view" })}
+              <ResizablePanel defaultSize={54} minSize={36} className="min-h-0 overflow-hidden">
+                <WbsGantt
+                  rows={rows}
+                  collapsed={collapsed}
+                  onToggle={toggleCollapse}
+                  tasks={tasks}
+                  predecessors={predecessors}
+                  holidaySet={holidaySet}
+                  bodyScrollRef={rightGanttBodyRef}
+                  onBodyScroll={handleRightGanttScroll}
                 />
-              ) : selectedNode ? (
-                <div className="space-y-4">
-                  <div className="flex items-center flex-wrap gap-1 text-sm text-muted-foreground">
-                    {selectedNode.path.map((c, i) => (
-                      <span key={i} className="inline-flex items-center gap-1">
-                        {i > 0 && <ChevronRight className="h-3 w-3" />}
-                        <span className={i === selectedNode.path.length - 1 ? "text-foreground font-medium" : ""}>
-                          {c}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h2 className="text-2xl font-semibold">{selectedNode.name}</h2>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Badge>
-                        <span className="font-mono text-xs text-muted-foreground">{selectedNode.code}</span>
-                        {(nodeStats.get(selectedNode.id)?.taskCount ?? 0) > 0 && (
-                          <Badge variant="outline" className="text-xs">
-                            {nodeStats.get(selectedNode.id)!.taskCount} task
-                            {nodeStats.get(selectedNode.id)!.taskCount === 1 ? "" : "s"}
-                          </Badge>
-                        )}
-                      </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        </div>
+      ) : (
+        <Card className="flex-1 min-h-0 overflow-hidden">
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            {treeOpen && (
+              <>
+                <ResizablePanel defaultSize={25} minSize={20} maxSize={55} className="flex flex-col">
+                  <div className="p-2 border-b">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search nodes..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="pl-9 h-9"
+                      />
                     </div>
-                    {canEdit && mode.kind !== "edit" && (
-                      <Button variant="outline" onClick={() => setMode({ kind: "edit", nodeId: selectedNode.id })}>
-                        Edit details
-                      </Button>
-                    )}
                   </div>
-
-                  <Tabs defaultValue={mode.kind === "edit" ? "edit" : "details"}>
-                    <TabsList>
-                      <TabsTrigger value="details">Details</TabsTrigger>
-                      <TabsTrigger value="edit">Edit</TabsTrigger>
-                      <TabsTrigger value="permissions">Permissions</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="details" className="mt-4 space-y-4">
-                      {rollupByNode?.has(selectedNode.id) && (
-                        <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
-                      )}
-                      <Card>
-                        <CardContent className="p-6 space-y-3 text-sm">
-                          <Row label="Type">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Row>
-                          <Row label="Code"><span className="font-mono">{selectedNode.code}</span></Row>
-                          <Row label="Full path"><span className="font-mono">{selectedNode.path_text}</span></Row>
-                          <Row label="Depth">{selectedNode.depth}</Row>
-                          <Row label="Description">
-                            {selectedNode.description || <span className="text-muted-foreground italic">None</span>}
-                          </Row>
-                          {nodeStats.get(selectedNode.id) && (() => {
-                            const stat = nodeStats.get(selectedNode.id)!;
-                            return (
-                              <>
-                                <Row label="Tasks">{stat.taskCount}</Row>
-                                <Row label="Progress">
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex-1 max-w-[160px] h-2 rounded-full bg-muted overflow-hidden">
-                                      <div className="h-full rounded-full bg-primary" style={{ width: `${stat.avgProgress}%` }} />
-                                    </div>
-                                    <span className="tabular-nums font-medium">{stat.avgProgress}%</span>
-                                  </div>
-                                </Row>
-                              </>
-                            );
-                          })()}
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="edit" className="mt-4">
-                      <WbsNodeEditor
-                        projectId={projectId!}
-                        node={selectedNode}
-                        parentId={selectedNode.parent_id}
-                        parentPath={null}
-                        canEdit={canEdit}
-                        onSaved={refresh}
-                        onDeleted={async () => {
-                          setSelectedId(null);
+                  <div className="flex-1 overflow-auto p-2">
+                    {loading ? (
+                      <div className="space-y-2 px-2">
+                        {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                      </div>
+                    ) : (
+                      <WbsTree
+                        nodes={tree}
+                        selectedId={selectedId}
+                        nodeStats={nodeStats}
+                        onSelect={(id) => {
+                          setSelectedId(id);
                           setMode({ kind: "view" });
-                          await refresh();
                         }}
-                        onCancel={() => setMode({ kind: "view" })}
+                        onAddChild={(parentId) => {
+                          setSelectedId(parentId);
+                          setMode({ kind: "create", parentId });
+                        }}
+                        onMove={handleMove}
+                        canEdit={canEdit}
+                        search={search}
                       />
-                    </TabsContent>
-
-                    <TabsContent value="permissions" className="mt-4">
-                      <WbsAssignmentsTab
-                        nodeId={selectedNode.id}
-                        nodePath={selectedNode.path_text}
-                        canManage={canManage}
-                      />
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center text-center text-muted-foreground p-12">
-                  <div>
-                    <p>Select a node from the tree to view details</p>
-                    {canEdit && tree.length === 0 && (
-                      <Button className="mt-4" onClick={() => setMode({ kind: "create", parentId: null })}>
-                        Create first WBS node
-                      </Button>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </Card>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+              </>
+            )}
+
+            <ResizablePanel defaultSize={treeOpen ? 75 : 100} minSize={40}>
+              <div className="h-full overflow-auto p-2">
+                {mode.kind === "create" ? (
+                  <WbsNodeEditor
+                    projectId={projectId!}
+                    node={null}
+                    parentId={mode.parentId}
+                    parentPath={mode.parentId ? nodes.find((n) => n.id === mode.parentId)?.path_text ?? null : null}
+                    canEdit={canEdit}
+                    onSaved={async () => {
+                      await refresh();
+                      setMode({ kind: "view" });
+                    }}
+                    onDeleted={() => setMode({ kind: "view" })}
+                    onCancel={() => setMode({ kind: "view" })}
+                  />
+                ) : selectedNode ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center flex-wrap gap-1 text-sm text-muted-foreground">
+                      {selectedNode.path.map((c, i) => (
+                        <span key={i} className="inline-flex items-center gap-1">
+                          {i > 0 && <ChevronRight className="h-3 w-3" />}
+                          <span className={i === selectedNode.path.length - 1 ? "text-foreground font-medium" : ""}>
+                            {c}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h2 className="text-2xl font-semibold">{selectedNode.name}</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="secondary">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Badge>
+                          <span className="font-mono text-xs text-muted-foreground">{selectedNode.code}</span>
+                          {(nodeStats.get(selectedNode.id)?.taskCount ?? 0) > 0 && (
+                            <Badge variant="outline" className="text-xs">
+                              {nodeStats.get(selectedNode.id)!.taskCount} task
+                              {nodeStats.get(selectedNode.id)!.taskCount === 1 ? "" : "s"}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      {canEdit && mode.kind !== "edit" && (
+                        <Button variant="outline" onClick={() => setMode({ kind: "edit", nodeId: selectedNode.id })}>
+                          Edit details
+                        </Button>
+                      )}
+                    </div>
+
+                    <Tabs defaultValue={mode.kind === "edit" ? "edit" : "details"}>
+                      <TabsList>
+                        <TabsTrigger value="details">Details</TabsTrigger>
+                        <TabsTrigger value="edit">Edit</TabsTrigger>
+                        <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="details" className="mt-4 space-y-4">
+                        {rollupByNode?.has(selectedNode.id) && (
+                          <WbsScheduleCard rollup={rollupByNode.get(selectedNode.id)} holidaySet={holidaySet} />
+                        )}
+                        <Card>
+                          <CardContent className="p-6 space-y-3 text-sm">
+                            <Row label="Type">{WBS_NODE_TYPE_LABELS[selectedNode.node_type]}</Row>
+                            <Row label="Code"><span className="font-mono">{selectedNode.code}</span></Row>
+                            <Row label="Full path"><span className="font-mono">{selectedNode.path_text}</span></Row>
+                            <Row label="Depth">{selectedNode.depth}</Row>
+                            <Row label="Description">
+                              {selectedNode.description || <span className="text-muted-foreground italic">None</span>}
+                            </Row>
+                            {nodeStats.get(selectedNode.id) && (() => {
+                              const stat = nodeStats.get(selectedNode.id)!;
+                              return (
+                                <>
+                                  <Row label="Tasks">{stat.taskCount}</Row>
+                                  <Row label="Progress">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex-1 max-w-[160px] h-2 rounded-full bg-muted overflow-hidden">
+                                        <div className="h-full rounded-full bg-primary" style={{ width: `${stat.avgProgress}%` }} />
+                                      </div>
+                                      <span className="tabular-nums font-medium">{stat.avgProgress}%</span>
+                                    </div>
+                                  </Row>
+                                </>
+                              );
+                            })()}
+                          </CardContent>
+                        </Card>
+                      </TabsContent>
+
+                      <TabsContent value="edit" className="mt-4">
+                        <WbsNodeEditor
+                          projectId={projectId!}
+                          node={selectedNode}
+                          parentId={selectedNode.parent_id}
+                          parentPath={null}
+                          canEdit={canEdit}
+                          onSaved={refresh}
+                          onDeleted={async () => {
+                            setSelectedId(null);
+                            setMode({ kind: "view" });
+                            await refresh();
+                          }}
+                          onCancel={() => setMode({ kind: "view" })}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="permissions" className="mt-4">
+                        <WbsAssignmentsTab
+                          nodeId={selectedNode.id}
+                          nodePath={selectedNode.path_text}
+                          canManage={canManage}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-center text-muted-foreground p-12">
+                    <div>
+                      <p>Select a node from the tree to view details</p>
+                      {canEdit && tree.length === 0 && (
+                        <Button className="mt-4" onClick={() => setMode({ kind: "create", parentId: null })}>
+                          Create first WBS node
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </Card>
+      )}
     </div>
   );
 }
