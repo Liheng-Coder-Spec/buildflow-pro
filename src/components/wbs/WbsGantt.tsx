@@ -143,7 +143,10 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
         <div ref={bodyScrollRef} onScroll={onBodyScroll} className="flex-1 min-h-0 overflow-auto">
           <div ref={horizontalScrollRef} className="overflow-x-auto overflow-y-hidden">
             <div className="relative" style={{ width: chartWidth }}>
-              <div className="border-b bg-muted/50" style={{ height: HEADER_H }}>
+              <div
+                className="sticky top-0 z-20 border-b bg-muted/95 backdrop-blur"
+                style={{ height: HEADER_H }}
+              >
                 <div className="flex h-7 border-b border-border/60">
                   {monthHeaders.map((month, index) => (
                     <div
