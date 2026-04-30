@@ -162,17 +162,17 @@ export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) 
           <div
             key={r.kind + r.id}
             className={cn(
-              "border-b grid items-center text-sm hover:bg-muted/30",
+              "border-b border-l border-r grid items-center text-sm hover:bg-muted/30",
               r.kind === "node" && "bg-muted/40 font-medium",
             )}
             style={{
               height: ROW_H,
-              gridTemplateColumns: "1fr 70px 80px 80px 100px 90px",
+              gridTemplateColumns: "1fr 70px 90px 90px 100px 90px",
             }}
           >
             {/* Name column */}
             <div
-              className="flex items-center gap-1 min-w-0 pr-2"
+              className="flex items-center gap-1 min-w-0 pr-2 border-r h-full"
               style={{ paddingLeft: r.depth * 14 + 8 }}
             >
               {r.kind === "node" ? (
@@ -210,22 +210,22 @@ export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) 
             </div>
 
             {/* Duration */}
-            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground">
+            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground border-r h-full flex items-center justify-end">
               {duration > 0 ? duration : "—"}
             </div>
 
             {/* Start */}
-            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground">
+            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground border-r h-full flex items-center justify-end">
               {fmtDate(start)}
             </div>
 
             {/* Finish */}
-            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground">
+            <div className="px-2 text-right tabular-nums text-xs text-muted-foreground border-r h-full flex items-center justify-end">
               {fmtDate(end)}
             </div>
 
             {/* Status */}
-            <div className="px-2">
+            <div className="px-2 border-r h-full flex items-center">
               <span className="inline-flex items-center gap-1.5 text-xs">
                 <span
                   className={cn("h-2 w-2 rounded-full shrink-0", SCHEDULE_STATUS_DOT[statusKey])}
@@ -235,7 +235,7 @@ export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) 
             </div>
 
             {/* Progress */}
-            <div className="px-2 pr-3 flex items-center gap-2 justify-end">
+            <div className="px-2 pr-3 flex items-center gap-2 justify-end h-full">
               <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden max-w-[50px]">
                 <div
                   className="h-full bg-primary rounded-full"
