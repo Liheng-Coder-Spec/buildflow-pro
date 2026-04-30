@@ -124,14 +124,14 @@ export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) 
     <div className="h-full overflow-auto">
       {/* Sticky header */}
       <div
-        className="sticky top-0 z-20 border-b bg-muted/50 backdrop-blur grid items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-        style={{ height: HEADER_H, gridTemplateColumns: "1fr 70px 80px 80px 100px 90px" }}
+        className="sticky top-0 z-20 border-b border-l border-r bg-muted/50 backdrop-blur grid items-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+        style={{ height: HEADER_H, gridTemplateColumns: "1fr 70px 90px 90px 100px 90px" }}
       >
-        <div className="px-3">WBS / Task</div>
-        <div className="px-2 text-right">Dur (d)</div>
-        <div className="px-2 text-right">Start</div>
-        <div className="px-2 text-right">Finish</div>
-        <div className="px-2">Status</div>
+        <div className="px-3 border-r">WBS / Task</div>
+        <div className="px-2 text-right border-r">Dur (d)</div>
+        <div className="px-2 text-right border-r">Start</div>
+        <div className="px-2 text-right border-r">Finish</div>
+        <div className="px-2 border-r">Status</div>
         <div className="px-2 pr-3 text-right">% Done</div>
       </div>
 
