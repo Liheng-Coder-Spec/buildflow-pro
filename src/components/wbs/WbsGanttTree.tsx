@@ -107,18 +107,22 @@ export function WbsGanttTree({
               >
                 {r.kind === "node" ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => onToggle(r.id)}
-                      className="h-5 w-5 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-background hover:text-foreground shrink-0"
-                    >
-                      <ChevronRight
-                        className={cn(
-                          "h-3.5 w-3.5 transition-transform",
-                          !collapsed.has(r.id) && "rotate-90",
-                        )}
-                      />
-                    </button>
+                    {r.hasChildren ? (
+                      <button
+                        type="button"
+                        onClick={() => onToggle(r.id)}
+                        className="h-5 w-5 rounded-md inline-flex items-center justify-center text-muted-foreground hover:bg-background hover:text-foreground shrink-0"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform",
+                            !collapsed.has(r.id) && "rotate-90",
+                          )}
+                        />
+                      </button>
+                    ) : (
+                      <span className="h-5 w-5 shrink-0" />
+                    )}
                     <span className="rounded bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shrink-0">
                       {r.node.code}
                     </span>

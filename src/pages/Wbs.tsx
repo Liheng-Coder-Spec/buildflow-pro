@@ -231,6 +231,7 @@ export default function WbsPage() {
                   tasks={tasks}
                   predecessors={predecessors}
                   holidaySet={holidaySet}
+                  rollupByNode={rollupByNode}
                   bodyScrollRef={rightGanttBodyRef}
                   onBodyScroll={handleRightGanttScroll}
                 />

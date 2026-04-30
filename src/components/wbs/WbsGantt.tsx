@@ -3,7 +3,7 @@ import { addDays, differenceInCalendarDays, format, isValid, max, min, parseISO,
 import { Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GanttRow } from "@/lib/wbsGanttRows";
-import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
+import { NodeRollup, TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
 import { cn } from "@/lib/utils";
 
 interface DepLink {
@@ -20,6 +20,7 @@ interface Props {
   tasks: (TaskScheduleLite & { title: string; code: string | null })[];
   predecessors: DepLink[];
   holidaySet: Set<string>;
+  rollupByNode?: Map<string, NodeRollup>;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
 }
@@ -37,7 +38,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, bodyScrollRef, onBodyScroll }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, bodyScrollRef, onBodyScroll }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const range = useMemo(() => {
@@ -116,8 +117,8 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
       <div className="flex h-full flex-col overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b bg-background/90 px-4" style={{ height: TITLE_H }}>
           <div>
-            <div className="text-sm font-semibold text-foreground">Gantt Timeline</div>
-            <div className="text-[11px] text-muted-foreground">Aligned bars, grid lines, and dependency paths</div>
+            <div className="text-sm font-semibold text-foreground">Gantt Schedule</div>
+            <div className="text-[11px] text-muted-foreground">Timeline grid, roll-up bars, and dependency paths</div>
           </div>
 
           <div className="flex items-center gap-1">
@@ -213,32 +214,63 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                     className="relative border-b border-transparent"
                     style={{ height: ROW_H }}
                   >
-                    {row.kind === "task" && (() => {
-                      const start = safeDate(row.task.planned_start);
-                      const end = safeDate(row.task.planned_end);
-                      if (!start || !end || end < start) return null;
+                    {(() => {
+                      if (row.kind === "task") {
+                        const start = safeDate(row.task.planned_start);
+                        const end = safeDate(row.task.planned_end);
+                        if (!start || !end || end < start) return null;
+
+                        const left = differenceInCalendarDays(start, range.start) * dayWidth;
+                        const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
+                        const status = taskStatus(row.task, today);
+                        const barTone =
+                          status === "late" ? "border-destructive bg-destructive/70"
+                          : status === "at_risk" ? "border-warning bg-warning/70"
+                          : status === "done" ? "border-primary bg-primary/75"
+                          : "border-success bg-success/70";
+
+                        return (
+                          <div
+                            className={cn(
+                              "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden",
+                              barTone,
+                            )}
+                            style={{ left, width }}
+                            title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
+                          >
+                            <div
+                              className="h-full bg-foreground/20"
+                              style={{ width: `${Math.min(100, row.task.progress_pct)}%` }}
+                            />
+                          </div>
+                        );
+                      }
+
+                      const rollup = rollupByNode?.get(row.id);
+                      const start = safeDate(rollup?.plannedStart ?? null);
+                      const end = safeDate(rollup?.plannedEnd ?? null);
+                      if (!rollup || !start || !end || end < start) return null;
 
                       const left = differenceInCalendarDays(start, range.start) * dayWidth;
                       const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
-                      const status = taskStatus(row.task, today);
-                      const barTone =
-                        status === "late" ? "border-destructive bg-destructive/70"
-                        : status === "at_risk" ? "border-warning bg-warning/70"
-                        : status === "done" ? "border-primary bg-primary/75"
-                        : "border-success bg-success/70";
+                      const rollupTone =
+                        rollup.status === "late" ? "border-destructive/80 bg-destructive/20"
+                        : rollup.status === "at_risk" ? "border-warning/80 bg-warning/20"
+                        : rollup.status === "done" ? "border-primary/80 bg-primary/20"
+                        : "border-success/80 bg-success/15";
 
                       return (
                         <div
                           className={cn(
-                            "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden",
-                            barTone,
+                            "absolute top-[9px] h-[18px] rounded-full border-2 shadow-sm overflow-hidden",
+                            rollupTone,
                           )}
                           style={{ left, width }}
-                          title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
+                          title={`${row.node.name} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
                         >
                           <div
-                            className="h-full bg-foreground/20"
-                            style={{ width: `${Math.min(100, row.task.progress_pct)}%` }}
+                            className="h-full bg-foreground/10"
+                            style={{ width: `${Math.min(100, rollup.progressPct)}%` }}
                           />
                         </div>
                       );
