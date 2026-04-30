@@ -279,10 +279,7 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         : row.node.node_type === "level" ? 18
                         : row.node.node_type === "zone" ? 16
                         : 18;
-                      const borderWidth =
-                        row.kind === "project" ? "border-[2px]"
-                        : row.node.node_type === "building" ? "border-[2px]"
-                        : "border";
+                      const edgeThickness = 6;
                       const summaryTone =
                         row.kind === "project" ? {
                           shell: "border-slate-900 bg-slate-900/10",
@@ -331,26 +328,35 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                       const progressWidth = Math.max(10, Math.min(width, (width * Math.min(100, rollup.progressPct)) / 100));
                       const progressText = `${Math.round(rollup.progressPct)}%`;
 
-                      return (
-                        <div
-                          className={cn(
-                            "absolute shadow-sm overflow-visible",
-                            borderWidth,
-                            summaryTone.shell,
-                          )}
-                          style={{ left, width, top: topOffset, height: barHeight }}
-                          title={title}
-                        >
-                          <div className={cn("absolute left-0 top-0 bottom-0 w-[4px]", summaryTone.cap)} />
-                          <div className={cn("absolute left-0 right-0 top-0 h-[3px]", summaryTone.cap)} />
-                          <div className={cn("absolute right-0 top-0 bottom-0 w-[4px]", summaryTone.cap)} />
+                        return (
                           <div
-                            className={cn("absolute left-[4px] flex items-center justify-center h-[6px] rounded-full", summaryTone.progress)}
-                            style={{
-                              top: `calc(50% - 3px)`,
-                              width: Math.max(0, progressWidth - 4),
-                            }}
+                            className={cn(
+                              "absolute shadow-sm overflow-visible border",
+                              summaryTone.shell,
+                            )}
+                            style={{ left, width, top: topOffset, height: barHeight }}
+                            title={title}
                           >
+                            <div
+                              className={cn("absolute left-0 top-0 bottom-0", summaryTone.cap)}
+                              style={{ width: edgeThickness }}
+                            />
+                            <div
+                              className={cn("absolute left-0 right-0 top-0", summaryTone.cap)}
+                              style={{ height: edgeThickness }}
+                            />
+                            <div
+                              className={cn("absolute right-0 top-0 bottom-0", summaryTone.cap)}
+                              style={{ width: edgeThickness }}
+                            />
+                            <div
+                              className={cn("absolute flex items-center justify-center h-[6px] rounded-full", summaryTone.progress)}
+                              style={{
+                                left: edgeThickness,
+                                top: `calc(50% - 3px)`,
+                                width: Math.max(0, progressWidth - edgeThickness),
+                              }}
+                            >
                             {progressWidth > 34 && (
                               <span className="px-1 text-[9px] font-semibold leading-none text-slate-950">
                                 {progressText}
