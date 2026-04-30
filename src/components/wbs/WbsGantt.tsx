@@ -280,8 +280,9 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         : row.node.node_type === "zone" ? 16
                         : 18;
                       const borderWidth =
-                        row.kind === "project" || row.node.node_type === "building" ? "border-[2px]"
-                        : "border";
+                        row.kind === "project" ? "border-[3px]"
+                        : row.node.node_type === "building" ? "border-[3px]"
+                        : "border-[2px]";
                       const summaryTone =
                         row.kind === "project" ? {
                           shell: "border-slate-900 bg-slate-900/10",
@@ -327,7 +328,8 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         row.kind === "project"
                           ? `${row.label} ${format(start, "MMM d")} - ${format(end, "MMM d")}`
                           : `${row.node.name} ${format(start, "MMM d")} - ${format(end, "MMM d")}`;
-                      const progressWidth = Math.max(2, Math.min(width, (width * Math.min(100, rollup.progressPct)) / 100));
+                      const progressWidth = Math.max(10, Math.min(width, (width * Math.min(100, rollup.progressPct)) / 100));
+                      const progressText = `${Math.round(rollup.progressPct)}%`;
 
                       return (
                         <div
@@ -339,16 +341,22 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                           style={{ left, width, top: topOffset, height: barHeight }}
                           title={title}
                         >
-                          <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", summaryTone.cap)} />
-                          <div className={cn("absolute left-0 right-0 top-0 h-[2px]", summaryTone.cap)} />
-                          <div className={cn("absolute right-0 top-0 bottom-0 w-[3px]", summaryTone.cap)} />
+                          <div className={cn("absolute left-0 top-0 bottom-0 w-[4px]", summaryTone.cap)} />
+                          <div className={cn("absolute left-0 right-0 top-0 h-[3px]", summaryTone.cap)} />
+                          <div className={cn("absolute right-0 top-0 bottom-0 w-[4px]", summaryTone.cap)} />
                           <div
-                            className={cn("absolute left-[3px] h-[3px] rounded-full", summaryTone.progress)}
+                            className={cn("absolute left-[4px] flex items-center justify-center h-[6px] rounded-full", summaryTone.progress)}
                             style={{
-                              top: `calc(50% - 1.5px)`,
-                              width: Math.max(0, progressWidth - 3),
+                              top: `calc(50% - 3px)`,
+                              width: Math.max(0, progressWidth - 4),
                             }}
-                          />
+                          >
+                            {progressWidth > 34 && (
+                              <span className="px-1 text-[9px] font-semibold leading-none text-slate-950">
+                                {progressText}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })()}
