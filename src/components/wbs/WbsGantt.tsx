@@ -21,6 +21,7 @@ interface Props {
   predecessors: DepLink[];
   holidaySet: Set<string>;
   rollupByNode?: Map<string, NodeRollup>;
+  projectRollup?: NodeRollup | null;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
 }
@@ -38,7 +39,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, bodyScrollRef, onBodyScroll }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const range = useMemo(() => {
@@ -259,27 +260,51 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                         );
                       }
 
-                      const rollup = rollupByNode?.get(row.id);
+                      const rollup = row.kind === "project" ? projectRollup : rollupByNode?.get(row.id);
                       const start = safeDate(rollup?.plannedStart ?? null);
                       const end = safeDate(rollup?.plannedEnd ?? null);
                       if (!rollup || !start || !end || end < start) return null;
 
                       const left = differenceInCalendarDays(start, range.start) * dayWidth;
                       const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
-                      const rollupTone =
-                        rollup.status === "late" ? "border-destructive/80 bg-destructive/20"
+                      const levelTone =
+                        row.kind === "project" ? "border-primary bg-primary/18"
+                        : row.node.node_type === "building" ? "border-primary/90 bg-primary/16"
+                        : row.node.node_type === "level" ? "border-success/90 bg-success/14"
+                        : row.node.node_type === "zone" ? "border-warning/90 bg-warning/16"
+                        : rollup.status === "late" ? "border-destructive/80 bg-destructive/20"
                         : rollup.status === "at_risk" ? "border-warning/80 bg-warning/20"
                         : rollup.status === "done" ? "border-primary/80 bg-primary/20"
                         : "border-success/80 bg-success/15";
+                      const topOffset =
+                        row.kind === "project" ? 6
+                        : row.node.node_type === "building" ? 7
+                        : row.node.node_type === "level" ? 8
+                        : row.node.node_type === "zone" ? 9
+                        : 9;
+                      const barHeight =
+                        row.kind === "project" ? 22
+                        : row.node.node_type === "building" ? 20
+                        : row.node.node_type === "level" ? 18
+                        : row.node.node_type === "zone" ? 16
+                        : 18;
+                      const borderWidth =
+                        row.kind === "project" || row.node.node_type === "building" ? "border-[2px]"
+                        : "border";
+                      const title =
+                        row.kind === "project"
+                          ? `${row.label} ${format(start, "MMM d")} - ${format(end, "MMM d")}`
+                          : `${row.node.name} ${format(start, "MMM d")} - ${format(end, "MMM d")}`;
 
                       return (
                         <div
                           className={cn(
-                            "absolute top-[9px] h-[18px] rounded-full border-2 shadow-sm overflow-hidden",
-                            rollupTone,
+                            "absolute rounded-full shadow-sm overflow-hidden",
+                            borderWidth,
+                            levelTone,
                           )}
-                          style={{ left, width }}
-                          title={`${row.node.name} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
+                          style={{ left, width, top: topOffset, height: barHeight }}
+                          title={title}
                         >
                           <div
                             className="h-full bg-foreground/10"

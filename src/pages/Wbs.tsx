@@ -41,7 +41,7 @@ export default function WbsPage() {
   const { roles } = useAuth();
   const projectId = activeProject?.id ?? null;
   const { nodes, tree, nodeStats, loading, refresh } = useWbsTree(projectId);
-  const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
+  const { tasks, rollupByNode, projectRollup } = useWbsSchedule(projectId, nodes);
   const { dateSet: holidaySet } = useProjectHolidays(projectId);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -68,8 +68,8 @@ export default function WbsPage() {
   );
 
   const rows: GanttRow[] = useMemo(
-    () => buildGanttRows({ nodes, tasks, collapsed }),
-    [nodes, tasks, collapsed],
+    () => buildGanttRows({ nodes, tasks, collapsed, projectLabel: activeProject?.name ?? null }),
+    [nodes, tasks, collapsed, activeProject],
   );
 
   useEffect(() => {
@@ -218,6 +218,7 @@ export default function WbsPage() {
                   onToggle={toggleCollapse}
                   holidaySet={holidaySet}
                   rollupByNode={rollupByNode}
+                  projectRollup={projectRollup}
                   bodyScrollRef={leftGanttBodyRef}
                   onBodyScroll={handleLeftGanttScroll}
                 />
@@ -232,6 +233,7 @@ export default function WbsPage() {
                   predecessors={predecessors}
                   holidaySet={holidaySet}
                   rollupByNode={rollupByNode}
+                  projectRollup={projectRollup}
                   bodyScrollRef={rightGanttBodyRef}
                   onBodyScroll={handleRightGanttScroll}
                 />

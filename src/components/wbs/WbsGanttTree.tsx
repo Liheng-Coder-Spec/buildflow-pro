@@ -19,6 +19,7 @@ interface Props {
   onToggle: (id: string) => void;
   holidaySet: Set<string>;
   rollupByNode?: Map<string, NodeRollup>;
+  projectRollup?: NodeRollup | null;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
 }
@@ -39,6 +40,7 @@ export function WbsGanttTree({
   onToggle,
   holidaySet,
   rollupByNode,
+  projectRollup,
   bodyScrollRef,
   onBodyScroll,
 }: Props) {
@@ -71,7 +73,14 @@ export function WbsGanttTree({
           let progress = 0;
           let statusKey: ReturnType<typeof taskStatus> = "not_started";
 
-          if (r.kind === "task") {
+          if (r.kind === "project") {
+            if (projectRollup) {
+              start = projectRollup.plannedStart;
+              end = projectRollup.plannedEnd;
+              progress = projectRollup.progressPct;
+              statusKey = projectRollup.status;
+            }
+          } else if (r.kind === "task") {
             start = r.task.planned_start;
             end = r.task.planned_end;
             progress = r.task.progress_pct ?? 0;
@@ -94,6 +103,7 @@ export function WbsGanttTree({
               className={cn(
                 "grid items-center text-sm border-b border-border/60",
                 index % 2 === 0 ? "bg-background/80" : "bg-muted/10",
+                r.kind === "project" && "bg-primary/8",
                 r.kind === "node" && "bg-muted/35",
               )}
               style={{
@@ -105,7 +115,15 @@ export function WbsGanttTree({
                 className="flex items-center gap-1.5 min-w-0 pr-2 border-r h-full"
                 style={{ paddingLeft: r.depth * 16 + 12 }}
               >
-                {r.kind === "node" ? (
+                {r.kind === "project" ? (
+                  <>
+                    <span className="h-5 w-5 shrink-0" />
+                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary shrink-0">
+                      Project
+                    </span>
+                    <span className="truncate font-semibold">{r.label}</span>
+                  </>
+                ) : r.kind === "node" ? (
                   <>
                     {r.hasChildren ? (
                       <button
@@ -123,10 +141,23 @@ export function WbsGanttTree({
                     ) : (
                       <span className="h-5 w-5 shrink-0" />
                     )}
-                    <span className="rounded bg-background/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground shrink-0">
+                    <span className={cn(
+                      "rounded px-1.5 py-0.5 font-mono text-[10px] shrink-0",
+                      r.node.node_type === "building" && "bg-primary/10 text-primary",
+                      r.node.node_type === "level" && "bg-success-soft text-success",
+                      r.node.node_type === "zone" && "bg-warning-soft text-warning",
+                      !["building", "level", "zone"].includes(r.node.node_type) && "bg-background/80 text-muted-foreground",
+                    )}>
                       {r.node.code}
                     </span>
-                    <span className="truncate font-medium">{r.node.name}</span>
+                    <span className={cn(
+                      "truncate font-medium",
+                      r.node.node_type === "building" && "text-foreground",
+                      r.node.node_type === "level" && "text-foreground/95",
+                      r.node.node_type === "zone" && "text-foreground/90",
+                    )}>
+                      {r.node.name}
+                    </span>
                   </>
                 ) : (
                   <Link

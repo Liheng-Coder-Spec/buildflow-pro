@@ -8,6 +8,7 @@ export type ScheduleTask = TaskScheduleLite & { title: string; code: string | nu
 interface UseSchedule {
   tasks: ScheduleTask[];
   rollupByNode: Map<string, NodeRollup>;
+  projectRollup: NodeRollup | null;
   loading: boolean;
   refresh: () => Promise<void>;
 }
@@ -76,5 +77,7 @@ export function useWbsSchedule(projectId: string | null | undefined, nodes: WbsN
     return result;
   }, [nodes, tasks]);
 
-  return { tasks, rollupByNode, loading, refresh };
+  const projectRollup = useMemo(() => rollupTasks(tasks), [tasks]);
+
+  return { tasks, rollupByNode, projectRollup, loading, refresh };
 }

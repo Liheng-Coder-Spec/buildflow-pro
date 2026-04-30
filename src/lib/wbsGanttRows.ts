@@ -2,6 +2,7 @@ import { WbsNode } from "@/lib/wbsMeta";
 import { TaskScheduleLite } from "@/lib/scheduleMeta";
 
 export type GanttRow =
+  | { kind: "project"; id: string; label: string; depth: number; hasChildren: boolean }
   | { kind: "node"; id: string; node: WbsNode; depth: number; hasChildren: boolean }
   | { kind: "task"; id: string; task: TaskScheduleLite & { title: string; code: string | null }; depth: number };
 
@@ -9,9 +10,10 @@ interface BuildRowsArgs {
   nodes: WbsNode[];
   tasks: (TaskScheduleLite & { title: string; code: string | null })[];
   collapsed: Set<string>;
+  projectLabel?: string | null;
 }
 
-export function buildGanttRows({ nodes, tasks, collapsed }: BuildRowsArgs): GanttRow[] {
+export function buildGanttRows({ nodes, tasks, collapsed, projectLabel }: BuildRowsArgs): GanttRow[] {
   const childrenOf = new Map<string | null, WbsNode[]>();
   for (const n of nodes) {
     const arr = childrenOf.get(n.parent_id) ?? [];
@@ -34,6 +36,9 @@ export function buildGanttRows({ nodes, tasks, collapsed }: BuildRowsArgs): Gant
 
   const rows: GanttRow[] = [];
   const safeCollapsed = collapsed ?? new Set<string>();
+  if (projectLabel && (nodes.length > 0 || tasks.length > 0)) {
+    rows.push({ kind: "project", id: "__project__", label: projectLabel, depth: 0, hasChildren: true });
+  }
   const walk = (parentId: string | null, depth: number) => {
     const kids = childrenOf.get(parentId) ?? [];
     for (const n of kids) {
@@ -50,6 +55,6 @@ export function buildGanttRows({ nodes, tasks, collapsed }: BuildRowsArgs): Gant
       }
     }
   };
-  walk(null, 0);
+  walk(null, projectLabel ? 1 : 0);
   return rows;
 }
