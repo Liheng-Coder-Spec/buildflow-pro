@@ -194,8 +194,6 @@ export default function WbsPage() {
 
       {mainView === "tree" && (
         <Card className="flex-1 min-h-0 overflow-hidden">
-
-        {mainView === "tree" && (
           <ResizablePanelGroup direction="horizontal" className="h-full">
             {treeOpen && (
               <>
