@@ -1,11 +1,10 @@
 import { useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WbsNode, buildNodePathMap } from "@/lib/wbsMeta";
-import { TaskScheduleLite, taskStatus, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
+import { TaskScheduleLite, taskStatus } from "@/lib/scheduleMeta";
+import { GanttRow } from "@/lib/wbsGanttRows";
 import {
   addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay,
 } from "date-fns";
@@ -18,7 +17,9 @@ interface DepLink {
 }
 
 interface Props {
-  nodes: WbsNode[];
+  rows: GanttRow[];
+  collapsed: Set<string>;
+  onToggle: (id: string) => void;
   tasks: (TaskScheduleLite & { title: string; code: string | null })[];
   predecessors: DepLink[];
   holidaySet: Set<string>;
@@ -30,7 +31,6 @@ const ZOOM_PX: Record<Zoom, number> = { day: 28, week: 12, month: 4 };
 
 const ROW_H = 32;
 const HEADER_H = 48;
-const CHART_LEFT = 0;
 
 function safeDate(s: string | null) {
   if (!s) return null;
@@ -38,9 +38,8 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
-  const [collapsed, setcollapsed] = useState<Set<string>>(new Set());
 
   // Determine date range across all tasks
   const range = useMemo(() => {
@@ -66,68 +65,6 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
   const dayWidth = ZOOM_PX[zoom];
   const chartWidth = totalDays * dayWidth;
 
-  // Build flat ordered list: nodes (depth-first) interleaved with their tasks
-  const childrenOf = useMemo(() => {
-    const m = new Map<string | null, WbsNode[]>();
-    for (const n of nodes) {
-      const arr = m.get(n.parent_id) ?? [];
-      arr.push(n);
-      m.set(n.parent_id, arr);
-    }
-    for (const arr of m.values()) {
-      arr.sort((a, b) =>
-        a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.name.localeCompare(b.name),
-      );
-    }
-    return m;
-  }, [nodes]);
-
-  const tasksByNode = useMemo(() => {
-    const m = new Map<string, typeof tasks>();
-    for (const t of tasks) {
-      if (!t.wbs_node_id) continue;
-      const arr = m.get(t.wbs_node_id) ?? [];
-      arr.push(t);
-      m.set(t.wbs_node_id, arr);
-    }
-    return m;
-  }, [tasks]);
-
-  type Row =
-    | { kind: "node"; id: string; node: WbsNode; depth: number; hasChildren: boolean }
-    | { kind: "task"; id: string; task: typeof tasks[number]; depth: number };
-
-  const rows: Row[] = useMemo(() => {
-    const out: Row[] = [];
-    const walk = (parentId: string | null, depth: number) => {
-      const kids = childrenOf.get(parentId) ?? [];
-      for (const n of kids) {
-        const nodeTasks = tasksByNode.get(n.id) ?? [];
-        const childNodes = childrenOf.get(n.id) ?? [];
-        const isLeaf = childNodes.length === 0;
-
-        if (isLeaf) {
-          if (nodeTasks.length === 0) {
-            out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: false });
-          } else {
-            for (const t of nodeTasks) {
-              out.push({ kind: "task", id: t.id, task: t, depth });
-            }
-          }
-        } else {
-          out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: true });
-          if (collapsed.has(n.id)) continue;
-          walk(n.id, depth + 1);
-          for (const t of nodeTasks) {
-            out.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });
-          }
-        }
-      }
-    };
-    walk(null, 0);
-    return out;
-  }, [childrenOf, tasksByNode, collapsed]);
-
   // Index task row positions for dependency arrows
   const taskRowIndex = useMemo(() => {
     const m = new Map<string, number>();
@@ -136,8 +73,6 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
     });
     return m;
   }, [rows]);
-
-  const pathMap = useMemo(() => buildNodePathMap(nodes), [nodes]);
 
   const today = startOfDay(new Date());
   const todayX = differenceInCalendarDays(today, range.start) * dayWidth;
@@ -168,14 +103,6 @@ export function WbsGantt({ nodes, tasks, predecessors, holidaySet }: Props) {
     if (cur) groups.push(cur);
     return groups;
   }, [dayHeaders]);
-
-  const toggle = (id: string) => {
-    setcollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const jumpToToday = () => {

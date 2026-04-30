@@ -18,6 +18,7 @@ import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
 import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
 import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { buildGanttRows, GanttRow } from "@/lib/wbsGanttRows";
 import {
   Search, PanelLeftClose, PanelLeftOpen, ChevronRight,
   LayoutList, GanttChart,
@@ -46,6 +47,22 @@ export default function WbsPage() {
   const { tasks, rollupByNode } = useWbsSchedule(projectId, nodes);
   const { dateSet: holidaySet } = useProjectHolidays(projectId);
   const [predecessors, setPredecessors] = useState<any[]>([]);
+
+  // Shared collapsed state for Gantt alignment
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  // Shared rows derived from nodes + tasks + collapsed state
+  const rows: GanttRow[] = useMemo(
+    () => buildGanttRows({ nodes, tasks, collapsed }),
+    [nodes, tasks, collapsed],
+  );
 
   useEffect(() => {
     if (!projectId || tasks.length === 0) { setPredecessors([]); return; }
@@ -173,10 +190,9 @@ export default function WbsPage() {
               <ResizablePanel defaultSize={45} minSize={28} maxSize={70} className="overflow-auto">
                 <div className="h-full overflow-auto">
                   <WbsGanttTree
-                    nodes={nodes}
-                    tasks={tasks}
-                    predecessors={predecessors}
-                    holidaySet={holidaySet}
+                    rows={rows}
+                    collapsed={collapsed}
+                    onToggle={toggleCollapse}
                     rollupByNode={rollupByNode}
                   />
                 </div>
@@ -184,7 +200,14 @@ export default function WbsPage() {
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={55} minSize={30} maxSize={72} className="overflow-auto">
                 <div className="h-full overflow-hidden">
-                  <WbsGantt nodes={nodes} tasks={tasks} predecessors={predecessors} holidaySet={holidaySet} />
+                  <WbsGantt
+                    rows={rows}
+                    collapsed={collapsed}
+                    onToggle={toggleCollapse}
+                    tasks={tasks}
+                    predecessors={predecessors}
+                    holidaySet={holidaySet}
+                  />
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>

@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { GanttRow } from "@/lib/wbsGanttRows";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WbsNode } from "@/lib/wbsMeta";
 import {
   TaskScheduleLite,
   taskStatus,
@@ -21,16 +20,12 @@ interface DepLink {
 }
 
 interface Props {
-  nodes: WbsNode[];
-  tasks: (TaskScheduleLite & { title: string; code: string | null })[];
-  predecessors: DepLink[];
+  rows: GanttRow[];
+  collapsed: Set<string>;
+  onToggle: (id: string) => void;
   holidaySet: Set<string>;
   rollupByNode?: Map<string, NodeRollup>;
 }
-
-type Row =
-  | { kind: "node"; id: string; node: WbsNode; depth: number; hasChildren: boolean }
-  | { kind: "task"; id: string; task: Props["tasks"][number]; depth: number };
 
 const ROW_H = 32;
 const HEADER_H = 48;
@@ -41,83 +36,7 @@ const fmtDate = (s: string | null) => {
   return isValid(d) ? format(d, "dd-MM-yyyy") : "—";
 };
 
-export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-
-  const childrenOf = useMemo(() => {
-    const m = new Map<string | null, WbsNode[]>();
-    for (const n of nodes) {
-      const arr = m.get(n.parent_id) ?? [];
-      arr.push(n);
-      m.set(n.parent_id, arr);
-    }
-    for (const arr of m.values()) {
-      arr.sort((a, b) =>
-        a.sort_order !== b.sort_order ? a.sort_order - b.sort_order : a.name.localeCompare(b.name),
-      );
-    }
-    return m;
-  }, [nodes]);
-
-  const tasksByNode = useMemo(() => {
-    const m = new Map<string, Props["tasks"]>();
-    for (const t of tasks) {
-      if (!t.wbs_node_id) continue;
-      const arr = m.get(t.wbs_node_id) ?? [];
-      arr.push(t);
-      m.set(t.wbs_node_id, arr);
-    }
-    return m;
-  }, [tasks]);
-
-  // Flatten — if a node is a "leaf" (has no child nodes), don't render its row, just its tasks.
-  const rows: Row[] = useMemo(() => {
-    const out: Row[] = [];
-    const walk = (parentId: string | null, depth: number) => {
-      const kids = childrenOf.get(parentId) ?? [];
-      for (const n of kids) {
-        const nodeTasks = tasksByNode.get(n.id) ?? [];
-        const childNodes = childrenOf.get(n.id) ?? [];
-        const isLeaf = childNodes.length === 0;
-
-        if (isLeaf) {
-          // Leaf with tasks: emit tasks directly under parent (no node row).
-          // If leaf has no tasks at all, still show node row so it isn't lost.
-          if (nodeTasks.length === 0) {
-            out.push({ kind: "node", id: n.id, node: n, depth, hasChildren: false });
-          } else {
-            for (const t of nodeTasks) {
-              out.push({ kind: "task", id: t.id, task: t, depth });
-            }
-          }
-        } else {
-          out.push({
-            kind: "node",
-            id: n.id,
-            node: n,
-            depth,
-            hasChildren: true,
-          });
-          if (collapsed.has(n.id)) continue;
-          walk(n.id, depth + 1);
-          for (const t of nodeTasks) {
-            out.push({ kind: "task", id: t.id, task: t, depth: depth + 1 });
-          }
-        }
-      }
-    };
-    walk(null, 0);
-    return out;
-  }, [childrenOf, tasksByNode, collapsed]);
-
-  const toggle = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
+export function WbsGanttTree({ rows, collapsed, onToggle, holidaySet, rollupByNode }: Props) {
   const today = new Date();
 
   return (
@@ -179,7 +98,7 @@ export function WbsGanttTree({ nodes, tasks, holidaySet, rollupByNode }: Props) 
                 <>
                   <button
                     type="button"
-                    onClick={() => toggle(r.id)}
+                    onClick={() => onToggle(r.id)}
                     className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
                   >
                     <ChevronRight
