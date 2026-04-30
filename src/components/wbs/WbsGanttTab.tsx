@@ -405,7 +405,8 @@ export function WbsGanttTab({ projectId, wbsNodes, nodeStats }: Props) {
 
   const toggleCollapse = (id: string) => {
     setCollapsed((prev) => {
-      const next = new Set(prev);
+      const safePrev = prev ?? new Set<string>();
+      const next = new Set(safePrev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
@@ -520,7 +521,7 @@ export function WbsGanttTab({ projectId, wbsNodes, nodeStats }: Props) {
               const groupLabel = node
                 ? `${node.code} · ${node.name}`
                 : "Unassigned";
-              const isCollapsed = nodeId ? collapsed.has(nodeId) : false;
+              const isCollapsed = nodeId ? (collapsed ?? new Set<string>()).has(nodeId) : false;
 
               // Group-level aggregates (Using nodeStats if available)
               const stat = nodeId && nodeStats ? nodeStats.get(nodeId) : null;

@@ -156,7 +156,7 @@ export default function WbsPage() {
 
       <Card className="flex-1 min-h-0 overflow-hidden">
         {mainView === "gantt" && (
-          <WbsGanttTab projectId={projectId!} wbsNodes={nodes} nodeStats={nodeStats} />
+          <WbsGanttTab projectId={projectId!} wbsNodes={nodes} wbsTree={tree} nodeStats={nodeStats} />
         )}
 
         {mainView === "tree" && (
