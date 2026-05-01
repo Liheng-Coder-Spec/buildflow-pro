@@ -493,6 +493,39 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_calculation_logs: {
+        Row: {
+          affected_count: number
+          created_at: string
+          id: string
+          payload: Json
+          project_id: string
+          trigger_reason: string | null
+          triggered_by_task_id: string | null
+          triggered_by_user: string | null
+        }
+        Insert: {
+          affected_count?: number
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id: string
+          trigger_reason?: string | null
+          triggered_by_task_id?: string | null
+          triggered_by_user?: string | null
+        }
+        Update: {
+          affected_count?: number
+          created_at?: string
+          id?: string
+          payload?: Json
+          project_id?: string
+          trigger_reason?: string | null
+          triggered_by_task_id?: string | null
+          triggered_by_user?: string | null
+        }
+        Relationships: []
+      }
       task_assignments: {
         Row: {
           assigned_at: string
@@ -703,6 +736,8 @@ export type Database = {
           actual_start: string | null
           approved_at: string | null
           approved_by: string | null
+          baseline_end: string | null
+          baseline_start: string | null
           category: Database["public"]["Enums"]["task_category"] | null
           code: string | null
           created_at: string
@@ -735,6 +770,8 @@ export type Database = {
           actual_start?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          baseline_end?: string | null
+          baseline_start?: string | null
           category?: Database["public"]["Enums"]["task_category"] | null
           code?: string | null
           created_at?: string
@@ -767,6 +804,8 @@ export type Database = {
           actual_start?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          baseline_end?: string | null
+          baseline_start?: string | null
           category?: Database["public"]["Enums"]["task_category"] | null
           code?: string | null
           created_at?: string
@@ -1242,6 +1281,7 @@ export type Database = {
         | "rejected"
         | "completed"
         | "closed"
+        | "blocked"
       task_type:
         | "concrete"
         | "steel"
@@ -1493,6 +1533,7 @@ export const Constants = {
         "rejected",
         "completed",
         "closed",
+        "blocked",
       ],
       task_type: [
         "concrete",
