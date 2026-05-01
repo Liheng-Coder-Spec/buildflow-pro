@@ -17,22 +17,26 @@ import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
 import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
-import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { WbsGantt, type ProposedShift } from "@/components/wbs/WbsGantt";
 import { buildGanttRows, GanttRow } from "@/lib/wbsGanttRows";
 import {
-  Search, PanelLeftClose, PanelLeftOpen, ChevronRight, LayoutList, GanttChartSquare,
+  Search, PanelLeftClose, PanelLeftOpen, ChevronRight, LayoutList, GanttChartSquare, Table as TableIcon,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ScheduleTable } from "@/components/schedule/ScheduleTable";
+import { SetBaselineButton } from "@/components/schedule/SetBaselineButton";
+import { ScheduleCascadeDialog } from "@/components/schedule/ScheduleCascadeDialog";
+import { useTaskBlockedness } from "@/hooks/useTaskBlockedness";
 
 type EditMode =
   | { kind: "view" }
   | { kind: "edit"; nodeId: string }
   | { kind: "create"; parentId: string | null };
 
-type MainView = "tree" | "gantt";
+type MainView = "tree" | "gantt" | "schedule";
 
 const STORAGE_KEY = "buildtrack.wbs.layout";
 
