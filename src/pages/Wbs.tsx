@@ -234,7 +234,7 @@ export default function WbsPage() {
         <div className="flex-1 min-h-0 overflow-hidden">
           <div className="h-full rounded-2xl border bg-card shadow-sm overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full">
-              <ResizablePanel defaultSize={50} minSize={30} className="min-h-0 overflow-hidden">
+              <ResizablePanel defaultSize={40} minSize={20} className="min-h-0 overflow-hidden">
                 <WbsGanttTree
                   rows={rows}
                   collapsed={collapsed}
@@ -249,7 +249,7 @@ export default function WbsPage() {
                 />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={50} minSize={30} className="min-h-0 overflow-hidden">
+              <ResizablePanel defaultSize={60} minSize={40} className="min-h-0 overflow-hidden">
                 <WbsGantt
                   rows={rows}
                   collapsed={collapsed}
@@ -265,72 +265,38 @@ export default function WbsPage() {
                   onTaskSelect={handleTaskSelect}
                 />
               </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={45} minSize={30} className="min-h-0 overflow-hidden">
-                <WbsGantt
-                  rows={rows}
-                  collapsed={collapsed}
-                  onToggle={toggleCollapse}
-                  tasks={tasks}
-                  predecessors={predecessors}
-                  holidaySet={holidaySet}
-                  rollupByNode={rollupByNode}
-                  projectRollup={projectRollup}
-                  bodyScrollRef={rightGanttBodyRef}
-                  onBodyScroll={handleRightGanttScroll}
-                  selectedTaskId={selectedTaskId}
-                  onTaskSelect={handleTaskSelect}
-                />
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={50} minSize={30} className="min-h-0 overflow-hidden">
-                <WbsGantt
-                  rows={rows}
-                  collapsed={collapsed}
-                  onToggle={toggleCollapse}
-                  tasks={tasks}
-                  predecessors={predecessors}
-                  holidaySet={holidaySet}
-                  rollupByNode={rollupByNode}
-                  projectRollup={projectRollup}
-                  bodyScrollRef={rightGanttBodyRef}
-                  onBodyScroll={handleRightGanttScroll}
-                  selectedTaskId={selectedTaskId}
-                  onTaskSelect={handleTaskSelect}
-                />
-              </ResizablePanel>
-              
-              {/* Dependency Dialog */}
-              <TaskDependencyDialog
-                open={dialogOpen}
-                onOpenChange={setDialogOpen}
-                selectedTaskId={selectedTaskId}
-                tasks={tasks}
-                predecessors={predecessors}
-                successors={successors}
-                projectId={projectId}
-                canEdit={canEdit}
-                onDependencyChange={() => {
-                  // Refresh dependencies
-                  if (!projectId || tasks.length === 0) return;
-                  const ids = tasks.map((task) => task.id);
-                  Promise.all([
-                    supabase
-                      .from("task_predecessors")
-                      .select("task_id, predecessor_id, relation_type, lag_days")
-                      .in("task_id", ids),
-                    supabase
-                      .from("task_predecessors")
-                      .select("task_id, predecessor_id, relation_type, lag_days")
-                      .in("predecessor_id", ids),
-                  ]).then(([predResult, succResult]) => {
-                    setPredecessors(predResult.data ?? []);
-                    setSuccessors(succResult.data ?? []);
-                  });
-                }}
-              />
             </ResizablePanelGroup>
           </div>
+          
+          {/* Dependency Dialog */}
+          <TaskDependencyDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            selectedTaskId={selectedTaskId}
+            tasks={tasks}
+            predecessors={predecessors}
+            successors={successors}
+            projectId={projectId}
+            canEdit={canEdit}
+            onDependencyChange={() => {
+              // Refresh dependencies
+              if (!projectId || tasks.length === 0) return;
+              const ids = tasks.map((task) => task.id);
+              Promise.all([
+                supabase
+                  .from("task_predecessors")
+                  .select("task_id, predecessor_id, relation_type, lag_days")
+                  .in("task_id", ids),
+                supabase
+                  .from("task_predecessors")
+                  .select("task_id, predecessor_id, relation_type, lag_days")
+                  .in("predecessor_id", ids),
+              ]).then(([predResult, succResult]) => {
+                setPredecessors(predResult.data ?? []);
+                setSuccessors(succResult.data ?? []);
+              });
+            }}
+          />
         </div>
       ) : (
         <Card className="flex-1 min-h-0 overflow-hidden">
