@@ -1,11 +1,15 @@
-import { useMemo } from "react";
-import { Link2, ArrowRight, ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link2, ArrowRight, ArrowLeft, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DepRelation, DEP_RELATION_LABELS, taskStatus, SCHEDULE_STATUS_TONE, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
 import { format, parseISO, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { TaskScheduleLite } from "@/lib/scheduleMeta";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface DependencyLink {
   task_id: string;
@@ -24,7 +28,10 @@ interface TaskDependencyGraphProps {
   tasks: GraphTask[];
   predecessors: DependencyLink[];
   successors: DependencyLink[];
+  projectId: string | null;
+  canEdit: boolean;
   onSelectTask: (taskId: string) => void;
+  onDependencyChange: () => void;
 }
 
 function getTaskById(tasks: GraphTask[], id: string): GraphTask | undefined {
@@ -90,8 +97,18 @@ export function TaskDependencyGraph({
   tasks,
   predecessors,
   successors,
+  projectId,
+  canEdit,
   onSelectTask,
+  onDependencyChange,
 }: TaskDependencyGraphProps) {
+  const [showAddPred, setShowAddPred] = useState(false);
+  const [showAddSucc, setShowAddSucc] = useState(false);
+  const [newTaskId, setNewTaskId] = useState("");
+  const [newRelation, setNewRelation] = useState<DepRelation>("FS");
+  const [newLag, setNewLag] = useState("0");
+  const [adding, setAdding] = useState(false);
+
   const selectedTask = useMemo(() => getTaskById(tasks, selectedTaskId ?? ""), [tasks, selectedTaskId]);
 
   const predLinks = useMemo(() => {
@@ -103,6 +120,62 @@ export function TaskDependencyGraph({
     if (!selectedTaskId) return [];
     return successors.filter((s) => s.predecessor_id === selectedTaskId);
   }, [successors, selectedTaskId]);
+
+  const availableTasks = useMemo(() => {
+    return tasks.filter((t) => t.id !== selectedTaskId);
+  }, [tasks, selectedTaskId]);
+
+  const handleAddDependency = async (type: "predecessor" | "successor") => {
+    if (!selectedTaskId || !newTaskId || !projectId) return;
+    setAdding(true);
+
+    let predId: string, taskId: string;
+    if (type === "predecessor") {
+      predId = newTaskId;
+      taskId = selectedTaskId;
+    } else {
+      predId = selectedTaskId;
+      taskId = newTaskId;
+    }
+
+    const { error } = await supabase.from("task_predecessors").insert({
+      task_id: taskId,
+      predecessor_id: predId,
+      relation_type: newRelation,
+      lag_days: Number(newLag) || 0,
+    } as any);
+
+    setAdding(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Dependency added");
+    setNewTaskId("");
+    setNewLag("0");
+    setNewRelation("FS");
+    setShowAddPred(false);
+    setShowAddSucc(false);
+    onDependencyChange();
+  };
+
+  const handleRemoveDependency = async (link: DependencyLink, type: "predecessor" | "successor") => {
+    const { error } = await supabase
+      .from("task_predecessors")
+      .delete()
+      .eq("task_id", type === "predecessor" ? selectedTaskId : link.task_id)
+      .eq("predecessor_id", type === "predecessor" ? link.predecessor_id : selectedTaskId)
+      .eq("relation_type", link.relation_type);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Dependency removed");
+    onDependencyChange();
+  };
 
   if (!selectedTaskId || !selectedTask) {
     return (
@@ -131,16 +204,28 @@ export function TaskDependencyGraph({
         <div className="p-3 space-y-4">
           {predLinks.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
-                <ArrowRight className="h-3 w-3" />
-                Predecessors ({predLinks.length})
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <ArrowRight className="h-3 w-3" />
+                  Predecessors ({predLinks.length})
+                </h4>
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 px-1.5 text-[10px]"
+                    onClick={() => { setShowAddPred(!showAddPred); setShowAddSucc(false); }}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
               <div className="space-y-2">
                 {predLinks.map((link) => {
                   const predTask = getTaskById(tasks, link.predecessor_id);
                   if (!predTask) return null;
                   return (
-                    <div key={link.predecessor_id} className="flex items-start gap-2">
+                    <div key={link.predecessor_id} className="flex items-start gap-2 group">
                       <div className="flex-1">
                         <TaskNode
                           task={predTask}
@@ -148,14 +233,80 @@ export function TaskDependencyGraph({
                           onClick={() => onSelectTask(predTask.id)}
                         />
                       </div>
-                      <div className="pt-3">
+                      <div className="pt-3 flex items-start gap-1">
                         <DependencyEdge relation={link.relation_type} lagDays={link.lag_days} direction="in" />
+                        {canEdit && (
+                          <button
+                            onClick={() => handleRemoveDependency(link, "predecessor")}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+              {showAddPred && (
+                <div className="mt-2 p-2 border rounded-md bg-muted/30 space-y-2">
+                  <Select value={newTaskId} onValueChange={setNewTaskId}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Select task" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTasks.map((t) => (
+                        <SelectItem key={t.id} value={t.id} className="text-xs">
+                          {t.code && <span className="font-mono mr-1">{t.code}</span>}
+                          {t.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Select value={newRelation} onValueChange={(v) => setNewRelation(v as DepRelation)}>
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(DEP_RELATION_LABELS).map((k) => (
+                          <SelectItem key={k} value={k} className="text-xs">
+                            <span className="font-mono">{k}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="number"
+                      value={newLag}
+                      onChange={(e) => setNewLag(e.target.value)}
+                      className="w-12 h-7 px-1 text-xs border rounded text-center"
+                      placeholder="Lag"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={() => handleAddDependency("predecessor")}
+                    disabled={adding || !newTaskId}
+                  >
+                    {adding ? "Adding..." : "Add Predecessor"}
+                  </Button>
+                </div>
+              )}
             </div>
+          )}
+
+          {!predLinks.length && canEdit && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground"
+              onClick={() => { setShowAddPred(!showAddPred); setShowAddSucc(false); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Predecessor
+            </Button>
           )}
 
           <div className="flex justify-center">
@@ -166,18 +317,38 @@ export function TaskDependencyGraph({
 
           {succLinks.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
-                <ArrowLeft className="h-3 w-3" />
-                Successors ({succLinks.length})
-              </h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <ArrowLeft className="h-3 w-3" />
+                  Successors ({succLinks.length})
+                </h4>
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 px-1.5 text-[10px]"
+                    onClick={() => { setShowAddSucc(!showAddSucc); setShowAddPred(false); }}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
               <div className="space-y-2">
                 {succLinks.map((link) => {
                   const succTask = getTaskById(tasks, link.task_id);
                   if (!succTask) return null;
                   return (
-                    <div key={link.task_id} className="flex items-start gap-2">
-                      <div className="pt-3">
+                    <div key={link.task_id} className="flex items-start gap-2 group">
+                      <div className="pt-3 flex items-start gap-1">
                         <DependencyEdge relation={link.relation_type} lagDays={link.lag_days} direction="out" />
+                        {canEdit && (
+                          <button
+                            onClick={() => handleRemoveDependency(link, "successor")}
+                            className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
                       <div className="flex-1">
                         <TaskNode
@@ -190,10 +361,68 @@ export function TaskDependencyGraph({
                   );
                 })}
               </div>
+              {showAddSucc && (
+                <div className="mt-2 p-2 border rounded-md bg-muted/30 space-y-2">
+                  <Select value={newTaskId} onValueChange={setNewTaskId}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Select task" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTasks.map((t) => (
+                        <SelectItem key={t.id} value={t.id} className="text-xs">
+                          {t.code && <span className="font-mono mr-1">{t.code}</span>}
+                          {t.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Select value={newRelation} onValueChange={(v) => setNewRelation(v as DepRelation)}>
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(DEP_RELATION_LABELS).map((k) => (
+                          <SelectItem key={k} value={k} className="text-xs">
+                            <span className="font-mono">{k}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <input
+                      type="number"
+                      value={newLag}
+                      onChange={(e) => setNewLag(e.target.value)}
+                      className="w-12 h-7 px-1 text-xs border rounded text-center"
+                      placeholder="Lag"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={() => handleAddDependency("successor")}
+                    disabled={adding || !newTaskId}
+                  >
+                    {adding ? "Adding..." : "Add Successor"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
-          {predLinks.length === 0 && succLinks.length === 0 && (
+          {!succLinks.length && canEdit && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full text-xs text-muted-foreground"
+              onClick={() => { setShowAddSucc(!showAddSucc); setShowAddPred(false); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Successor
+            </Button>
+          )}
+
+          {predLinks.length === 0 && succLinks.length === 0 && !canEdit && (
             <div className="text-center py-4 text-xs text-muted-foreground">
               No dependencies found for this task.
             </div>

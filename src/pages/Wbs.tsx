@@ -265,7 +265,27 @@ export default function WbsPage() {
                   tasks={tasks}
                   predecessors={predecessors}
                   successors={successors}
+                  projectId={projectId}
+                  canEdit={canEdit}
                   onSelectTask={handleTaskSelect}
+                  onDependencyChange={() => {
+                    // Refresh dependencies
+                    if (!projectId || tasks.length === 0) return;
+                    const ids = tasks.map((task) => task.id);
+                    Promise.all([
+                      supabase
+                        .from("task_predecessors")
+                        .select("task_id, predecessor_id, relation_type, lag_days")
+                        .in("task_id", ids),
+                      supabase
+                        .from("task_predecessors")
+                        .select("task_id, predecessor_id, relation_type, lag_days")
+                        .in("predecessor_id", ids),
+                    ]).then(([predResult, succResult]) => {
+                      setPredecessors(predResult.data ?? []);
+                      setSuccessors(succResult.data ?? []);
+                    });
+                  }}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
