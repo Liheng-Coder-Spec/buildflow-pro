@@ -1,17 +1,18 @@
 import { useMemo, useState } from "react";
-import { Link2, ArrowRight, ArrowLeft, Plus, X } from "lucide-react";
+import { Link2, ArrowRight, ArrowLeft, Trash2, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DepRelation, DEP_RELATION_LABELS, taskStatus, SCHEDULE_STATUS_TONE, SCHEDULE_STATUS_DOT } from "@/lib/scheduleMeta";
+import { Input } from "@/components/ui/input";
+import { DepRelation, DEP_RELATION_LABELS } from "@/lib/scheduleMeta";
 import { format, parseISO, isValid } from "date-fns";
-import { cn } from "@/lib/utils";
 import { TaskScheduleLite } from "@/lib/scheduleMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export interface DependencyLink {
+interface DependencyLink {
+  id?: string;
   task_id: string;
   predecessor_id: string;
   relation_type: DepRelation;
@@ -56,12 +57,12 @@ export function TaskDependencyDialog({
   canEdit,
   onDependencyChange,
 }: TaskDependencyDialogProps) {
-  const [showAddPred, setShowAddPred] = useState(false);
-  const [showAddSucc, setShowAddSucc] = useState(false);
-  const [newTaskId, setNewTaskId] = useState("");
-  const [newRelation, setNewRelation] = useState<DepRelation>("FS");
-  const [newLag, setNewLag] = useState("0");
-  const [adding, setAdding] = useState(false);
+  const [linkMode, setLinkMode] = useState<"idle" | "selecting" | "edit">("idle");
+  const [linkTarget, setLinkTarget] = useState<string | null>(null);
+  const [editLink, setEditLink] = useState<DependencyLink | null>(null);
+  const [editRelation, setEditRelation] = useState<DepRelation>("FS");
+  const [editLag, setEditLag] = useState("0");
+  const [saving, setSaving] = useState(false);
 
   const selectedTask = useMemo(() => getTaskById(tasks, selectedTaskId ?? ""), [tasks, selectedTaskId]);
 
@@ -79,48 +80,67 @@ export function TaskDependencyDialog({
     return tasks.filter((t) => t.id !== selectedTaskId);
   }, [tasks, selectedTaskId]);
 
-  const handleAddDependency = async (type: "predecessor" | "successor") => {
-    if (!selectedTaskId || !newTaskId || !projectId) return;
-    setAdding(true);
-
-    let predId: string;
-    let taskId: string;
-    if (type === "predecessor") {
-      predId = newTaskId;
-      taskId = selectedTaskId;
-    } else {
-      predId = selectedTaskId;
-      taskId = newTaskId;
-    }
+  const handleLink = async () => {
+    if (!selectedTaskId || !linkTarget || !projectId) return;
+    setSaving(true);
 
     const { error } = await supabase.from("task_predecessors").insert({
-      task_id: taskId,
-      predecessor_id: predId,
-      relation_type: newRelation,
-      lag_days: Number(newLag) || 0,
+      task_id: selectedTaskId,
+      predecessor_id: linkTarget,
+      relation_type: "FS",
+      lag_days: 0,
     } as any);
 
-    setAdding(false);
+    setSaving(false);
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success("Dependency added");
-    setNewTaskId("");
-    setNewLag("0");
-    setNewRelation("FS");
-    setShowAddPred(false);
-    setShowAddSucc(false);
+    toast.success("Dependency linked (FS)");
+    setLinkMode("idle");
+    setLinkTarget(null);
     onDependencyChange();
   };
 
-  const handleRemoveDependency = async (link: DependencyLink, type: "predecessor" | "successor") => {
+  const handleEditLink = async (link: DependencyLink) => {
+    setEditLink(link);
+    setEditRelation(link.relation_type);
+    setEditLag(String(link.lag_days ?? 0));
+    setLinkMode("edit");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editLink) return;
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("task_predecessors")
+      .update({
+        relation_type: editRelation,
+        lag_days: Number(editLag) || 0,
+      } as any)
+      .eq("task_id", editLink.task_id)
+      .eq("predecessor_id", editLink.predecessor_id);
+
+    setSaving(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Dependency updated");
+    setLinkMode("idle");
+    setEditLink(null);
+    onDependencyChange();
+  };
+
+  const handleDeleteLink = async (link: DependencyLink) => {
     const { error } = await supabase
       .from("task_predecessors")
       .delete()
-      .eq("task_id", type === "predecessor" ? selectedTaskId : link.task_id)
-      .eq("predecessor_id", type === "predecessor" ? link.predecessor_id : selectedTaskId)
+      .eq("task_id", link.task_id)
+      .eq("predecessor_id", link.predecessor_id)
       .eq("relation_type", link.relation_type);
 
     if (error) {
@@ -128,7 +148,9 @@ export function TaskDependencyDialog({
       return;
     }
 
-    toast.success("Dependency removed");
+    toast.success("Dependency deleted");
+    setLinkMode("idle");
+    setEditLink(null);
     onDependencyChange();
   };
 
@@ -148,7 +170,14 @@ export function TaskDependencyDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => {
+      onOpenChange(o);
+      if (!o) {
+        setLinkMode("idle");
+        setLinkTarget(null);
+        setEditLink(null);
+      }
+    }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -164,6 +193,75 @@ export function TaskDependencyDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-6 p-1">
+          {/* Link Mode */}
+          {linkMode === "selecting" && (
+            <div className="p-3 border rounded-md bg-muted/30 space-y-3">
+              <p className="text-sm font-medium">Select predecessor task to link:</p>
+              <Select value={linkTarget} onValueChange={setLinkTarget}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select task" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTasks.map((t) => (
+                    <SelectItem key={t.id} value={t.id} className="text-sm">
+                      {t.code && <span className="font-mono mr-2">{t.code}</span>}
+                      {t.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleLink} disabled={saving || !linkTarget} className="text-sm">
+                  {saving ? "Linking..." : "Link (FS)"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setLinkMode("idle"); setLinkTarget(null); }} className="text-sm">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Mode */}
+          {linkMode === "edit" && editLink && (
+            <div className="p-3 border rounded-md bg-muted/30 space-y-3">
+              <p className="text-sm font-medium">Edit Dependency</p>
+              <div className="flex items-center gap-2">
+                <Select value={editRelation} onValueChange={(v) => setEditRelation(v as DepRelation)}>
+                  <SelectTrigger className="h-8 text-sm flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(DEP_RELATION_LABELS).map((k) => (
+                      <SelectItem key={k} value={k} className="text-sm">
+                        <span className="font-mono">{k}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{DEP_RELATION_LABELS[k as DepRelation]}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="number"
+                  value={editLag}
+                  onChange={(e) => setEditLag(e.target.value)}
+                  className="w-16 h-8 px-2 text-sm border rounded text-center"
+                  placeholder="Lag"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="text-sm">
+                  {saving ? "Saving..." : "OK"}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setLinkMode("idle"); setEditLink(null); }} className="text-sm">
+                  Cancel
+                </Button>
+                <Button size="sm" variant="destructive" onClick={() => handleDeleteLink(editLink)} disabled={saving} className="text-sm ml-auto">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Predecessors Section */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -171,25 +269,25 @@ export function TaskDependencyDialog({
                 <ArrowRight className="h-4 w-4" />
                 Predecessors ({predLinks.length})
               </h4>
-              {canEdit && (
+              {canEdit && linkMode === "idle" && (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => { setShowAddSucc(false); setShowAddPred(p => !p); }}
+                  onClick={() => { setLinkMode("selecting"); setLinkTarget(null); }}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Predecessor
+                  <Link2 className="h-4 w-4 mr-1" />
+                  Link Predecessor
                 </Button>
               )}
             </div>
 
-            {predLinks.length > 0 && (
+            {predLinks.length > 0 ? (
               <div className="space-y-2">
                 {predLinks.map((link) => {
                   const predTask = getTaskById(tasks, link.predecessor_id);
                   if (!predTask) return null;
                   return (
-                    <div key={link.predecessor_id} className="flex items-start gap-3 group p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
+                    <div key={link.predecessor_id} className="flex items-start gap-3 p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
                           {predTask.code && (
@@ -197,7 +295,7 @@ export function TaskDependencyDialog({
                           )}
                           <span className="text-sm font-medium truncate">{predTask.title}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px] h-5">
                             {link.relation_type}
                           </Badge>
@@ -211,69 +309,23 @@ export function TaskDependencyDialog({
                           </span>
                         </div>
                       </div>
-                      {canEdit && (
+                      {canEdit && linkMode === "idle" && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveDependency(link, "predecessor")}
+                          onClick={() => handleEditLink(link)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="h-4 w-4" />
+                          <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                         </Button>
                       )}
                     </div>
                   );
                 })}
               </div>
-            )}
-
-            {showAddPred && (
-              <div className="mt-3 p-3 border rounded-md bg-muted/30 space-y-3">
-                <Select value={newTaskId} onValueChange={setNewTaskId}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select task" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTasks.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-sm">
-                        {t.code && <span className="font-mono mr-2">{t.code}</span>}
-                        {t.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-2">
-                  <Select value={newRelation} onValueChange={(v) => setNewRelation(v as DepRelation)}>
-                    <SelectTrigger className="h-8 text-sm flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(DEP_RELATION_LABELS).map((k) => (
-                        <SelectItem key={k} value={k} className="text-sm">
-                          <span className="font-mono">{k}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{DEP_RELATION_LABELS[k as DepRelation]}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <input
-                    type="number"
-                    value={newLag}
-                    onChange={(e) => setNewLag(e.target.value)}
-                    className="w-16 h-8 px-2 text-sm border rounded text-center"
-                    placeholder="Lag"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full h-8 text-sm"
-                  onClick={() => handleAddDependency("predecessor")}
-                  disabled={adding || !newTaskId}
-                >
-                  {adding ? "Adding..." : "Add Predecessor"}
-                </Button>
-              </div>
-            )}
+            ) : linkMode === "idle" ? (
+              <p className="text-xs text-muted-foreground italic">No predecessors. Click "Link Predecessor" to add.</p>
+            ) : null}
           </div>
 
           {/* Successors Section */}
@@ -283,25 +335,31 @@ export function TaskDependencyDialog({
                 <ArrowLeft className="h-4 w-4" />
                 Successors ({succLinks.length})
               </h4>
-              {canEdit && (
+              {canEdit && linkMode === "idle" && (
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => { setShowAddPred(false); setShowAddSucc(p => !p); }}
+                  onClick={() => {
+                    // For successors, we need to link selectedTask as predecessor
+                    // So we swap the logic - selectedTask becomes the predecessor
+                    // This is essentially the same as linking a predecessor
+                    setLinkMode("selecting");
+                    setLinkTarget(null);
+                  }}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Successor
+                  <Link2 className="h-4 w-4 mr-1" />
+                  Link Successor
                 </Button>
               )}
             </div>
 
-            {succLinks.length > 0 && (
+            {succLinks.length > 0 ? (
               <div className="space-y-2">
                 {succLinks.map((link) => {
                   const succTask = getTaskById(tasks, link.task_id);
                   if (!succTask) return null;
                   return (
-                    <div key={link.task_id} className="flex items-start gap-3 group p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
+                    <div key={link.task_id} className="flex items-start gap-3 p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
                           {succTask.code && (
@@ -309,7 +367,7 @@ export function TaskDependencyDialog({
                           )}
                           <span className="text-sm font-medium truncate">{succTask.title}</span>
                         </div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                           <Badge variant="outline" className="font-mono text-[10px] h-5">
                             {link.relation_type}
                           </Badge>
@@ -323,76 +381,24 @@ export function TaskDependencyDialog({
                           </span>
                         </div>
                       </div>
-                      {canEdit && (
+                      {canEdit && linkMode === "idle" && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveDependency(link, "successor")}
+                          onClick={() => handleEditLink(link)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <X className="h-4 w-4" />
+                          <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                         </Button>
                       )}
                     </div>
                   );
                 })}
               </div>
-            )}
-
-            {showAddSucc && (
-              <div className="mt-3 p-3 border rounded-md bg-muted/30 space-y-3">
-                <Select value={newTaskId} onValueChange={setNewTaskId}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select task" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTasks.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="text-sm">
-                        {t.code && <span className="font-mono mr-2">{t.code}</span>}
-                        {t.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-2">
-                  <Select value={newRelation} onValueChange={(v) => setNewRelation(v as DepRelation)}>
-                    <SelectTrigger className="h-8 text-sm flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(DEP_RELATION_LABELS).map((k) => (
-                        <SelectItem key={k} value={k} className="text-sm">
-                          <span className="font-mono">{k}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{DEP_RELATION_LABELS[k as DepRelation]}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <input
-                    type="number"
-                    value={newLag}
-                    onChange={(e) => setNewLag(e.target.value)}
-                    className="w-16 h-8 px-2 text-sm border rounded text-center"
-                    placeholder="Lag"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full h-8 text-sm"
-                  onClick={() => handleAddDependency("successor")}
-                  disabled={adding || !newTaskId}
-                >
-                  {adding ? "Adding..." : "Add Successor"}
-                </Button>
-              </div>
-            )}
+            ) : linkMode === "idle" ? (
+              <p className="text-xs text-muted-foreground italic">No successors. Click "Link Successor" to add.</p>
+            ) : null}
           </div>
-
-          {predLinks.length === 0 && succLinks.length === 0 && !canEdit && (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              No dependencies found for this task.
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
