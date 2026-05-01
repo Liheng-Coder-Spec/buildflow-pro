@@ -1,4 +1,4 @@
-import { RefObject, UIEvent, useMemo, useRef, useState } from "react";
+import { RefObject, UIEvent, useMemo, useRef, useState, useCallback } from "react";
 import { addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay } from "date-fns";
 import { Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ interface DepLink {
   lag_days: number;
 }
 
+export interface ProposedShift {
+  taskId: string;
+  title: string;
+  code: string | null;
+  planned_start: string;
+  planned_end: string;
+}
+
 interface Props {
   rows: GanttRow[];
   collapsed: Set<string>;
@@ -24,6 +32,12 @@ interface Props {
   projectRollup?: NodeRollup | null;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  /** Set of task IDs currently blocked by hard predecessors. */
+  blockedSet?: Set<string>;
+  /** Map of task IDs that have a baseline (renders ghost bar). */
+  baselineByTask?: Map<string, { baseline_start: string | null; baseline_end: string | null }>;
+  /** When provided, allows drag-to-adjust on task bars. Called once on drop. */
+  onProposeShift?: (shift: ProposedShift) => void;
 }
 
 type Zoom = "day" | "week" | "month";
@@ -39,7 +53,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const range = useMemo(() => {
