@@ -145,11 +145,9 @@ export default function WbsPage() {
       // First selection - set as predecessor
       setSelectedTaskId(taskId);
       setSecondTaskId(null);
-    } else if (isCtrlClick || !secondTaskId) {
-      // Ctrl+click or second click - set as successsor
+    } else if (!secondTaskId) {
+      // Second click - set as successsor (DON'T open dialog)
       setSecondTaskId(taskId);
-      // Auto-open dialog with pre-filled data
-      setDialogOpen(true);
     } else {
       // Clicking another task when both are selected - reset
       setSelectedTaskId(taskId);
