@@ -57,7 +57,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift, selectedTaskId, secondTaskId, onTaskSelect }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift, selectedTaskId, secondTaskId, onTaskSelect, onEditDependency }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const range = useMemo(() => {
@@ -394,10 +394,10 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                   </div>
                 )})}
 
-                <svg
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ width: chartWidth, height: rows.length * ROW_H }}
-                >
+                 <svg
+                   className="absolute inset-0"
+                   style={{ width: chartWidth, height: rows.length * ROW_H, pointerEvents: 'none' }}
+                 >
                   <defs>
                     <marker
                       id="wbs-gantt-arrow"
@@ -411,6 +411,75 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                       <path d="M0,0 L10,5 L0,10 z" fill="hsl(var(--muted-foreground))" />
                     </marker>
                   </defs>
+                  {predecessors.map((link, index) => {
+                     const fromIdx = taskRowIndex.get(link.predecessor_id);
+                     const toIdx = taskRowIndex.get(link.task_id);
+                     if (fromIdx === undefined || toIdx === undefined) return null;
+
+                     const from = rows[fromIdx];
+                     const to = rows[toIdx];
+                     if (from.kind !== "task" || to.kind !== "task") return null;
+
+                     const fromStart = safeDate(from.task.planned_start);
+                     const fromEnd = safeDate(from.task.planned_end);
+                     const toStart = safeDate(to.task.planned_start);
+                     const toEnd = safeDate(to.task.planned_end);
+                     if (!fromStart || !fromEnd || !toStart || !toEnd) return null;
+
+                     const fromLeft = differenceInCalendarDays(fromStart, range.start) * dayWidth;
+                     const fromRight = (differenceInCalendarDays(fromEnd, range.start) + 1) * dayWidth;
+                     const toLeft = differenceInCalendarDays(toStart, range.start) * dayWidth;
+                     const toRight = (differenceInCalendarDays(toEnd, range.start) + 1) * dayWidth;
+
+                     let x1 = fromRight;
+                     let x2 = toLeft;
+                     if (link.relation_type === "SS") {
+                       x1 = fromLeft;
+                       x2 = toLeft;
+                     } else if (link.relation_type === "FF") {
+                       x1 = fromRight;
+                       x2 = toRight;
+                     } else if (link.relation_type === "SF") {
+                       x1 = fromLeft;
+                       x2 = toRight;
+                     }
+                     x2 += (link.lag_days ?? 0) * dayWidth;
+
+                     const y1 = fromIdx * ROW_H + ROW_H / 2;
+                     const y2 = toIdx * ROW_H + ROW_H / 2;
+                     const midX = x1 + 10;
+
+                     const points = `${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`;
+
+                     return (
+                       <g
+                         key={index}
+                         className="cursor-pointer"
+                         style={{ pointerEvents: 'auto' }}
+                         onClick={() => onEditDependency?.(link)}
+                       >
+                         {/* Invisible wider path for easier clicking */}
+                         <polyline
+                           points={points}
+                           fill="none"
+                           stroke="transparent"
+                           strokeWidth={12}
+                         />
+                         {/* Visible dependency line */}
+                         <polyline
+                           points={points}
+                           fill="none"
+                           stroke="hsl(var(--muted-foreground))"
+                           strokeWidth={1.25}
+                           markerEnd="url(#wbs-gantt-arrow)"
+                           opacity={0.55}
+                         />
+                       </g>
+                     );
+                   })}
+                  </svg>
+
+                  {/* Overlay divs for clicking dependency arrows */}
                   {predecessors.map((link, index) => {
                     const fromIdx = taskRowIndex.get(link.predecessor_id);
                     const toIdx = taskRowIndex.get(link.task_id);
@@ -449,25 +518,34 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                     const y2 = toIdx * ROW_H + ROW_H / 2;
                     const midX = x1 + 10;
 
+                    const minX = Math.min(x1, midX, x2) - 5;
+                    const maxX = Math.max(x1, midX, x2) + 5;
+                    const minY = Math.min(y1, y2) - 10;
+                    const maxY = Math.max(y1, y2) + 10;
+
                     return (
-                      <polyline
-                        key={index}
-                        points={`${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`}
-                        fill="none"
-                        stroke="hsl(var(--muted-foreground))"
-                        strokeWidth={1.25}
-                        markerEnd="url(#wbs-gantt-arrow)"
-                        opacity={0.55}
+                      <div
+                        key={`overlay-${index}`}
+                        style={{
+                          position: 'absolute',
+                          left: minX,
+                          top: minY,
+                          width: maxX - minX,
+                          height: maxY - minY,
+                          cursor: 'pointer',
+                          zIndex: 30,
+                        }}
+                        onClick={() => onEditDependency?.(link)}
+                        title="Click to edit dependency"
                       />
                     );
                   })}
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
+               </div>
+             </div>
+           </div>
+         </div>
 
-      </div>
-    </div>
-  );
-}
+       </div>
+     </div>
+   );
+ }

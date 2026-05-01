@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,42 +179,42 @@ export function TaskDependencyDialog({
                   <div
                     key={link.predecessor_id}
                     className="flex items-start gap-3 p-3 border rounded-md bg-background hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => canEdit && onEditChange(link)}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {predTask.code && (
-                          <span className="font-mono text-xs text-muted-foreground">{predTask.code}</span>
-                        )}
-                        <span className="text-sm font-medium truncate">{predTask.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px] h-5">
-                          {link.relation_type}
-                        </Badge>
-                        {link.lag_days !== 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {link.lag_days > 0 ? `+${link.lag_days}` : link.lag_days}d
-                          </span>
-                        )}
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {fmtDate(predTask.planned_start)} → {fmtDate(predTask.planned_end)}
-                        </span>
-                      </div>
-                    </div>
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); onEditChange(link); }}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+                     onClick={() => { if (canEdit) onEditChange(link); }}
+                   >
+                     <div className="flex-1">
+                       <div className="flex items-center gap-1.5 mb-1">
+                         {predTask.code && (
+                           <span className="font-mono text-xs text-muted-foreground">{predTask.code}</span>
+                         )}
+                         <span className="text-sm font-medium truncate">{predTask.title}</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                         <Badge variant="outline" className="font-mono text-[10px] h-5">
+                           {link.relation_type}
+                         </Badge>
+                         {link.lag_days !== 0 && (
+                           <span className="text-xs text-muted-foreground">
+                             {link.lag_days > 0 ? `+${link.lag_days}` : link.lag_days}d
+                           </span>
+                         )}
+                         <span className="text-xs text-muted-foreground tabular-nums">
+                           {fmtDate(predTask.planned_start)} → {fmtDate(predTask.planned_end)}
+                         </span>
+                       </div>
+                     </div>
+                     {canEdit && (
+                       <Button
+                         size="sm"
+                         variant="ghost"
+                         className="opacity-0 group-hover:opacity-100 transition-opacity"
+                         onClick={(e) => { e.stopPropagation(); onEditChange(link); }}
+                       >
+                         Edit
+                       </Button>
+                     )}
+                   </div>
+                 );
+               })}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground italic">No predecessors. Use "Link Tasks" button to add.</p>
@@ -235,42 +236,42 @@ export function TaskDependencyDialog({
                   <div
                     key={link.task_id}
                     className="flex items-start gap-3 p-3 border rounded-md bg-background hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => canEdit && onEditChange(link)}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {succTask.code && (
-                          <span className="font-mono text-xs text-muted-foreground">{succTask.code}</span>
-                        )}
-                        <span className="text-sm font-medium truncate">{succTask.title}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-mono text-[10px] h-5">
-                          {link.relation_type}
-                        </Badge>
-                        {link.lag_days !== 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {link.lag_days > 0 ? `+${link.lag_days}` : link.lag_days}d
-                          </span>
-                        )}
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {fmtDate(succTask.planned_start)} → {fmtDate(succTask.planned_end)}
-                        </span>
-                      </div>
-                    </div>
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); onEditChange(link); }}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
+                     onClick={() => { if (canEdit) onEditChange(link); }}
+                   >
+                     <div className="flex-1">
+                       <div className="flex items-center gap-1.5 mb-1">
+                         {succTask.code && (
+                           <span className="font-mono text-xs text-muted-foreground">{succTask.code}</span>
+                         )}
+                         <span className="text-sm font-medium truncate">{succTask.title}</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                         <Badge variant="outline" className="font-mono text-[10px] h-5">
+                           {link.relation_type}
+                         </Badge>
+                         {link.lag_days !== 0 && (
+                           <span className="text-xs text-muted-foreground">
+                             {link.lag_days > 0 ? `+${link.lag_days}` : link.lag_days}d
+                           </span>
+                         )}
+                         <span className="text-xs text-muted-foreground tabular-nums">
+                           {fmtDate(succTask.planned_start)} → {fmtDate(succTask.planned_end)}
+                         </span>
+                       </div>
+                     </div>
+                     {canEdit && (
+                       <Button
+                         size="sm"
+                         variant="ghost"
+                         className="opacity-0 group-hover:opacity-100 transition-opacity"
+                         onClick={(e) => { e.stopPropagation(); onEditChange(link); }}
+                       >
+                         Edit
+                       </Button>
+                     )}
+                   </div>
+                 );
+               })}
             </div>
           ) : (
             <p className="text-xs text-muted-foreground italic">No successors. Use "Link Tasks" button to add.</p>
