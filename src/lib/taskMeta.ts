@@ -6,7 +6,8 @@ export type TaskStatus =
   | "approved"
   | "rejected"
   | "completed"
-  | "closed";
+  | "closed"
+  | "blocked";
 
 export type TaskPriority = "low" | "medium" | "high" | "critical";
 
@@ -28,6 +29,7 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   rejected: "Rejected",
   completed: "Completed",
   closed: "Closed",
+  blocked: "Blocked",
 };
 
 /** Token names from index.css (e.g. neutral-status / info / warning / success / destructive) */
@@ -43,6 +45,7 @@ export const TASK_STATUS_TONE: Record<
   rejected: { bg: "bg-destructive-soft", fg: "text-destructive", dot: "bg-destructive" },
   completed: { bg: "bg-success-soft", fg: "text-success", dot: "bg-success" },
   closed: { bg: "bg-muted", fg: "text-muted-foreground", dot: "bg-muted-foreground" },
+  blocked: { bg: "bg-destructive-soft", fg: "text-destructive", dot: "bg-destructive" },
 };
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -79,6 +82,7 @@ export const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   rejected: ["in_progress", "assigned"],
   completed: ["closed"],
   closed: [],
+  blocked: ["assigned", "open"],
 };
 
 export const KANBAN_COLUMNS: TaskStatus[] = [

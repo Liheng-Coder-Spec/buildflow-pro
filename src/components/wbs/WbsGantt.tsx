@@ -1,4 +1,4 @@
-import { RefObject, UIEvent, useMemo, useRef, useState } from "react";
+import { RefObject, UIEvent, useMemo, useRef, useState, useCallback } from "react";
 import { addDays, differenceInCalendarDays, format, isValid, max, min, parseISO, startOfDay } from "date-fns";
 import { Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ interface DepLink {
   lag_days: number;
 }
 
+export interface ProposedShift {
+  taskId: string;
+  title: string;
+  code: string | null;
+  planned_start: string;
+  planned_end: string;
+}
+
 interface Props {
   rows: GanttRow[];
   collapsed: Set<string>;
@@ -24,6 +32,12 @@ interface Props {
   projectRollup?: NodeRollup | null;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  /** Set of task IDs currently blocked by hard predecessors. */
+  blockedSet?: Set<string>;
+  /** Map of task IDs that have a baseline (renders ghost bar). */
+  baselineByTask?: Map<string, { baseline_start: string | null; baseline_end: string | null }>;
+  /** When provided, allows drag-to-adjust on task bars. Called once on drop. */
+  onProposeShift?: (shift: ProposedShift) => void;
 }
 
 type Zoom = "day" | "week" | "month";
@@ -39,8 +53,12 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
+  const [dragState, setDragState] = useState<null | {
+    taskId: string; mode: "move" | "resize-start" | "resize-end";
+    originX: number; origStart: Date; origEnd: Date; offsetDays: number;
+  }>(null);
 
   const range = useMemo(() => {
     const starts: Date[] = [];
@@ -230,33 +248,138 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                   >
                     {(() => {
                       if (row.kind === "task") {
-                        const start = safeDate(row.task.planned_start);
-                        const end = safeDate(row.task.planned_end);
+                        // Apply live drag preview if this task is being dragged
+                        let start = safeDate(row.task.planned_start);
+                        let end = safeDate(row.task.planned_end);
+                        if (dragState && dragState.taskId === row.id) {
+                          if (dragState.mode === "move") {
+                            start = addDays(dragState.origStart, dragState.offsetDays);
+                            end = addDays(dragState.origEnd, dragState.offsetDays);
+                          } else if (dragState.mode === "resize-start") {
+                            const next = addDays(dragState.origStart, dragState.offsetDays);
+                            start = next <= dragState.origEnd ? next : dragState.origEnd;
+                          } else {
+                            const next = addDays(dragState.origEnd, dragState.offsetDays);
+                            end = next >= dragState.origStart ? next : dragState.origStart;
+                          }
+                        }
                         if (!start || !end || end < start) return null;
 
                         const left = differenceInCalendarDays(start, range.start) * dayWidth;
                         const width = Math.max(dayWidth, (differenceInCalendarDays(end, start) + 1) * dayWidth);
+                        const isBlocked = blockedSet?.has(row.id) ?? false;
                         const status = taskStatus(row.task, today);
-                        const barTone =
-                          status === "late" ? "border-destructive bg-destructive/70"
+                        const barTone = isBlocked
+                          ? "border-destructive bg-destructive/40"
+                          : status === "late" ? "border-destructive bg-destructive/70"
                           : status === "at_risk" ? "border-warning bg-warning/70"
                           : status === "done" ? "border-primary bg-primary/75"
                           : "border-success bg-success/70";
 
+                        const baseline = baselineByTask?.get(row.id);
+                        const blStart = safeDate(baseline?.baseline_start ?? null);
+                        const blEnd = safeDate(baseline?.baseline_end ?? null);
+
+                        const canDrag = !!onProposeShift;
+                        const onPointerDown = (mode: "move" | "resize-start" | "resize-end") => (e: React.PointerEvent) => {
+                          if (!canDrag) return;
+                          e.stopPropagation();
+                          e.preventDefault();
+                          (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                          setDragState({
+                            taskId: row.id,
+                            mode,
+                            originX: e.clientX,
+                            origStart: safeDate(row.task.planned_start)!,
+                            origEnd: safeDate(row.task.planned_end)!,
+                            offsetDays: 0,
+                          });
+                        };
+                        const onPointerMove = (e: React.PointerEvent) => {
+                          if (!dragState || dragState.taskId !== row.id) return;
+                          const dx = e.clientX - dragState.originX;
+                          const days = Math.round(dx / dayWidth);
+                          if (days !== dragState.offsetDays) {
+                            setDragState({ ...dragState, offsetDays: days });
+                          }
+                        };
+                        const onPointerUp = (e: React.PointerEvent) => {
+                          if (!dragState || dragState.taskId !== row.id) return;
+                          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                          const ds = dragState;
+                          setDragState(null);
+                          if (ds.offsetDays === 0) return;
+                          let ns = safeDate(row.task.planned_start)!;
+                          let ne = safeDate(row.task.planned_end)!;
+                          if (ds.mode === "move") {
+                            ns = addDays(ds.origStart, ds.offsetDays);
+                            ne = addDays(ds.origEnd, ds.offsetDays);
+                          } else if (ds.mode === "resize-start") {
+                            const cand = addDays(ds.origStart, ds.offsetDays);
+                            ns = cand <= ds.origEnd ? cand : ds.origEnd;
+                          } else {
+                            const cand = addDays(ds.origEnd, ds.offsetDays);
+                            ne = cand >= ds.origStart ? cand : ds.origStart;
+                          }
+                          onProposeShift?.({
+                            taskId: row.id,
+                            title: row.task.title,
+                            code: row.task.code,
+                            planned_start: format(ns, "yyyy-MM-dd"),
+                            planned_end: format(ne, "yyyy-MM-dd"),
+                          });
+                        };
+
                         return (
-                          <div
-                            className={cn(
-                              "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden",
-                              barTone,
+                          <>
+                            {blStart && blEnd && blEnd >= blStart && (
+                              <div
+                                className="absolute top-[20px] h-1 rounded-sm bg-muted-foreground/40"
+                                style={{
+                                  left: differenceInCalendarDays(blStart, range.start) * dayWidth,
+                                  width: Math.max(dayWidth, (differenceInCalendarDays(blEnd, blStart) + 1) * dayWidth),
+                                }}
+                                title={`Baseline ${format(blStart, "MMM d")} - ${format(blEnd, "MMM d")}`}
+                              />
                             )}
-                            style={{ left, width }}
-                            title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
-                          >
                             <div
-                              className="h-full bg-foreground/20"
-                              style={{ width: `${Math.min(100, row.task.progress_pct)}%` }}
-                            />
-                          </div>
+                              className={cn(
+                                "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden group",
+                                barTone,
+                                canDrag && "cursor-grab active:cursor-grabbing",
+                                isBlocked && "ring-2 ring-destructive/40",
+                              )}
+                              style={{
+                                left, width,
+                                ...(isBlocked ? { backgroundImage: "repeating-linear-gradient(45deg, hsl(var(--destructive)/0.6) 0 4px, transparent 4px 8px)" } : {}),
+                              }}
+                              title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}${isBlocked ? " (blocked)" : ""}`}
+                              onPointerDown={onPointerDown("move")}
+                              onPointerMove={onPointerMove}
+                              onPointerUp={onPointerUp}
+                            >
+                              <div
+                                className="h-full bg-foreground/20 pointer-events-none"
+                                style={{ width: `${Math.min(100, row.task.progress_pct)}%` }}
+                              />
+                              {canDrag && (
+                                <>
+                                  <div
+                                    className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-foreground/30"
+                                    onPointerDown={onPointerDown("resize-start")}
+                                    onPointerMove={onPointerMove}
+                                    onPointerUp={onPointerUp}
+                                  />
+                                  <div
+                                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-foreground/30"
+                                    onPointerDown={onPointerDown("resize-end")}
+                                    onPointerMove={onPointerMove}
+                                    onPointerUp={onPointerUp}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </>
                         );
                       }
 
