@@ -211,7 +211,20 @@ export default function WbsPage() {
               <GanttChartSquare className="mr-1.5 h-3.5 w-3.5" />
               Gantt
             </Button>
+            <Button
+              size="sm"
+              variant={mainView === "schedule" ? "secondary" : "ghost"}
+              className="h-8 rounded-lg px-3 text-xs"
+              onClick={() => setMainView("schedule")}
+            >
+              <TableIcon className="mr-1.5 h-3.5 w-3.5" />
+              Schedule
+            </Button>
           </div>
+
+          {mainView === "schedule" && projectId && (
+            <SetBaselineButton projectId={projectId} canEdit={canEdit} />
+          )}
 
           {mainView === "tree" && (
             <Button variant="outline" size="sm" onClick={toggleTree}>
