@@ -58,12 +58,23 @@ export default function WbsPage() {
   const [mode, setMode] = useState<EditMode>({ kind: "view" });
   const [predecessors, setPredecessors] = useState<any[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [pendingShift, setPendingShift] = useState<ProposedShift | null>(null);
+  const { blockedMap } = useTaskBlockedness(projectId);
+  const blockedSet = useMemo(() => new Set(blockedMap.keys()), [blockedMap]);
+  const baselineByTask = useMemo(() => {
+    const m = new Map<string, { baseline_start: string | null; baseline_end: string | null }>();
+    for (const t of tasks as any[]) {
+      if (t.baseline_start || t.baseline_end) m.set(t.id, { baseline_start: t.baseline_start, baseline_end: t.baseline_end });
+    }
+    return m;
+  }, [tasks]);
 
   const leftGanttBodyRef = useRef<HTMLDivElement>(null);
   const rightGanttBodyRef = useRef<HTMLDivElement>(null);
   const syncingPaneRef = useRef<"left" | "right" | null>(null);
 
   const canEdit = roles.includes("admin") || roles.includes("project_manager");
+  const canEditSchedule = canEdit || roles.includes("engineer") || roles.includes("supervisor");
   const canManage = canEdit;
 
   const selectedNode = useMemo(
