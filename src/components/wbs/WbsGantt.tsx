@@ -55,6 +55,10 @@ function safeDate(s: string | null) {
 
 export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
+  const [dragState, setDragState] = useState<null | {
+    taskId: string; mode: "move" | "resize-start" | "resize-end";
+    originX: number; origStart: Date; origEnd: Date; offsetDays: number;
+  }>(null);
 
   const range = useMemo(() => {
     const starts: Date[] = [];
