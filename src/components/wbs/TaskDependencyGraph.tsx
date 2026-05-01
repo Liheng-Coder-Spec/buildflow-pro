@@ -129,7 +129,8 @@ export function TaskDependencyGraph({
     if (!selectedTaskId || !newTaskId || !projectId) return;
     setAdding(true);
 
-    let predId: string, taskId: string;
+    let predId: string;
+    let taskId: string;
     if (type === "predecessor") {
       predId = newTaskId;
       taskId = selectedTaskId;
@@ -175,7 +176,7 @@ export function TaskDependencyGraph({
 
     toast.success("Dependency removed");
     onDependencyChange();
-  };
+  }
 
   if (!selectedTaskId || !selectedTask) {
     return (
@@ -214,7 +215,10 @@ export function TaskDependencyGraph({
                     size="sm"
                     variant="ghost"
                     className="h-5 px-1.5 text-[10px]"
-                    onClick={() => { setShowAddPred(!showAddPred); setShowAddSucc(false); }}
+                    onClick={() => {
+                      setShowAddSucc(false);
+                      setShowAddPred((prev) => !prev);
+                    }}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -327,7 +331,10 @@ export function TaskDependencyGraph({
                     size="sm"
                     variant="ghost"
                     className="h-5 px-1.5 text-[10px]"
-                    onClick={() => { setShowAddSucc(!showAddSucc); setShowAddPred(false); }}
+                    onClick={() => {
+                      setShowAddPred(false);
+                      setShowAddSucc((prev) => !prev);
+                    }}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
