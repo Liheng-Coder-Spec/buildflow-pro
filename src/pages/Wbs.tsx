@@ -17,26 +17,23 @@ import { WbsNodeEditor } from "@/components/wbs/WbsNodeEditor";
 import { WbsAssignmentsTab } from "@/components/wbs/WbsAssignmentsTab";
 import { WbsScheduleCard } from "@/components/wbs/WbsScheduleCard";
 import { WbsGanttTree } from "@/components/wbs/WbsGanttTree";
-import { WbsGantt, type ProposedShift } from "@/components/wbs/WbsGantt";
+import { WbsGantt } from "@/components/wbs/WbsGantt";
+import { TaskDependencyGraph, DependencyLink } from "@/components/wbs/TaskDependencyGraph";
 import { buildGanttRows, GanttRow } from "@/lib/wbsGanttRows";
 import {
-  Search, PanelLeftClose, PanelLeftOpen, ChevronRight, LayoutList, GanttChartSquare, Table as TableIcon,
+  Search, PanelLeftClose, PanelLeftOpen, ChevronRight, LayoutList, GanttChartSquare,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScheduleTable } from "@/components/schedule/ScheduleTable";
-import { SetBaselineButton } from "@/components/schedule/SetBaselineButton";
-import { ScheduleCascadeDialog } from "@/components/schedule/ScheduleCascadeDialog";
-import { useTaskBlockedness } from "@/hooks/useTaskBlockedness";
 
 type EditMode =
   | { kind: "view" }
   | { kind: "edit"; nodeId: string }
   | { kind: "create"; parentId: string | null };
 
-type MainView = "tree" | "gantt" | "schedule";
+type MainView = "tree" | "gantt";
 
 const STORAGE_KEY = "buildtrack.wbs.layout";
 
@@ -56,25 +53,16 @@ export default function WbsPage() {
     return saved ? JSON.parse(saved).treeOpen ?? true : true;
   });
   const [mode, setMode] = useState<EditMode>({ kind: "view" });
-  const [predecessors, setPredecessors] = useState<any[]>([]);
+  const [predecessors, setPredecessors] = useState<DependencyLink[]>([]);
+  const [successors, setSuccessors] = useState<DependencyLink[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [pendingShift, setPendingShift] = useState<ProposedShift | null>(null);
-  const { blockedMap } = useTaskBlockedness(projectId);
-  const blockedSet = useMemo(() => new Set(blockedMap.keys()), [blockedMap]);
-  const baselineByTask = useMemo(() => {
-    const m = new Map<string, { baseline_start: string | null; baseline_end: string | null }>();
-    for (const t of tasks as any[]) {
-      if (t.baseline_start || t.baseline_end) m.set(t.id, { baseline_start: t.baseline_start, baseline_end: t.baseline_end });
-    }
-    return m;
-  }, [tasks]);
 
   const leftGanttBodyRef = useRef<HTMLDivElement>(null);
   const rightGanttBodyRef = useRef<HTMLDivElement>(null);
   const syncingPaneRef = useRef<"left" | "right" | null>(null);
 
   const canEdit = roles.includes("admin") || roles.includes("project_manager");
-  const canEditSchedule = canEdit || roles.includes("engineer") || roles.includes("supervisor");
   const canManage = canEdit;
 
   const selectedNode = useMemo(
@@ -90,15 +78,24 @@ export default function WbsPage() {
   useEffect(() => {
     if (!projectId || tasks.length === 0) {
       setPredecessors([]);
+      setSuccessors([]);
       return;
     }
 
     const ids = tasks.map((task) => task.id);
-    supabase
-      .from("task_predecessors")
-      .select("task_id, predecessor_id, relation_type, lag_days")
-      .in("task_id", ids)
-      .then(({ data }) => setPredecessors(data ?? []));
+    Promise.all([
+      supabase
+        .from("task_predecessors")
+        .select("task_id, predecessor_id, relation_type, lag_days")
+        .in("task_id", ids),
+      supabase
+        .from("task_predecessors")
+        .select("task_id, predecessor_id, relation_type, lag_days")
+        .in("predecessor_id", ids),
+    ]).then(([predResult, succResult]) => {
+      setPredecessors(predResult.data ?? []);
+      setSuccessors(succResult.data ?? []);
+    });
   }, [projectId, tasks]);
 
   const toggleTree = () => {
@@ -134,6 +131,10 @@ export default function WbsPage() {
   const handleRightGanttScroll = (event: UIEvent<HTMLDivElement>) => {
     if (syncingPaneRef.current === "left") return;
     syncGanttScroll("right", event.currentTarget.scrollTop);
+  };
+
+  const handleTaskSelect = (taskId: string) => {
+    setSelectedTaskId(taskId === selectedTaskId ? null : taskId);
   };
 
   const handleMove = async (nodeId: string, direction: "up" | "down") => {
@@ -211,20 +212,7 @@ export default function WbsPage() {
               <GanttChartSquare className="mr-1.5 h-3.5 w-3.5" />
               Gantt
             </Button>
-            <Button
-              size="sm"
-              variant={mainView === "schedule" ? "secondary" : "ghost"}
-              className="h-8 rounded-lg px-3 text-xs"
-              onClick={() => setMainView("schedule")}
-            >
-              <TableIcon className="mr-1.5 h-3.5 w-3.5" />
-              Schedule
-            </Button>
           </div>
-
-          {mainView === "schedule" && projectId && (
-            <SetBaselineButton projectId={projectId} canEdit={canEdit} />
-          )}
 
           {mainView === "tree" && (
             <Button variant="outline" size="sm" onClick={toggleTree}>
@@ -239,7 +227,7 @@ export default function WbsPage() {
         <div className="flex-1 min-h-0 overflow-hidden">
           <div className="h-full rounded-2xl border bg-card shadow-sm overflow-hidden">
             <ResizablePanelGroup direction="horizontal" className="h-full">
-              <ResizablePanel defaultSize={46} minSize={30} maxSize={64} className="min-h-0 overflow-hidden">
+              <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="min-h-0 overflow-hidden">
                 <WbsGanttTree
                   rows={rows}
                   collapsed={collapsed}
@@ -249,10 +237,12 @@ export default function WbsPage() {
                   projectRollup={projectRollup}
                   bodyScrollRef={leftGanttBodyRef}
                   onBodyScroll={handleLeftGanttScroll}
+                  selectedTaskId={selectedTaskId}
+                  onTaskSelect={handleTaskSelect}
                 />
               </ResizablePanel>
               <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={54} minSize={36} className="min-h-0 overflow-hidden">
+              <ResizablePanel defaultSize={45} minSize={30} className="min-h-0 overflow-hidden">
                 <WbsGantt
                   rows={rows}
                   collapsed={collapsed}
@@ -264,18 +254,23 @@ export default function WbsPage() {
                   projectRollup={projectRollup}
                   bodyScrollRef={rightGanttBodyRef}
                   onBodyScroll={handleRightGanttScroll}
-                  blockedSet={blockedSet}
-                  baselineByTask={baselineByTask}
-                  onProposeShift={canEditSchedule ? setPendingShift : undefined}
+                  selectedTaskId={selectedTaskId}
+                  onTaskSelect={handleTaskSelect}
+                />
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={25} minSize={15} maxSize={40} className="min-h-0 overflow-hidden">
+                <TaskDependencyGraph
+                  selectedTaskId={selectedTaskId}
+                  tasks={tasks}
+                  predecessors={predecessors}
+                  successors={successors}
+                  onSelectTask={handleTaskSelect}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
         </div>
-      ) : mainView === "schedule" ? (
-        <Card className="flex-1 min-h-0 overflow-hidden">
-          {projectId && <ScheduleTable projectId={projectId} nodes={nodes} />}
-        </Card>
       ) : (
         <Card className="flex-1 min-h-0 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -454,23 +449,6 @@ export default function WbsPage() {
             </ResizablePanel>
           </ResizablePanelGroup>
         </Card>
-      )}
-
-      {projectId && pendingShift && (
-        <ScheduleCascadeDialog
-          open={!!pendingShift}
-          onOpenChange={(v) => { if (!v) setPendingShift(null); }}
-          projectId={projectId}
-          proposed={new Map([[pendingShift.taskId, {
-            planned_start: pendingShift.planned_start,
-            planned_end: pendingShift.planned_end,
-            title: pendingShift.title,
-            code: pendingShift.code,
-          }]])}
-          triggerTaskId={pendingShift.taskId}
-          triggerReason={`Drag-adjusted ${pendingShift.code ?? pendingShift.title}`}
-          onApplied={() => { setPendingShift(null); refresh(); }}
-        />
       )}
     </div>
   );

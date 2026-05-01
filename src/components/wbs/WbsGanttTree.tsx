@@ -22,6 +22,8 @@ interface Props {
   projectRollup?: NodeRollup | null;
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  selectedTaskId?: string | null;
+  onTaskSelect?: (taskId: string) => void;
 }
 
 const ROW_H = 36;
@@ -43,6 +45,8 @@ export function WbsGanttTree({
   projectRollup,
   bodyScrollRef,
   onBodyScroll,
+  selectedTaskId,
+  onTaskSelect,
 }: Props) {
   const today = new Date();
 
@@ -96,6 +100,7 @@ export function WbsGanttTree({
           }
 
           const duration = workingDaysBetween(start, end, holidaySet);
+          const isSelected = r.kind === "task" && r.task.id === selectedTaskId;
 
           return (
             <div
@@ -105,10 +110,16 @@ export function WbsGanttTree({
                 index % 2 === 0 ? "bg-background/80" : "bg-muted/10",
                 r.kind === "project" && "bg-primary/8",
                 r.kind === "node" && "bg-muted/35",
+                isSelected && "ring-2 ring-primary ring-inset bg-primary/5",
               )}
               style={{
                 height: ROW_H,
                 gridTemplateColumns: "minmax(260px,1fr) 76px 86px 86px 108px 92px",
+              }}
+              onClick={() => {
+                if (r.kind === "task" && onTaskSelect) {
+                  onTaskSelect(r.task.id);
+                }
               }}
             >
               <div
