@@ -102,6 +102,8 @@ export function TaskDependencyGraph({
   onSelectTask,
   onDependencyChange,
 }: TaskDependencyGraphProps) {
+  console.log("TaskDependencyGraph render - canEdit:", canEdit, "selectedTaskId:", selectedTaskId);
+  
   const [showAddPred, setShowAddPred] = useState(false);
   const [showAddSucc, setShowAddSucc] = useState(false);
   const [newTaskId, setNewTaskId] = useState("");
@@ -217,11 +219,14 @@ export function TaskDependencyGraph({
                     className="h-5 px-1.5 text-[10px]"
                     onClick={() => {
                       setShowAddSucc(false);
-                      setShowAddPred((prev) => !prev);
+                      setShowAddPred(p => !p);
                     }}
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
+                )}
+                {!canEdit && (
+                  <span className="text-[10px] text-muted-foreground">Read-only</span>
                 )}
               </div>
               <div className="space-y-2">
@@ -306,12 +311,20 @@ export function TaskDependencyGraph({
               size="sm"
               variant="ghost"
               className="w-full text-xs text-muted-foreground"
-              onClick={() => { setShowAddPred(!showAddPred); setShowAddSucc(false); }}
+              onClick={() => { setShowAddPred(p => !p); setShowAddSucc(false); }}
             >
               <Plus className="h-3 w-3 mr-1" />
               Add Predecessor
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full text-xs"
+            onClick={() => { alert("Test click works!"); }}
+          >
+            Test Button (always visible)
+          </Button>
 
           <div className="flex justify-center">
             <div className="h-px flex-1 bg-border" />
