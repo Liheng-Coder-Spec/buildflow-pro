@@ -56,6 +56,7 @@ export default function WbsPage() {
   const [predecessors, setPredecessors] = useState<DependencyLink[]>([]);
   const [successors, setSuccessors] = useState<DependencyLink[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [secondTaskId, setSecondTaskId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -134,13 +135,25 @@ export default function WbsPage() {
     syncGanttScroll("right", event.currentTarget.scrollTop);
   };
 
-  const handleTaskSelect = (taskId: string) => {
+  const handleTaskSelect = (taskId: string, isCtrlClick?: boolean) => {
     if (taskId === selectedTaskId) {
+      // Click same task again - deselect
       setSelectedTaskId(null);
+      setSecondTaskId(null);
       setDialogOpen(false);
-    } else {
+    } else if (!selectedTaskId) {
+      // First selection - set as predecessor
       setSelectedTaskId(taskId);
+      setSecondTaskId(null);
+    } else if (isCtrlClick || !secondTaskId) {
+      // Ctrl+click or second click - set as successsor
+      setSecondTaskId(taskId);
+      // Auto-open dialog with pre-filled data
       setDialogOpen(true);
+    } else {
+      // Clicking another task when both are selected - reset
+      setSelectedTaskId(taskId);
+      setSecondTaskId(null);
     }
   };
 
@@ -173,6 +186,37 @@ export default function WbsPage() {
     } catch (err) {
       toast.error("Failed to move node");
     }
+  };
+
+  const handleLinkTasks = async () => {
+    if (!selectedTaskId || !secondTaskId || !projectId) {
+      toast.error("Select two tasks to link");
+      return;
+    }
+
+    // selectedTaskId = predecessor, secondTaskId = successsor
+    const { error } = await supabase.from("task_predecessors").insert({
+      task_id: secondTaskId,
+      predecessor_id: selectedTaskId,
+      relation_type: "FS",
+      lag_days: 0,
+    } as any);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Tasks linked (FS)");
+    // Refresh dependencies
+    const ids = tasks.map((t) => t.id);
+    const [predResult, succResult] = await Promise.all([
+      supabase.from("task_predecessors").select("task_id, predecessor_id, relation_type, lag_days").in("task_id", ids),
+      supabase.from("task_predecessors").select("task_id, predecessor_id, relation_type, lag_days").in("predecessor_id", ids),
+    ]);
+    setPredecessors(predResult.data ?? []);
+    setSuccessors(succResult.data ?? []);
+    setSecondTaskId(null);
   };
 
   if (!activeProject) {
@@ -230,9 +274,35 @@ export default function WbsPage() {
         </div>
       </div>
 
-      {mainView === "gantt" ? (
+        {mainView === "gantt" ? (
         <div className="flex-1 min-h-0 overflow-hidden">
           <div className="h-full rounded-2xl border bg-card shadow-sm overflow-hidden">
+            {/* Link Tasks Toolbar */}
+            {canEdit && (selectedTaskId || secondTaskId) && (
+              <div className="border-b p-2 flex items-center gap-2 bg-muted/30">
+                <span className="text-xs text-muted-foreground">
+                  {selectedTaskId && <span>Predecessor: {tasks.find(t => t.id === selectedTaskId)?.code || "Selected"}</span>}
+                  {selectedTaskId && secondTaskId && <span className="mx-2">→</span>}
+                  {secondTaskId && <span>Successor: {tasks.find(t => t.id === secondTaskId)?.code || "Selected"}</span>}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={handleLinkTasks}
+                  disabled={!selectedTaskId || !secondTaskId}
+                  className="ml-auto text-xs h-7"
+                >
+                  Link Tasks (FS)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setSelectedTaskId(null); setSecondTaskId(null); }}
+                  className="text-xs h-7"
+                >
+                  Clear
+                </Button>
+              </div>
+            )}
             <ResizablePanelGroup direction="horizontal" className="h-full">
               <ResizablePanel defaultSize={40} minSize={20} className="min-h-0 overflow-hidden">
                 <WbsGanttTree

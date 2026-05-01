@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link2, ArrowRight, ArrowLeft, Trash2, Settings } from "lucide-react";
+import { Link2, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,14 @@ import { TaskScheduleLite } from "@/lib/scheduleMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface DependencyLink {
-  id?: string;
+export interface DependencyLink {
   task_id: string;
   predecessor_id: string;
   relation_type: DepRelation;
   lag_days: number;
 }
+
+export type { DependencyLink as DepLink };
 
 interface GraphTask extends TaskScheduleLite {
   title: string;
@@ -57,8 +58,6 @@ export function TaskDependencyDialog({
   canEdit,
   onDependencyChange,
 }: TaskDependencyDialogProps) {
-  const [linkMode, setLinkMode] = useState<"idle" | "selecting" | "edit">("idle");
-  const [linkTarget, setLinkTarget] = useState<string | null>(null);
   const [editLink, setEditLink] = useState<DependencyLink | null>(null);
   const [editRelation, setEditRelation] = useState<DepRelation>("FS");
   const [editLag, setEditLag] = useState("0");
@@ -75,40 +74,6 @@ export function TaskDependencyDialog({
     if (!selectedTaskId) return [];
     return successors.filter((s) => s.predecessor_id === selectedTaskId);
   }, [successors, selectedTaskId]);
-
-  const availableTasks = useMemo(() => {
-    return tasks.filter((t) => t.id !== selectedTaskId);
-  }, [tasks, selectedTaskId]);
-
-  const handleLink = async () => {
-    if (!selectedTaskId || !linkTarget || !projectId) return;
-    setSaving(true);
-
-    const { error } = await supabase.from("task_predecessors").insert({
-      task_id: selectedTaskId,
-      predecessor_id: linkTarget,
-      relation_type: "FS",
-      lag_days: 0,
-    } as any);
-
-    setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Dependency linked (FS)");
-    setLinkMode("idle");
-    setLinkTarget(null);
-    onDependencyChange();
-  };
-
-  const handleEditLink = async (link: DependencyLink) => {
-    setEditLink(link);
-    setEditRelation(link.relation_type);
-    setEditLag(String(link.lag_days ?? 0));
-    setLinkMode("edit");
-  };
 
   const handleSaveEdit = async () => {
     if (!editLink) return;
@@ -130,7 +95,6 @@ export function TaskDependencyDialog({
     }
 
     toast.success("Dependency updated");
-    setLinkMode("idle");
     setEditLink(null);
     onDependencyChange();
   };
@@ -149,7 +113,6 @@ export function TaskDependencyDialog({
     }
 
     toast.success("Dependency deleted");
-    setLinkMode("idle");
     setEditLink(null);
     onDependencyChange();
   };
@@ -162,7 +125,7 @@ export function TaskDependencyDialog({
             <DialogTitle>No task selected</DialogTitle>
           </DialogHeader>
           <div className="text-center py-8 text-muted-foreground">
-            <p>Click a task in the Gantt chart to manage its dependencies</p>
+            <p>Select a task to manage its dependencies</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -172,13 +135,9 @@ export function TaskDependencyDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => {
       onOpenChange(o);
-      if (!o) {
-        setLinkMode("idle");
-        setLinkTarget(null);
-        setEditLink(null);
-      }
+      if (!o) setEditLink(null);
     }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5 text-primary" />
@@ -186,48 +145,27 @@ export function TaskDependencyDialog({
               <div className="text-base">{selectedTask.title}</div>
               <div className="text-xs text-muted-foreground font-normal">
                 {selectedTask.code && <span className="font-mono mr-1">{selectedTask.code}</span>}
-                Dependency Management
+                Dependencies
               </div>
             </div>
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-6 p-1">
-          {/* Link Mode */}
-          {linkMode === "selecting" && (
-            <div className="p-3 border rounded-md bg-muted/30 space-y-3">
-              <p className="text-sm font-medium">Select predecessor task to link:</p>
-              <Select value={linkTarget} onValueChange={setLinkTarget}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Select task" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableTasks.map((t) => (
-                    <SelectItem key={t.id} value={t.id} className="text-sm">
-                      {t.code && <span className="font-mono mr-2">{t.code}</span>}
-                      {t.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleLink} disabled={saving || !linkTarget} className="text-sm">
-                  {saving ? "Linking..." : "Link (FS)"}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => { setLinkMode("idle"); setLinkTarget(null); }} className="text-sm">
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
           {/* Edit Mode */}
-          {linkMode === "edit" && editLink && (
-            <div className="p-3 border rounded-md bg-muted/30 space-y-3">
-              <p className="text-sm font-medium">Edit Dependency</p>
-              <div className="flex items-center gap-2">
+          {editLink && (
+            <div className="p-4 border rounded-md bg-muted/30 space-y-4">
+              <h4 className="text-sm font-semibold">Edit Dependency</h4>
+              <div className="grid grid-cols-[120px_1fr] gap-3 items-center">
+                <span className="text-xs text-muted-foreground">Predecessor:</span>
+                <span className="text-sm">{getTaskById(tasks, editLink.predecessor_id)?.title}</span>
+
+                <span className="text-xs text-muted-foreground">Successor:</span>
+                <span className="text-sm">{getTaskById(tasks, editLink.task_id)?.title}</span>
+
+                <span className="text-xs text-muted-foreground">Type:</span>
                 <Select value={editRelation} onValueChange={(v) => setEditRelation(v as DepRelation)}>
-                  <SelectTrigger className="h-8 text-sm flex-1">
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -239,23 +177,24 @@ export function TaskDependencyDialog({
                     ))}
                   </SelectContent>
                 </Select>
+
+                <span className="text-xs text-muted-foreground">Lag (days):</span>
                 <Input
                   type="number"
                   value={editLag}
                   onChange={(e) => setEditLag(e.target.value)}
-                  className="w-16 h-8 px-2 text-sm border rounded text-center"
-                  placeholder="Lag"
+                  className="h-8 w-24 px-2 text-sm border rounded text-center"
                 />
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="text-sm">
                   {saving ? "Saving..." : "OK"}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { setLinkMode("idle"); setEditLink(null); }} className="text-sm">
+                <Button size="sm" variant="outline" onClick={() => setEditLink(null)} className="text-sm">
                   Cancel
                 </Button>
                 <Button size="sm" variant="destructive" onClick={() => handleDeleteLink(editLink)} disabled={saving} className="text-sm ml-auto">
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
                   Delete
                 </Button>
               </div>
@@ -264,22 +203,9 @@ export function TaskDependencyDialog({
 
           {/* Predecessors Section */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <ArrowRight className="h-4 w-4" />
-                Predecessors ({predLinks.length})
-              </h4>
-              {canEdit && linkMode === "idle" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => { setLinkMode("selecting"); setLinkTarget(null); }}
-                >
-                  <Link2 className="h-4 w-4 mr-1" />
-                  Link Predecessor
-                </Button>
-              )}
-            </div>
+            <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              Predecessors ({predLinks.length})
+            </h4>
 
             {predLinks.length > 0 ? (
               <div className="space-y-2">
@@ -287,7 +213,11 @@ export function TaskDependencyDialog({
                   const predTask = getTaskById(tasks, link.predecessor_id);
                   if (!predTask) return null;
                   return (
-                    <div key={link.predecessor_id} className="flex items-start gap-3 p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
+                    <div
+                      key={link.predecessor_id}
+                      className="flex items-start gap-3 p-3 border rounded-md bg-background hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => canEdit && setEditLink(link)}
+                    >
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
                           {predTask.code && (
@@ -309,49 +239,30 @@ export function TaskDependencyDialog({
                           </span>
                         </div>
                       </div>
-                      {canEdit && linkMode === "idle" && (
+                      {canEdit && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleEditLink(link)}
+                          onClick={(e) => { e.stopPropagation(); setEditLink(link); }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                          Edit
                         </Button>
                       )}
                     </div>
                   );
                 })}
               </div>
-            ) : linkMode === "idle" ? (
-              <p className="text-xs text-muted-foreground italic">No predecessors. Click "Link Predecessor" to add.</p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No predecessors. Use "Link Tasks" button to add.</p>
+            )}
           </div>
 
           {/* Successors Section */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Successors ({succLinks.length})
-              </h4>
-              {canEdit && linkMode === "idle" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    // For successors, we need to link selectedTask as predecessor
-                    // So we swap the logic - selectedTask becomes the predecessor
-                    // This is essentially the same as linking a predecessor
-                    setLinkMode("selecting");
-                    setLinkTarget(null);
-                  }}
-                >
-                  <Link2 className="h-4 w-4 mr-1" />
-                  Link Successor
-                </Button>
-              )}
-            </div>
+            <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
+              Successors ({succLinks.length})
+            </h4>
 
             {succLinks.length > 0 ? (
               <div className="space-y-2">
@@ -359,7 +270,11 @@ export function TaskDependencyDialog({
                   const succTask = getTaskById(tasks, link.task_id);
                   if (!succTask) return null;
                   return (
-                    <div key={link.task_id} className="flex items-start gap-3 p-2 border rounded-md bg-background hover:bg-muted/30 transition-colors">
+                    <div
+                      key={link.task_id}
+                      className="flex items-start gap-3 p-3 border rounded-md bg-background hover:bg-muted/30 transition-colors cursor-pointer"
+                      onClick={() => canEdit && setEditLink(link)}
+                    >
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
                           {succTask.code && (
@@ -381,23 +296,23 @@ export function TaskDependencyDialog({
                           </span>
                         </div>
                       </div>
-                      {canEdit && linkMode === "idle" && (
+                      {canEdit && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleEditLink(link)}
+                          onClick={(e) => { e.stopPropagation(); setEditLink(link); }}
                           className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
-                          <Settings className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                          Edit
                         </Button>
                       )}
                     </div>
                   );
                 })}
               </div>
-            ) : linkMode === "idle" ? (
-              <p className="text-xs text-muted-foreground italic">No successors. Click "Link Successor" to add.</p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground italic">No successors. Use "Link Tasks" button to add.</p>
+            )}
           </div>
         </div>
       </DialogContent>

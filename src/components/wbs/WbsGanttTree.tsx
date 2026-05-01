@@ -23,7 +23,7 @@ interface Props {
   bodyScrollRef?: RefObject<HTMLDivElement>;
   onBodyScroll?: (event: UIEvent<HTMLDivElement>) => void;
   selectedTaskId?: string | null;
-  onTaskSelect?: (taskId: string) => void;
+  onTaskSelect?: (taskId: string, isCtrlClick?: boolean) => void;
 }
 
 const ROW_H = 36;
@@ -118,7 +118,7 @@ export function WbsGanttTree({
               }}
               onClick={() => {
                 if (r.kind === "task" && onTaskSelect) {
-                  onTaskSelect(r.task.id);
+                  onTaskSelect(r.task.id, false);
                 }
               }}
             >
