@@ -1,42 +1,108 @@
-## WBS / Gantt — UX & Layout Improvements
+## Dependency & Scheduling Module — Plan
 
-### 1. Flatten task-level rows
-In `WbsGanttTree.tsx` and `WbsGantt.tsx`:
-- When walking the WBS tree, if a node is a **leaf node** (no child nodes — only tasks), skip rendering its row and render its tasks directly under the parent at the same depth.
-- Task rows show task code + title only (no repeated `Building > Level > Zone >` breadcrumb prefix, since the visual hierarchy already conveys it).
-- Container nodes (Building / Level / Zone with children) remain as collapsible header rows.
+Builds on what already exists (`task_predecessors`, `tasks.planned_start/planned_end/actual_*/progress_pct/status`, `WbsGantt`, `TaskDependenciesSection`, holidays). No renames, no breaking changes.
 
-### 2. Add data columns to the left tree pane
-Convert the left "WBS / Task" pane in `WbsGanttTree.tsx` from a single-column tree into a compact table with sticky header and these columns:
+---
 
-| Column | Content | Width |
-|---|---|---|
-| Name | Code + name (indented tree) | flex |
-| Duration | Working-day count between planned_start/end (uses `workingDaysBetween` from `scheduleMeta.ts`, excludes holidays) | 70px |
-| Start | `planned_start` formatted `MMM d` | 80px |
-| Finish | `planned_end` formatted `MMM d` | 80px |
-| Status | Status dot + label (On Track / At Risk / Late / Done) using `taskStatus()` + `SCHEDULE_STATUS_DOT` | 90px |
-| % | Progress bar + `progress_pct` number | 80px |
+### 1. Database (migration)
 
-For container node rows, columns show **rolled-up values** from `useWbsSchedule` (`rollupByNode`): min start, max finish, sum of durations, weighted progress, worst status.
+**`tasks` — add columns**
+- `baseline_start date`, `baseline_end date` (nullable)
+- `planned_duration_days int generated always as (...) stored` — working-day count helper, computed in app instead if generated columns get tricky with holidays. Decision: compute in app, do NOT add a generated column (holidays vary by project).
+- Add `'blocked'` to `task_status` enum.
+- Allow status transition `assigned ↔ blocked`, `open ↔ blocked` in `validate_task_status_transition()`.
 
-### 3. Full-width layout with small side gaps
-In `src/pages/Wbs.tsx`:
-- When `mainView === "gantt"`, render the Gantt outside the standard page `Card` wrapper and stretch it edge-to-edge with only `px-2` (≈8px) gutters left/right and a slim top gap.
-- Adjust the parent container (`space-y-4 h-[calc(100vh-9rem)]`) so the Gantt can use the full available width — keep the page header compact.
-- Default split between left (tree+columns) and right (timeline) panels: 45% / 55% (currently 50/50).
+**`schedule_calculation_logs` (new)**
+```
+id, project_id, triggered_by_task_id, triggered_by_user, trigger_reason text,
+affected_count int, payload jsonb, -- {before:[{id,start,end}], after:[...]}
+created_at
+```
+RLS: anyone authenticated can SELECT; INSERT only by admin/PM/engineer/supervisor.
 
-### 4. "Today" jump button
-In the Gantt toolbar (`WbsGantt.tsx`):
-- Add a **Today** button next to the Day/Week/Month zoom buttons.
-- Clicking it scrolls the timeline horizontally so today's date is centered in the visible area. Uses a ref on the scrollable container and computes `scrollLeft = todayX - container.clientWidth / 2`.
-- Today line and dot remain as-is.
+**`task_predecessors` — add validation trigger**
+- No self-dependency (`task_id != predecessor_id`)
+- No duplicate (already enforced by intended unique key — add `unique(task_id, predecessor_id)`)
+- Same project (join check)
+- No cycle: recursive CTE walking predecessors, raise on `task_id` reappearing.
 
-### Files to edit
-- `src/components/wbs/WbsGanttTree.tsx` — flatten leaf nodes, convert to multi-column table layout, add column header row aligned with timeline header height.
-- `src/components/wbs/WbsGantt.tsx` — flatten leaf nodes (mirror logic), add Today button + scroll ref.
-- `src/pages/Wbs.tsx` — full-bleed layout for Gantt view, adjust default panel sizes.
-- `src/lib/scheduleMeta.ts` — reuse existing `workingDaysBetween`, `taskStatus`, rollup helpers; no schema changes.
+**Skip** new `task_dependencies`, `task_schedule_snapshots(_items)` tables — using baseline columns + log table covers the requirement.
 
-### Out of scope
-No DB changes. No edits to dependency arrows logic, zoom levels, or holiday calendar.
+### 2. Scheduling utility (`src/lib/schedule.ts`)
+Pure functions, unit-testable:
+- `computeFinish(start, durationDays, holidays) → date`
+- `computeStart(predEnd, relation, lagDays, holidays) → date` for FS/SS/FF/SF
+- `cascade({tasks, deps, changedTaskId, holidays}) → Map<id, {newStart, newEnd}>` — BFS over successors, applies max constraint when multiple predecessors, stops when no further shift needed.
+- `taskBlockedStatus(task, predecessors, predTasks) → 'blocked' | null` — blocked if any hard-block predecessor not in `completed/approved/closed`.
+
+### 3. Status logic
+- New hook `useTaskBlockedness(projectId)` returns Map<taskId, 'blocked' | 'ready' | null>.
+- TaskDetail "Start task" button disabled when blocked (with tooltip listing blocking predecessors).
+- StatusBadge gets `blocked` variant (destructive tone).
+- Background: when a predecessor moves to completed/approved, dependent tasks recompute on next load (no trigger needed for v1).
+
+### 4. Cascade preview UI
+New component `ScheduleCascadeDialog`:
+- Triggered when user edits `planned_end` (or duration) in TaskDetail / inline-edit / Gantt drag.
+- Calls `cascade()` client-side using already-loaded tasks + `task_predecessors`.
+- Shows table: code | title | old start→new start | old end→new end | shift days.
+- "Apply" → batch `update tasks` + insert `schedule_calculation_logs` row with before/after payload.
+- "Cancel" → revert local state.
+
+### 5. Gantt drag-to-adjust (`WbsGantt.tsx`)
+- Add pointer handlers on each task bar:
+  - drag body = move (shift start & end equally)
+  - drag left edge = change start
+  - drag right edge = change end
+- Snap to day grid (`dayWidth`).
+- On drop: open ScheduleCascadeDialog with proposed change.
+- Permission gate: only admin / project_manager / engineer / supervisor; others get read-only bars.
+- Visual: blocked tasks render with diagonal-stripe pattern + destructive border; baseline shown as thin gray bar behind planned bar when baseline_* present.
+
+### 6. Task Detail — Dependencies tab improvements
+`TaskDependenciesSection.tsx` already covers predecessors. Add:
+- Successors list (query `task_predecessors where predecessor_id = taskId`).
+- Per-row status badge: ✓ satisfied / ⚠ pending / ⛔ blocking.
+- Cycle/duplicate errors surfaced from new DB trigger as friendly toasts.
+
+### 7. Schedule Management screen
+Reuse existing `/wbs` Gantt tab — add a third tab **"Schedule"** with:
+- Filters: discipline (department), status, WBS subtree, search.
+- Dense task table with all columns from spec (code, name, WBS path, discipline, status, planned start/finish, duration, actual start/finish, predecessor/successor counts, delay days, progress %).
+- Click row → opens TaskDetail drawer.
+- "Set baseline" button (admin/PM): copies current planned_start/end into baseline_start/end for all project tasks, with confirm.
+
+### 8. Permissions
+- Edit dependencies / dates: admin, project_manager, engineer, supervisor (matches existing `task_predecessors` insert policy).
+- Set/clear baseline: admin, project_manager only.
+- Everyone authenticated: view.
+
+### 9. Files
+
+**New**
+- `supabase/migrations/<ts>_dependency_scheduling.sql`
+- `src/lib/schedule.ts` (cascade + blocked logic)
+- `src/components/schedule/ScheduleCascadeDialog.tsx`
+- `src/components/schedule/ScheduleTable.tsx`
+- `src/components/schedule/SetBaselineButton.tsx`
+- `src/hooks/useTaskBlockedness.ts`
+
+**Edited**
+- `src/components/wbs/WbsGantt.tsx` — drag handlers, baseline bars, blocked styling
+- `src/components/wbs/WbsGanttTree.tsx` — add Successors/Predecessors count columns (optional, behind toggle)
+- `src/components/tasks/TaskDependenciesSection.tsx` — add successors panel, status badges
+- `src/pages/Wbs.tsx` — add "Schedule" tab
+- `src/pages/TaskDetail.tsx` — disable Start when blocked, show baseline vs planned variance
+- `src/components/StatusBadge.tsx` + `src/lib/taskMeta.ts` — `blocked` status
+- `src/hooks/useWbsGantt.ts` — fetch baseline_* + dep counts
+- `src/lib/scheduleMeta.ts` — extend `taskStatus()` with blocked input
+
+### 10. Out of scope (this round)
+- Multiple named snapshots (only single baseline).
+- Server-side recompute trigger (cascade is client-driven with audit log).
+- Resource leveling / critical path highlighting (can be a follow-up).
+
+---
+
+### Open assumption
+Adding `'blocked'` to the `task_status` enum is safe because nothing currently produces it. If you'd rather keep it as a *derived* state (computed in UI only, not stored), say so before I implement and I'll skip the enum change and the DB transitions.
