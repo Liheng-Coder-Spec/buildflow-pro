@@ -264,11 +264,18 @@ export default function WbsPage() {
                   projectRollup={projectRollup}
                   bodyScrollRef={rightGanttBodyRef}
                   onBodyScroll={handleRightGanttScroll}
+                  blockedSet={blockedSet}
+                  baselineByTask={baselineByTask}
+                  onProposeShift={canEditSchedule ? setPendingShift : undefined}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
         </div>
+      ) : mainView === "schedule" ? (
+        <Card className="flex-1 min-h-0 overflow-hidden">
+          {projectId && <ScheduleTable projectId={projectId} nodes={nodes} />}
+        </Card>
       ) : (
         <Card className="flex-1 min-h-0 overflow-hidden">
           <ResizablePanelGroup direction="horizontal" className="h-full">
