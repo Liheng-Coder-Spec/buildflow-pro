@@ -455,6 +455,23 @@ export default function WbsPage() {
           </ResizablePanelGroup>
         </Card>
       )}
+
+      {projectId && pendingShift && (
+        <ScheduleCascadeDialog
+          open={!!pendingShift}
+          onOpenChange={(v) => { if (!v) setPendingShift(null); }}
+          projectId={projectId}
+          proposed={new Map([[pendingShift.taskId, {
+            planned_start: pendingShift.planned_start,
+            planned_end: pendingShift.planned_end,
+            title: pendingShift.title,
+            code: pendingShift.code,
+          }]])}
+          triggerTaskId={pendingShift.taskId}
+          triggerReason={`Drag-adjusted ${pendingShift.code ?? pendingShift.title}`}
+          onApplied={() => { setPendingShift(null); refresh(); }}
+        />
+      )}
     </div>
   );
 }
