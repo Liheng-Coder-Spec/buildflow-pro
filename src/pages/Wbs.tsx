@@ -26,6 +26,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WBS_NODE_TYPE_LABELS } from "@/lib/wbsMeta";
 import { supabase } from "@/integrations/supabase/client";
+import { DepRelation } from "@/lib/scheduleMeta";
 import { toast } from "sonner";
 
 type EditMode =
@@ -57,8 +58,10 @@ export default function WbsPage() {
   const [successors, setSuccessors] = useState<DependencyLink[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [secondTaskId, setSecondTaskId] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [editLink, setEditLink] = useState<DependencyLink | null>(null);
+  const [editRelation, setEditRelation] = useState<DepRelation>("FS");
+  const [editLag, setEditLag] = useState("0");
 
   const leftGanttBodyRef = useRef<HTMLDivElement>(null);
   const rightGanttBodyRef = useRef<HTMLDivElement>(null);
@@ -140,7 +143,6 @@ export default function WbsPage() {
       // Click same task again - deselect
       setSelectedTaskId(null);
       setSecondTaskId(null);
-      setDialogOpen(false);
     } else if (!selectedTaskId) {
       // First selection - set as predecessor
       setSelectedTaskId(taskId);
@@ -330,7 +332,13 @@ export default function WbsPage() {
                   bodyScrollRef={rightGanttBodyRef}
                   onBodyScroll={handleRightGanttScroll}
                   selectedTaskId={selectedTaskId}
+                  secondTaskId={secondTaskId}
                   onTaskSelect={handleTaskSelect}
+                  onEditDependency={(link) => {
+                    setEditLink(link);
+                    setEditRelation(link.relation_type);
+                    setEditLag(String(link.lag_days ?? 0));
+                  }}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
@@ -338,19 +346,30 @@ export default function WbsPage() {
           
           {/* Dependency Dialog */}
           <TaskDependencyDialog
-            open={dialogOpen}
-            onOpenChange={setDialogOpen}
-            selectedTaskId={selectedTaskId}
-            tasks={tasks}
-            predecessors={predecessors}
-            successors={successors}
-            projectId={projectId}
-            canEdit={canEdit}
-            onDependencyChange={() => {
+            editLink={editLink}
+            onEditChange={(link) => setEditLink(link)}
+            onSave={async () => {
+              if (!editLink) return;
+              const { error } = await supabase
+                .from("task_predecessors")
+                .update({
+                  relation_type: editRelation,
+                  lag_days: Number(editLag) || 0,
+                } as any)
+                .eq("task_id", editLink.task_id)
+                .eq("predecessor_id", editLink.predecessor_id);
+
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+
+              toast.success("Dependency updated");
+              setEditLink(null);
               // Refresh dependencies
               if (!projectId || tasks.length === 0) return;
               const ids = tasks.map((task) => task.id);
-              Promise.all([
+              const [predResult, succResult] = await Promise.all([
                 supabase
                   .from("task_predecessors")
                   .select("task_id, predecessor_id, relation_type, lag_days")
@@ -359,11 +378,47 @@ export default function WbsPage() {
                   .from("task_predecessors")
                   .select("task_id, predecessor_id, relation_type, lag_days")
                   .in("predecessor_id", ids),
-              ]).then(([predResult, succResult]) => {
-                setPredecessors(predResult.data ?? []);
-                setSuccessors(succResult.data ?? []);
-              });
+              ]);
+              setPredecessors(predResult.data ?? []);
+              setSuccessors(succResult.data ?? []);
             }}
+            onDelete={async () => {
+              if (!editLink) return;
+              const { error } = await supabase
+                .from("task_predecessors")
+                .delete()
+                .eq("task_id", editLink.task_id)
+                .eq("predecessor_id", editLink.predecessor_id);
+
+              if (error) {
+                toast.error(error.message);
+                return;
+              }
+
+              toast.success("Dependency deleted");
+              setEditLink(null);
+              // Refresh dependencies
+              if (!projectId || tasks.length === 0) return;
+              const ids = tasks.map((task) => task.id);
+              const [predResult, succResult] = await Promise.all([
+                supabase
+                  .from("task_predecessors")
+                  .select("task_id, predecessor_id, relation_type, lag_days")
+                  .in("task_id", ids),
+                supabase
+                  .from("task_predecessors")
+                  .select("task_id, predecessor_id, relation_type, lag_days")
+                  .in("predecessor_id", ids),
+              ]);
+              setPredecessors(predResult.data ?? []);
+              setSuccessors(succResult.data ?? []);
+            }}
+            selectedTaskId={selectedTaskId}
+            tasks={tasks}
+            predecessors={predecessors}
+            successors={successors}
+            projectId={projectId}
+            canEdit={canEdit}
           />
         </div>
       ) : (

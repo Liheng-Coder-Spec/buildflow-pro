@@ -39,7 +39,9 @@ interface Props {
   /** When provided, allows drag-to-adjust on task bars. Called once on drop. */
   onProposeShift?: (shift: ProposedShift) => void;
   selectedTaskId?: string | null;
-  onTaskSelect?: (taskId: string) => void;
+  secondTaskId?: string | null;
+  onTaskSelect?: (taskId: string, isCtrlClick?: boolean) => void;
+  onEditDependency?: (link: DepLink) => void;
 }
 
 type Zoom = "day" | "week" | "month";
@@ -55,7 +57,7 @@ function safeDate(s: string | null) {
   return isValid(d) ? startOfDay(d) : null;
 }
 
-export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift, selectedTaskId, onTaskSelect }: Props) {
+export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holidaySet, rollupByNode, projectRollup, bodyScrollRef, onBodyScroll, blockedSet, baselineByTask, onProposeShift, selectedTaskId, secondTaskId, onTaskSelect }: Props) {
   const [zoom, setZoom] = useState<Zoom>("week");
 
   const range = useMemo(() => {
@@ -261,16 +263,19 @@ export function WbsGantt({ rows, collapsed, onToggle, tasks, predecessors, holid
                           : status === "done" ? "border-primary bg-primary/75"
                           : "border-success bg-success/70";
 
+                        const isSecond = row.kind === "task" && row.task.id === secondTaskId;
+                        
                         return (
                           <div
                             className={cn(
                               "absolute top-[8px] h-5 rounded-full border shadow-sm overflow-hidden cursor-pointer transition-all",
                               barTone,
                               isSelected && "ring-2 ring-primary ring-offset-1",
+                              isSecond && "ring-2 ring-green-500 ring-offset-1 bg-green-500/20",
                             )}
                             style={{ left, width }}
                             title={`${row.task.title} ${format(start, "MMM d")} - ${format(end, "MMM d")}`}
-                            onClick={() => onTaskSelect?.(row.task.id)}
+                            onClick={() => onTaskSelect?.(row.task.id, false)}
                           >
                             <div
                               className="h-full bg-foreground/20"
