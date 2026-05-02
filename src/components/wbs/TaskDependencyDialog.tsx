@@ -167,6 +167,15 @@ export function TaskDependencyDialog({
 
       {/* Dependencies List View */}
       <div className="space-y-6 p-1">
+        {/* Visual graph */}
+        <DependencyGraphPanel
+          selectedTaskId={selectedTaskId}
+          tasks={tasks}
+          predecessors={predecessors}
+          successors={successors}
+          onNodeClick={onSelectTask}
+        />
+
         {/* Predecessors Section */}
         <div>
           <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
