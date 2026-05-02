@@ -62,6 +62,7 @@ export function TaskDependencyDialog({
   projectId,
   canEdit,
   onSelectTask,
+  onCreateLink,
 }: TaskDependencyDialogProps) {
   const [editRelation, setEditRelation] = useState<DepRelation>("FS");
   const [editLag, setEditLag] = useState("0");
