@@ -60,6 +60,7 @@ export function TaskDependencyDialog({
   successors,
   projectId,
   canEdit,
+  onSelectTask,
 }: TaskDependencyDialogProps) {
   const [editRelation, setEditRelation] = useState<DepRelation>("FS");
   const [editLag, setEditLag] = useState("0");
