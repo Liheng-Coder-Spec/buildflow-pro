@@ -37,6 +37,7 @@ interface TaskDependencyDialogProps {
   projectId: string | null;
   canEdit: boolean;
   onSelectTask?: (taskId: string) => void;
+  onCreateLink?: (predecessorId: string, successorId: string) => Promise<boolean> | boolean;
 }
 
 function getTaskById(tasks: GraphTask[], id: string): GraphTask | undefined {
@@ -61,6 +62,7 @@ export function TaskDependencyDialog({
   projectId,
   canEdit,
   onSelectTask,
+  onCreateLink,
 }: TaskDependencyDialogProps) {
   const [editRelation, setEditRelation] = useState<DepRelation>("FS");
   const [editLag, setEditLag] = useState("0");
@@ -174,6 +176,8 @@ export function TaskDependencyDialog({
           predecessors={predecessors}
           successors={successors}
           onNodeClick={onSelectTask}
+          onCreateLink={onCreateLink}
+          canEdit={canEdit}
         />
 
         {/* Predecessors Section */}

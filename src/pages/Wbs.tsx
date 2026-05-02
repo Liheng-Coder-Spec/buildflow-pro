@@ -420,6 +420,24 @@ export default function WbsPage() {
             projectId={projectId}
             canEdit={canEdit}
             onSelectTask={(id) => setSelectedTaskId(id)}
+            onCreateLink={async (predId, succId) => {
+              const { error } = await supabase.from("task_predecessors").insert({
+                task_id: succId,
+                predecessor_id: predId,
+                relation_type: "FS",
+                lag_days: 0,
+              } as any);
+              if (error) { toast.error(error.message); return false; }
+              toast.success("Dependency created (FS)");
+              const ids = tasks.map((t) => t.id);
+              const [predResult, succResult] = await Promise.all([
+                supabase.from("task_predecessors").select("task_id, predecessor_id, relation_type, lag_days").in("task_id", ids),
+                supabase.from("task_predecessors").select("task_id, predecessor_id, relation_type, lag_days").in("predecessor_id", ids),
+              ]);
+              setPredecessors(predResult.data ?? []);
+              setSuccessors(succResult.data ?? []);
+              return true;
+            }}
           />
         </div>
       ) : (
