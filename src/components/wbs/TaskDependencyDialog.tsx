@@ -11,6 +11,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { TaskScheduleLite } from "@/lib/scheduleMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DependencyGraphPanel } from "@/components/wbs/DependencyGraphPanel";
 
 export interface DependencyLink {
   task_id: string;
