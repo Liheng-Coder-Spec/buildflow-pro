@@ -176,6 +176,8 @@ export function TaskDependencyDialog({
           predecessors={predecessors}
           successors={successors}
           onNodeClick={onSelectTask}
+          onCreateLink={onCreateLink}
+          canEdit={canEdit}
         />
 
         {/* Predecessors Section */}
