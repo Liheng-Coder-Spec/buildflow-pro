@@ -419,6 +419,7 @@ export default function WbsPage() {
             successors={successors}
             projectId={projectId}
             canEdit={canEdit}
+            onSelectTask={(id) => setSelectedTaskId(id)}
           />
         </div>
       ) : (
