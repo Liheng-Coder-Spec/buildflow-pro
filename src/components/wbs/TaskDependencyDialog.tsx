@@ -11,6 +11,7 @@ import { format, parseISO, isValid } from "date-fns";
 import { TaskScheduleLite } from "@/lib/scheduleMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { DependencyGraphPanel } from "@/components/wbs/DependencyGraphPanel";
 
 export interface DependencyLink {
   task_id: string;
@@ -35,6 +36,7 @@ interface TaskDependencyDialogProps {
   successors: DependencyLink[];
   projectId: string | null;
   canEdit: boolean;
+  onSelectTask?: (taskId: string) => void;
 }
 
 function getTaskById(tasks: GraphTask[], id: string): GraphTask | undefined {
@@ -58,6 +60,7 @@ export function TaskDependencyDialog({
   successors,
   projectId,
   canEdit,
+  onSelectTask,
 }: TaskDependencyDialogProps) {
   const [editRelation, setEditRelation] = useState<DepRelation>("FS");
   const [editLag, setEditLag] = useState("0");
@@ -164,6 +167,15 @@ export function TaskDependencyDialog({
 
       {/* Dependencies List View */}
       <div className="space-y-6 p-1">
+        {/* Visual graph */}
+        <DependencyGraphPanel
+          selectedTaskId={selectedTaskId}
+          tasks={tasks}
+          predecessors={predecessors}
+          successors={successors}
+          onNodeClick={onSelectTask}
+        />
+
         {/* Predecessors Section */}
         <div>
           <h4 className="text-sm font-semibold flex items-center gap-2 mb-3">
