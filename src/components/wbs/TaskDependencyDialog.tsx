@@ -36,6 +36,7 @@ interface TaskDependencyDialogProps {
   successors: DependencyLink[];
   projectId: string | null;
   canEdit: boolean;
+  onSelectTask?: (taskId: string) => void;
 }
 
 function getTaskById(tasks: GraphTask[], id: string): GraphTask | undefined {
