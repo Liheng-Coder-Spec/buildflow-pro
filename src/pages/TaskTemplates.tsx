@@ -377,7 +377,7 @@ export default function TaskTemplates() {
             }
           }}
         >
-          <DialogContent className="max-w-6xl">
+          <DialogContent className="max-w-6xl flex max-h-[85vh] flex-col">
             <DialogHeader>
               <DialogTitle>Create Task Template</DialogTitle>
               <DialogDescription>
@@ -385,7 +385,7 @@ export default function TaskTemplates() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="max-h-[74vh] space-y-5 overflow-auto pr-1">
+            <div className="flex-1 space-y-5 overflow-auto pr-1">
               <section className="rounded-lg border bg-muted/20 p-4">
                 <h3 className="text-sm font-semibold">1. Template Identity</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -674,7 +674,7 @@ export default function TaskTemplates() {
               </div>
             </div>
 
-            <DialogFooter className="sticky bottom-0 mt-4 bg-background/95 backdrop-blur">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
