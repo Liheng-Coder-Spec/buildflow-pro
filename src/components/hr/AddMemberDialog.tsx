@@ -197,7 +197,7 @@ export function AddMemberDialog({
                   <FormItem>
                     <FormLabel>Employee ID</FormLabel>
                     <FormControl>
-                      <Input placeholder="EMP-001" {...field} />
+                      <Input placeholder="C-0001" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

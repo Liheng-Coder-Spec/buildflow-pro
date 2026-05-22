@@ -23,15 +23,7 @@ const DEMO_USERS: Array<{
   job_title: string;
   employee_id: string;
   role: AppRole;
-}> = [
-  { email: "admin@buildtrack.demo",      full_name: "Alex Admin",       job_title: "System Administrator", employee_id: "EMP-001", role: "admin" },
-  { email: "pm@buildtrack.demo",         full_name: "Pat Planner",      job_title: "Project Manager",      employee_id: "EMP-002", role: "project_manager" },
-  { email: "engineer@buildtrack.demo",   full_name: "Erin Engineer",    job_title: "Site Engineer",        employee_id: "EMP-003", role: "engineer" },
-  { email: "supervisor@buildtrack.demo", full_name: "Sam Supervisor",   job_title: "Site Supervisor",      employee_id: "EMP-004", role: "supervisor" },
-  { email: "worker@buildtrack.demo",     full_name: "Wes Worker",       job_title: "Field Worker",         employee_id: "EMP-005", role: "worker" },
-  { email: "qaqc@buildtrack.demo",       full_name: "Quinn Inspector",  job_title: "QA/QC Inspector",      employee_id: "EMP-006", role: "qaqc_inspector" },
-  { email: "accountant@buildtrack.demo", full_name: "Avery Accountant", job_title: "Accountant",           employee_id: "EMP-007", role: "accountant" },
-];
+}> = [];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
