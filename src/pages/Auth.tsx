@@ -10,7 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Activity, BarChart3, Building2, CheckCircle2, HardHat, Loader2, ShieldCheck } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  FileCheck2,
+  HardHat,
+  Loader2,
+  Send,
+  ShieldCheck
+} from "lucide-react";
 import { ORG_REGISTRY, ORG_DEPT_LABELS, DEMO_PASSWORD } from "@/lib/orgMeta";
 
 const signInSchema = z.object({
@@ -32,6 +43,12 @@ const BRAND_METRICS = [
   { label: "Project Control", value: "Live", icon: Activity },
   { label: "Risk & Safety", value: "Tracked", icon: ShieldCheck },
   { label: "Cost Visibility", value: "360", icon: BarChart3 },
+];
+
+const ACTION_FLOW = [
+  { label: "Site report", icon: ClipboardCheck },
+  { label: "Approval", icon: FileCheck2 },
+  { label: "Executive view", icon: Send },
 ];
 
 export default function Auth() {
@@ -131,13 +148,17 @@ export default function Auth() {
           src="/landing-highrise.png"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-35"
+          className="absolute inset-0 h-full w-full object-cover opacity-35 motion-safe:animate-[auth-hero-drift_18s_ease-in-out_infinite]"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary-deep via-primary-deep/85 to-primary/35" />
         <div className="absolute inset-0 bg-gradient-to-t from-primary-deep via-transparent to-primary-deep/30" />
         <div className="absolute left-10 top-32 h-40 w-px bg-accent/70 motion-safe:animate-pulse" />
         <div className="absolute right-16 top-24 h-24 w-px bg-primary-foreground/45 motion-safe:animate-pulse" />
         <div className="absolute bottom-36 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full border border-accent/25 motion-safe:animate-[spin_26s_linear_infinite]" />
+        <div className="absolute left-0 top-[22%] h-px w-full bg-gradient-to-r from-transparent via-accent/70 to-transparent motion-safe:animate-[auth-scan_5s_ease-in-out_infinite]" />
+        <div className="absolute bottom-24 left-8 right-8 h-px overflow-hidden bg-primary-foreground/10">
+          <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-accent to-transparent motion-safe:animate-[auth-data-line_3.8s_linear_infinite]" />
+        </div>
 
         <div className="relative z-10 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-elevated">
@@ -164,7 +185,7 @@ export default function Auth() {
             {BRAND_METRICS.map((metric) => (
               <div
                 key={metric.label}
-                className="rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-4 backdrop-blur-md"
+                className="rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-4 backdrop-blur-md motion-safe:animate-[auth-float_7s_ease-in-out_infinite]"
               >
                 <div className="mb-5 flex items-center justify-between">
                   <metric.icon className="h-4 w-4 text-accent" />
@@ -174,6 +195,37 @@ export default function Auth() {
                 <p className="mt-1 text-xs text-primary-foreground/65">{metric.label}</p>
               </div>
             ))}
+          </div>
+
+          <div className="rounded-lg border border-primary-foreground/15 bg-primary-deep/45 p-4 backdrop-blur-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-primary-foreground/85">Live delivery flow</p>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-75 motion-safe:animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+              </span>
+            </div>
+            <div className="grid grid-cols-[1fr_24px_1fr_24px_1fr] items-center gap-2">
+              {ACTION_FLOW.map((step, index) => (
+                <React.Fragment key={step.label}>
+                  <div
+                    className="rounded-md border border-primary-foreground/12 bg-primary-foreground/10 p-3 motion-safe:animate-[auth-rise_4.5s_ease-in-out_infinite]"
+                    style={{ animationDelay: `${index * 450}ms` }}
+                  >
+                    <step.icon className="mb-3 h-4 w-4 text-accent" />
+                    <p className="text-xs font-semibold text-primary-foreground/85">{step.label}</p>
+                  </div>
+                  {index < ACTION_FLOW.length - 1 && (
+                    <div className="h-px overflow-hidden bg-primary-foreground/15">
+                      <div
+                        className="h-full w-full bg-accent motion-safe:animate-[auth-link_2s_ease-in-out_infinite]"
+                        style={{ animationDelay: `${index * 500}ms` }}
+                      />
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         </div>
 
