@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DCOS - Task Template Register Form</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #dbe3ef;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --soft-blue: #eef5ff;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    aside {
+      background: #0f172a;
+      color: white;
+      padding: 24px 18px;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 28px;
+    }
+
+    .nav a {
+      display: block;
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .nav a.active,
+    .nav a:hover {
+      background: #1e293b;
+      color: white;
+    }
+
+    main {
+      padding: 28px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      padding: 11px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(920px, 100%);
+      max-height: min(90vh, 980px);
+      overflow: auto;
+      background: white;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #fbfdff;
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .modal-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 640px;
+    }
+
+    .close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .modal-body {
+      padding: 20px 22px;
+    }
+
+    .form-section {
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .form-section h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .form-section .section-note {
+      margin-bottom: 16px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 8px;
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(to top, #fff 75%, rgba(255, 255, 255, 0));
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.6fr 0.9fr;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      background: #fbfdff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .form-grid.three {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 7px;
+      color: #374151;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 14px;
+      background: white;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge-blue {
+      background: var(--soft-blue);
+      color: var(--primary);
+    }
+
+    .badge-green {
+      background: #ecfdf5;
+      color: var(--success);
+    }
+
+    .badge-orange {
+      background: #fffbeb;
+      color: var(--warning);
+    }
+
+    .mini-btn {
+      padding: 8px 10px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      background: white;
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 14px;
+    }
+
+    .check-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .check-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .check-item input {
+      width: auto;
+    }
+
+    .preview-box {
+      background: #0f172a;
+      color: #e5e7eb;
+      border-radius: 14px;
+      padding: 16px;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .status-row:last-child {
+      border-bottom: 0;
+    }
+
+    .footer-actions {
+      position: sticky;
+      bottom: 0;
+      background: rgba(244, 247, 251, 0.94);
+      border-top: 1px solid var(--border);
+      padding: 16px 0 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+    }
+
+    @media (max-width: 1050px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        display: none;
+      }
+
+      .grid,
+      .form-grid,
+      .form-grid.three {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="logo">DCOS</div>
+      <nav class="nav">
+        <a href="#">Dashboard</a>
+        <a href="#">Projects</a>
+        <a href="#" class="active">Task Templates</a>
+        <a href="#">Elements Library</a>
+        <a href="#">WBS Management</a>
+        <a href="#">QA/QC</a>
+        <a href="#">Documents</a>
+        <a href="#">Admin Setting</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div>
+          <h1>Task Template Register Form</h1>
+          <div class="subtitle">Create standard task templates linked to element codes, WBS, QA/QC, documents, and dependencies.</div>
+        </div>
+        <div class="actions">
+          <button class="btn-light">Import Template</button>
+          <button class="btn-primary" id="openTaskTemplate">+ New Template</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section>
+          <div class="card">
+            <div class="card-header">
+              <h2>1. Template Identity</h2>
+              <span class="badge badge-blue">Draft</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid three">
+                <div class="field">
+                  <label>Template Code</label>
+                  <input value="TPL-STR-001-CON" />
+                </div>
+                <div class="field">
+                  <label>Discipline</label>
+                  <select>
+                    <option>STR - Structural</option>
+                    <option>ARC - Architecture</option>
+                    <option>MEP - MEP</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Phase</label>
+                  <select>
+                    <option>CON - Construction</option>
+                    <option>DES - Design</option>
+                    <option>PRC - Procurement</option>
+                    <option>QAC - QA/QC</option>
+                    <option>HND - Handover</option>
+                  </select>
+                </div>
+              </div>
+
+              <br />
+
+              <div class="form-grid">
+                <div class="field">
+                  <label>Element Code / Element Name</label>
+                  <select>
+                    <option>STR-001 | Bored Pile</option>
+                    <option>STR-004 | Pile Cap</option>
+                    <option>STR-014 | Column</option>
+                    <option>ARC-017 | Door</option>
+                    <option>MEP-007 | Power Cable</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Template Name</label>
+                  <input value="Bored Pile Construction Template" />
+                </div>
+              </div>
+
+              <br />
+
+              <div class="field">
+                <label>Description</label>
+                <textarea>Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>2. Task Steps</h2>
+              <button class="mini-btn">+ Add Step</button>
+            </div>
+            <div class="card-body">
+              <p class="section-note">Define the standard execution sequence. Each row can later become one generated task.</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Step Code</th>
+                    <th>Step Name</th>
+                    <th>Duration</th>
+                    <th>Default Role</th>
+                    <th>Required</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>01</td>
+                    <td>TPL-STR-001-CON-01</td>
+                    <td>Survey Setting Out</td>
+                    <td>0.5 day</td>
+                    <td>Surveyor</td>
+                    <td><span class="badge badge-green">Yes</span></td>
+                  </tr>
+                  <tr>
+                    <td>02</td>
+                    <td>TPL-STR-001-CON-02</td>
+                    <td>Borehole Drilling</td>
+                    <td>1 day</td>
+                    <td>Site Engineer</td>
+                    <td><span class="badge badge-green">Yes</span></td>
+                  </tr>
+                  <tr>
+                    <td>03</td>
+                    <td>TPL-STR-001-CON-03</td>
+                    <td>Rebar Cage Installation</td>
+                    <td>0.5 day</td>
+                    <td>Steel Fixer Team</td>
+                    <td><span class="badge badge-green">Yes</span></td>
+                  </tr>
+                  <tr>
+                    <td>04</td>
+                    <td>TPL-STR-001-CON-04</td>
+                    <td>Concrete Pouring</td>
+                    <td>0.5 day</td>
+                    <td>Site Engineer</td>
+                    <td><span class="badge badge-green">Yes</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>3. Dependencies</h2>
+              <button class="mini-btn">+ Add Dependency</button>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Predecessor</th>
+                    <th>Type</th>
+                    <th>Successor</th>
+                    <th>Lag</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Survey Setting Out</td>
+                    <td><span class="badge badge-blue">FS</span></td>
+                    <td>Borehole Drilling</td>
+                    <td>0 day</td>
+                  </tr>
+                  <tr>
+                    <td>Borehole Drilling</td>
+                    <td><span class="badge badge-blue">FS</span></td>
+                    <td>Rebar Cage Installation</td>
+                    <td>0 day</td>
+                  </tr>
+                  <tr>
+                    <td>Rebar Cage Installation</td>
+                    <td><span class="badge badge-blue">FS</span></td>
+                    <td>Concrete Pouring</td>
+                    <td>0 day</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div class="card">
+            <div class="card-header">
+              <h2>4. Generation Rules</h2>
+            </div>
+            <div class="card-body">
+              <div class="field">
+                <label>Task Grouping Method</label>
+                <select>
+                  <option>Generate by Quantity</option>
+                  <option>Generate by Location</option>
+                  <option>Generate by Floor / Level</option>
+                  <option>Generate as Single Task Package</option>
+                </select>
+              </div>
+              <br />
+              <div class="field">
+                <label>Default Quantity Unit</label>
+                <select>
+                  <option>Each</option>
+                  <option>m²</option>
+                  <option>m³</option>
+                  <option>m</option>
+                  <option>Set</option>
+                </select>
+              </div>
+              <br />
+              <div class="field">
+                <label>Default Task Status</label>
+                <select>
+                  <option>Open</option>
+                  <option>Assigned</option>
+                  <option>On Hold</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>5. QA/QC Checklist</h2>
+              <button class="mini-btn">+ Add</button>
+            </div>
+            <div class="card-body">
+              <div class="check-list">
+                <label class="check-item"><input type="checkbox" checked /> Approved drawing available before start</label>
+                <label class="check-item"><input type="checkbox" checked /> Reinforcement inspection required</label>
+                <label class="check-item"><input type="checkbox" checked /> Concrete slump test required</label>
+                <label class="check-item"><input type="checkbox" checked /> Cube test record required</label>
+                <label class="check-item"><input type="checkbox" /> Client witness point required</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>6. Required Documents</h2>
+              <button class="mini-btn">+ Add</button>
+            </div>
+            <div class="card-body">
+              <div class="check-list">
+                <label class="check-item"><input type="checkbox" checked /> Approved Drawing</label>
+                <label class="check-item"><input type="checkbox" checked /> Method Statement</label>
+                <label class="check-item"><input type="checkbox" checked /> Inspection Test Plan</label>
+                <label class="check-item"><input type="checkbox" checked /> Material Approval</label>
+                <label class="check-item"><input type="checkbox" /> Risk Assessment</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>7. Preview</h2>
+              <span class="badge badge-orange">Auto Code</span>
+            </div>
+            <div class="card-body">
+              <div class="status-row"><strong>Template Code</strong><span>TPL-STR-001-CON</span></div>
+              <div class="status-row"><strong>Total Steps</strong><span>4</span></div>
+              <div class="status-row"><strong>Dependencies</strong><span>3</span></div>
+              <div class="status-row"><strong>QA Items</strong><span>5</span></div>
+              <br />
+              <div class="preview-box">
+                Project: 24GDTT<br />
+                WBS: B01 / L02 / Zone A<br />
+                Element: STR-001 Bored Pile<br />
+                Quantity: 20 piles<br /><br />
+                System will generate:<br />
+                → 20 task groups<br />
+                → 80 child tasks<br />
+                → QA checklist per pile<br />
+                → FS dependency chain<br />
+                → Required document control
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer-actions">
+        <button class="btn-light">Cancel</button>
+        <button class="btn-light">Preview Generated Tasks</button>
+        <button class="btn-primary">Save Task Template</button>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="taskTemplateModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="taskTemplateTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="taskTemplateTitle">Create Task Template</h2>
+          <p>Register a reusable task template with its element, phase, steps, dependencies, and required documents.</p>
+        </div>
+        <button class="close-btn" type="button" id="closeTaskTemplate" aria-label="Close form">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-section">
+          <h3>Template Identity</h3>
+          <p class="section-note">Set the base data for this task template before saving.</p>
+          <div class="form-grid three">
+            <div class="field">
+              <label>Template Code</label>
+              <input value="TPL-STR-001-CON" />
+            </div>
+            <div class="field">
+              <label>Discipline</label>
+              <select>
+                <option>STR - Structural</option>
+                <option>ARC - Architecture</option>
+                <option>MEP - MEP</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Phase</label>
+              <select>
+                <option>CON - Construction</option>
+                <option>DES - Design</option>
+                <option>PRC - Procurement</option>
+                <option>QAC - QA/QC</option>
+                <option>HND - Handover</option>
+              </select>
+            </div>
+          </div>
+          <br />
+          <div class="form-grid">
+            <div class="field">
+              <label>Element Code / Element Name</label>
+              <select>
+                <option>STR-001 | Bored Pile</option>
+                <option>STR-004 | Pile Cap</option>
+                <option>STR-014 | Column</option>
+                <option>ARC-017 | Door</option>
+                <option>MEP-007 | Power Cable</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Template Name</label>
+              <input value="Bored Pile Construction Template" />
+            </div>
+          </div>
+          <br />
+          <div class="field">
+            <label>Description</label>
+            <textarea>Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents.</textarea>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h3>Task Steps</h3>
+          <p class="section-note">Define the execution sequence that will be generated from the template.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Step Code</th>
+                <th>Step Name</th>
+                <th>Duration</th>
+                <th>Default Role</th>
+                <th>Required</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>01</td>
+                <td>TPL-STR-001-CON-01</td>
+                <td>Survey Setting Out</td>
+                <td>0.5 day</td>
+                <td>Surveyor</td>
+                <td><span class="badge badge-green">Yes</span></td>
+              </tr>
+              <tr>
+                <td>02</td>
+                <td>TPL-STR-001-CON-02</td>
+                <td>Borehole Drilling</td>
+                <td>1 day</td>
+                <td>Site Engineer</td>
+                <td><span class="badge badge-green">Yes</span></td>
+              </tr>
+              <tr>
+                <td>03</td>
+                <td>TPL-STR-001-CON-03</td>
+                <td>Rebar Cage Installation</td>
+                <td>0.5 day</td>
+                <td>Steel Fixer Team</td>
+                <td><span class="badge badge-green">Yes</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="form-section">
+          <h3>Save</h3>
+          <p class="section-note">Register the template after reviewing the form data.</p>
+          <div class="form-actions">
+            <button class="btn-light" type="button" id="cancelTaskTemplate">Cancel</button>
+            <button class="btn-danger" type="button" id="clearTaskTemplate">Clear</button>
+            <button class="btn-primary" type="button" id="saveTaskTemplate">Register Task Template</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById("taskTemplateModal");
+    const openBtn = document.getElementById("openTaskTemplate");
+    const closeBtn = document.getElementById("closeTaskTemplate");
+    const cancelBtn = document.getElementById("cancelTaskTemplate");
+    const clearBtn = document.getElementById("clearTaskTemplate");
+    const saveBtn = document.getElementById("saveTaskTemplate");
+
+    const closeModal = () => {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    };
+
+    const openModal = () => {
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    };
+
+    openBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    cancelBtn.addEventListener("click", closeModal);
+    clearBtn.addEventListener("click", () => window.location.reload());
+    saveBtn.addEventListener("click", () => {
+      closeModal();
+      alert("Task template registered in this preview.");
+    });
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>

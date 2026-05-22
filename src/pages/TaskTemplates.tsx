@@ -206,6 +206,8 @@ export default function TaskTemplates() {
 
   const [registerLoading, setRegisterLoading] = React.useState(false);
   const [editingTemplateId, setEditingTemplateId] = React.useState<string | null>(null);
+  const [taskSearchQuery, setTaskSearchQuery] = React.useState("");
+  const [taskDisciplineFilter, setTaskDisciplineFilter] = React.useState<string>("all");
 
   const handleRegisterTemplate = async () => {
     if (!taskTemplateCode.trim()) {
@@ -406,6 +408,17 @@ export default function TaskTemplates() {
     setTemplates(data ?? []);
     setTemplateLoading(false);
   }, []);
+
+  const filteredTemplates = React.useMemo(() => {
+    return templates.filter((tpl) => {
+      const matchesSearch = !taskSearchQuery.trim()
+        || tpl.template_name.toLowerCase().includes(taskSearchQuery.toLowerCase())
+        || tpl.template_code.toLowerCase().includes(taskSearchQuery.toLowerCase())
+        || (tpl.element_code ?? "").toLowerCase().includes(taskSearchQuery.toLowerCase());
+      const matchesDiscipline = taskDisciplineFilter === "all" || tpl.discipline === taskDisciplineFilter;
+      return matchesSearch && matchesDiscipline;
+    });
+  }, [templates, taskSearchQuery, taskDisciplineFilter]);
 
   React.useEffect(() => {
     void loadElements();
@@ -1137,15 +1150,50 @@ export default function TaskTemplates() {
               </div>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Search templates..."
+                    value={taskSearchQuery}
+                    onChange={(e) => setTaskSearchQuery(e.target.value)}
+                    className="h-9 pr-8"
+                  />
+                  {taskSearchQuery && (
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      onClick={() => setTaskSearchQuery("")}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {["all", "STR", "ARC", "MEP"].map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setTaskDisciplineFilter(d)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                        taskDisciplineFilter === d
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      }`}
+                    >
+                      {d === "all" ? "All" : d}
+                    </button>
+                  ))}
+                </div>
+              </div>
               {templateLoading ? (
                 <p className="text-sm text-muted-foreground">Loading...</p>
-              ) : templates.length === 0 ? (
+              ) : filteredTemplates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No task templates registered yet. Click "Register Task Template" to create one.
+                  {templates.length === 0
+                    ? 'No task templates registered yet. Click "Register Task Template" to create one.'
+                    : "No templates match your search or filter."}
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {templates.map((tpl) => (
+                  {filteredTemplates.map((tpl) => (
                     <div key={tpl.id} className="flex items-center justify-between rounded-md border bg-card px-4 py-3">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{tpl.template_name}</p>
