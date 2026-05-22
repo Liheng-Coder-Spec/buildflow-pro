@@ -109,12 +109,6 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Master Libraries",
-    items: [
-      { to: "/master-libraries/task-template", label: "Task Template", icon: LibraryBig },
-    ],
-  },
-  {
     label: "Procurement",
     items: [
       { to: "/procurement", label: "Procurement & MTO", icon: ShoppingCart, module: "procurement" },
@@ -184,6 +178,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         roles: ["admin"] },
       { to: "/documents", label: "Document Register", icon: FileText },
       { to: "/transmittals", label: "Transmittals", icon: Mail },
+    ],
+  },
+  {
+    label: "Master Libraries",
+    items: [
+      { to: "/master-libraries/task-template", label: "Task Template", icon: LibraryBig },
     ],
   },
   {
