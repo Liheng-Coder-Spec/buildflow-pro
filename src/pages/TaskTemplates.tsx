@@ -179,6 +179,22 @@ export default function TaskTemplates() {
     setTaskDocuments([...taskDocuments, "New required document"]);
   };
 
+  const removeTaskStep = (index: number) => {
+    setTaskSteps(taskSteps.filter((_, i) => i !== index));
+  };
+
+  const removeDependency = (index: number) => {
+    setTaskDependencies(taskDependencies.filter((_, i) => i !== index));
+  };
+
+  const removeChecklistItem = (index: number) => {
+    setTaskChecklist(taskChecklist.filter((_, i) => i !== index));
+  };
+
+  const removeDocument = (index: number) => {
+    setTaskDocuments(taskDocuments.filter((_, i) => i !== index));
+  };
+
   const openEditElement = (element: ElementTemplate) => {
     setEditingElement(element);
     setElementCode(element.code);
@@ -525,10 +541,11 @@ export default function TaskTemplates() {
                         <TableHead>Duration</TableHead>
                         <TableHead>Default Role</TableHead>
                         <TableHead>Required</TableHead>
+                        <TableHead className="w-16 text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {taskSteps.map((step) => (
+                      {taskSteps.map((step, index) => (
                         <TableRow key={step.code}>
                           <TableCell>{step.no}</TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">{step.code}</TableCell>
@@ -537,6 +554,11 @@ export default function TaskTemplates() {
                           <TableCell>{step.role}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{step.required ? "Yes" : "No"}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeTaskStep(index)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -565,17 +587,23 @@ export default function TaskTemplates() {
                         <TableHead>Type</TableHead>
                         <TableHead>Successor</TableHead>
                         <TableHead>Lag</TableHead>
+                        <TableHead className="w-16 text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {taskDependencies.map((dependency) => (
-                        <TableRow key={`${dependency.predecessor}-${dependency.successor}`}>
+                      {taskDependencies.map((dependency, index) => (
+                        <TableRow key={`${dependency.predecessor}-${dependency.successor}-${index}`}>
                           <TableCell>{dependency.predecessor}</TableCell>
                           <TableCell>
                             <Badge variant="secondary">{dependency.type}</Badge>
                           </TableCell>
                           <TableCell>{dependency.successor}</TableCell>
                           <TableCell>{dependency.lag}</TableCell>
+                          <TableCell className="text-right">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeDependency(index)}>
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -643,10 +671,13 @@ export default function TaskTemplates() {
                     </Button>
                   </div>
                   <div className="mt-4 space-y-3">
-                    {taskChecklist.map((item) => (
-                      <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                    {taskChecklist.map((item, index) => (
+                      <label key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
                         <input type="checkbox" defaultChecked className="h-4 w-4" />
-                        <span>{item}</span>
+                        <span className="flex-1">{item}</span>
+                        <button type="button" onClick={() => removeChecklistItem(index)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </label>
                     ))}
                   </div>
@@ -662,10 +693,13 @@ export default function TaskTemplates() {
                     </Button>
                   </div>
                   <div className="mt-4 space-y-3">
-                    {taskDocuments.map((item) => (
-                      <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                    {taskDocuments.map((item, index) => (
+                      <label key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
                         <input type="checkbox" defaultChecked className="h-4 w-4" />
-                        <span>{item}</span>
+                        <span className="flex-1">{item}</span>
+                        <button type="button" onClick={() => removeDocument(index)} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </label>
                     ))}
                   </div>
