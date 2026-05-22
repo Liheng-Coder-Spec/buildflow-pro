@@ -87,6 +87,11 @@ const mapElementTemplate = (row: ElementTemplateRow): ElementTemplate => ({
 export default function TaskTemplates() {
   const [activeTab, setActiveTab] = React.useState("elements");
   const [elements, setElements] = React.useState<ElementTemplate[]>([]);
+  const [templates, setTemplates] = React.useState<Array<{
+    id: string; template_code: string; template_name: string; discipline: string; phase: string;
+    element_code: string | null; description: string | null;
+  }>>([]);
+  const [templateLoading, setTemplateLoading] = React.useState(false);
   const [taskTemplateOpen, setTaskTemplateOpen] = React.useState(false);
   const [categoryFilter, setCategoryFilter] = React.useState<ElementCategory | "all">("all");
   const [loadingElements, setLoadingElements] = React.useState(true);
@@ -289,6 +294,7 @@ export default function TaskTemplates() {
       toast.success("Task template registered successfully");
       setTaskTemplateOpen(false);
       resetTaskTemplateForm();
+      void loadTemplates();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to register task template");
     } finally {
@@ -329,9 +335,28 @@ export default function TaskTemplates() {
     setLoadingElements(false);
   }, []);
 
+  const loadTemplates = React.useCallback(async () => {
+    setTemplateLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("master_task_templates")
+      .select("id, template_code, template_name, discipline, phase, element_code, description")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error(error.message);
+      setTemplateLoading(false);
+      return;
+    }
+
+    setTemplates(data ?? []);
+    setTemplateLoading(false);
+  }, []);
+
   React.useEffect(() => {
     void loadElements();
-  }, [loadElements]);
+    void loadTemplates();
+  }, [loadElements, loadTemplates]);
 
   const handleCreateElement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1058,9 +1083,28 @@ export default function TaskTemplates() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                No task templates registered yet. Click "Register Task Template" to create one.
-              </p>
+              {templateLoading ? (
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              ) : templates.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No task templates registered yet. Click "Register Task Template" to create one.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {templates.map((tpl) => (
+                    <div key={tpl.id} className="flex items-center justify-between rounded-md border bg-card px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{tpl.template_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {tpl.template_code}
+                          {tpl.element_code ? ` — ${tpl.element_code}` : ""}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{tpl.discipline ?? "—"}</Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
