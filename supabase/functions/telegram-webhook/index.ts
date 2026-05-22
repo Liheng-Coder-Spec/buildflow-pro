@@ -16,21 +16,28 @@ function safeEqual(a: string | null, b: string): boolean {
   return diff === 0;
 }
 
-function botUrl(method: string): string {
-  return `https://api.telegram.org/bot${Deno.env.get("TELEGRAM_API_KEY")!}/${method}`;
-}
-
-function tgHeaders() {
-  return { "Content-Type": "application/json" };
-}
+const TELEGRAM_GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
 async function tgApi(method: string, payload: Record<string, unknown>): Promise<any> {
-  const res = await fetch(botUrl(method), {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+  if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
+
+  const res = await fetch(`${TELEGRAM_GATEWAY_URL}/${method}`, {
     method: "POST",
-    headers: tgHeaders(),
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "X-Connection-Api-Key": TELEGRAM_API_KEY,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(payload),
   });
-  try { return await res.json(); } catch { return null; }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || data?.ok === false) {
+    throw new Error(`Telegram API call failed [${res.status}]: ${JSON.stringify(data)}`);
+  }
+  return data;
 }
 
 const STATUS_LABELS: Record<string, string> = {
