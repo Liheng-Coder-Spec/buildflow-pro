@@ -15,6 +15,7 @@ import { RouteHead } from "@/components/RouteHead";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
 // Lazy: split each page into its own chunk
@@ -133,6 +134,7 @@ const App = () => (
             <ProjectProvider>
               <RouteHead />
               <Routes>
+                <Route path="/landing" element={<Landing />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/telegram/task-update/:taskId" element={
