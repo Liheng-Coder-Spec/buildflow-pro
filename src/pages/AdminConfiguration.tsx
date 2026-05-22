@@ -3,12 +3,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Settings } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminDataTable, type ColumnDef } from "@/components/admin/AdminDataTable";
+import { TelegramAdminTab } from "@/components/admin/TelegramAdminTab";
 
 const WIDE_TABS = [
   "disciplines", "project_types", "wbs_node_types", "document_types",
   "cost_codes", "material_codes", "equipment_types", "public_holidays",
   "notification_rules", "approval_templates", "checklist_templates", "labor_rates",
-  "construction_config",
+  "telegram_config", "construction_config",
 ];
 
 const COLUMNS: Record<string, ColumnDef[]> = {
@@ -114,6 +115,7 @@ const DESCRIPTION: Record<string, string> = {
   approval_templates: "Define reusable approval workflow templates per module.",
   checklist_templates: "Manage QA/QC and HSE inspection checklist templates.",
   labor_rates: "Company-wide default labor rates (overridable per project in Resource Rates).",
+  telegram_config: "Configure default Telegram brief times for all users.",
 };
 
 export default function AdminConfiguration() {
@@ -146,7 +148,7 @@ export default function AdminConfiguration() {
           </TabsList>
         </div>
 
-        {WIDE_TABS.filter(t => t !== "construction_config").map((tab) => (
+        {WIDE_TABS.filter(t => !["construction_config", "telegram_config"].includes(t)).map((tab) => (
           <TabsContent key={tab} value={tab} className="mt-4">
             <AdminDataTable
               title={tab.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
@@ -157,6 +159,10 @@ export default function AdminConfiguration() {
             />
           </TabsContent>
         ))}
+
+        <TabsContent value="telegram_config" className="mt-4">
+          <TelegramAdminTab />
+        </TabsContent>
 
         <TabsContent value="construction_config" className="mt-4">
           <AdminConstructionConfigEmbed />

@@ -255,12 +255,20 @@ LEFT JOIN transfer_out_totals tout ON i.id = tout.inventory_item_id
 LEFT JOIN adjustment_add_totals aa ON i.id = aa.inventory_item_id
 LEFT JOIN adjustment_subtract_totals asub ON i.id = asub.inventory_item_id;
 
+-- Ensure existing tables (from earlier modules) have columns expected by this module
+ALTER TABLE material_request_items ADD COLUMN IF NOT EXISTS material_request_id UUID;
+ALTER TABLE material_request_items ADD COLUMN IF NOT EXISTS inventory_item_id UUID;
+ALTER TABLE material_request_items ADD COLUMN IF NOT EXISTS quantity_requested DECIMAL(10,2);
+ALTER TABLE material_request_items ADD COLUMN IF NOT EXISTS quantity_issued DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE material_request_items ADD COLUMN IF NOT EXISTS wbs_node_id UUID;
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_inventory_items_wbs_node_id ON inventory_items(wbs_node_id);
 CREATE INDEX IF NOT EXISTS idx_stock_receipts_po_id ON stock_receipts(po_id);
 CREATE INDEX IF NOT EXISTS idx_stock_receipts_wbs_node_id ON stock_receipts(wbs_node_id);
 CREATE INDEX IF NOT EXISTS idx_stock_receipt_items_receipt_id ON stock_receipt_items(stock_receipt_id);
 CREATE INDEX IF NOT EXISTS idx_stock_receipt_items_item_id ON stock_receipt_items(inventory_item_id);
+ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS wbs_node_id UUID REFERENCES wbs_nodes(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_material_requests_wbs_node_id ON material_requests(wbs_node_id);
 CREATE INDEX IF NOT EXISTS idx_material_request_items_request_id ON material_request_items(material_request_id);
 CREATE INDEX IF NOT EXISTS idx_material_request_items_item_id ON material_request_items(inventory_item_id);

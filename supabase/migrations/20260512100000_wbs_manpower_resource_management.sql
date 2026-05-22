@@ -42,7 +42,7 @@ CREATE POLICY "Users can view labor catalogs for their projects"
 
 CREATE POLICY "Admins and PMs can manage labor catalogs"
     ON public.labor_catalogs FOR ALL
-    USING (EXISTS (SELECT 1 FROM public.project_members WHERE project_id = labor_catalogs.project_id AND user_id = auth.uid() AND role IN ('admin', 'project_manager')));
+    USING (EXISTS (SELECT 1 FROM public.project_members WHERE project_id = labor_catalogs.project_id AND user_id = auth.uid() AND project_role IN ('admin', 'project_manager')));
 
 -- Policies for task_resources
 CREATE POLICY "Users can view task resources for their projects"
@@ -58,7 +58,7 @@ CREATE POLICY "Admins and PMs can manage task resources"
     USING (EXISTS (
         SELECT 1 FROM public.tasks t
         JOIN public.project_members pm ON pm.project_id = t.project_id
-        WHERE t.id = task_resources.task_id AND pm.user_id = auth.uid() AND pm.role IN ('admin', 'project_manager')
+        WHERE t.id = task_resources.task_id AND pm.user_id = auth.uid() AND pm.project_role IN ('admin', 'project_manager')
     ));
 
 -- 4. Automatic calculation of man-hours (optional trigger)

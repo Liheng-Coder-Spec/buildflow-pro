@@ -71,18 +71,15 @@ actual_costs AS (
     t.id as task_id,
     -- Labor Actuals from Timesheet Entries
     COALESCE((SELECT SUM((COALESCE(regular_hours, 0) + COALESCE(overtime_hours, 0)) * 50) FROM public.timesheet_entries WHERE task_id = t.id AND status = 'approved'), 0) as ac_labor,
-    -- Material Actuals from Procurement
-    COALESCE((SELECT SUM(quantity_received * unit_price) FROM public.procurement_items pi 
-              JOIN public.procurement_orders po ON pi.order_id = po.id 
-              WHERE pi.task_id = t.id AND po.status = 'received'), 0) as ac_materials
+    -- Material Actuals (placeholder — procurement tables created separately)
+    0 as ac_materials
   FROM public.tasks t
 ),
 earned_value AS (
   -- Earned Value (EV) = BAC * % Complete
   SELECT 
     t.id as task_id,
-    (COALESCE(t.planned_hours, 0) * 50 + 
-     COALESCE((SELECT SUM(quantity * unit_price) FROM public.material_requirements WHERE task_id = t.id), 0)) * 
+    (COALESCE(t.estimated_hours, 0) * 50) * 
      (COALESCE(t.progress_pct, 0) / 100.0) as ev
   FROM public.tasks t
 )
@@ -121,19 +118,20 @@ ALTER TABLE public.claim_items ENABLE ROW LEVEL SECURITY;
 
 -- Select policies
 DROP POLICY IF EXISTS "Authenticated users can view financials" ON public.resource_rates;
-CREATE POLICY "Authenticated users can view financials" ON public.resource_rates FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated users can view financials" ON public.resource_rates; CREATE POLICY "Authenticated users can view financials" ON public.resource_rates FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can view claims" ON public.progress_claims;
-CREATE POLICY "Authenticated users can view claims" ON public.progress_claims FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated users can view claims" ON public.progress_claims; CREATE POLICY "Authenticated users can view claims" ON public.progress_claims FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Authenticated users can view claim items" ON public.claim_items;
-CREATE POLICY "Authenticated users can view claim items" ON public.claim_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated users can view claim items" ON public.claim_items; CREATE POLICY "Authenticated users can view claim items" ON public.claim_items FOR SELECT TO authenticated USING (true);
 
 -- Manage policies
 DROP POLICY IF EXISTS "Managers can manage rates" ON public.resource_rates;
-CREATE POLICY "Managers can manage rates" ON public.resource_rates FOR ALL TO authenticated 
+DROP POLICY IF EXISTS "Managers can manage rates" ON public.resource_rates; CREATE POLICY "Managers can manage rates" ON public.resource_rates FOR ALL TO authenticated 
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'project_manager'));
 
 DROP POLICY IF EXISTS "Managers can manage claims" ON public.progress_claims;
-CREATE POLICY "Managers can manage claims" ON public.progress_claims FOR ALL TO authenticated 
+DROP POLICY IF EXISTS "Managers can manage claims" ON public.progress_claims; CREATE POLICY "Managers can manage claims" ON public.progress_claims FOR ALL TO authenticated 
 USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'project_manager'));
+

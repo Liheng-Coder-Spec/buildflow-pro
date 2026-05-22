@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminClient } from "@/test/setupHelpers";
 
 describe("Module 19: Inventory / Stock", () => {
   it("should have inventory_items table accessible", async () => {
@@ -73,7 +74,8 @@ describe("Module 19: Inventory / Stock", () => {
   });
 
   it("should create inventory item with required fields", async () => {
-    const { data, error } = await (supabase as any)
+    const admin = getAdminClient();
+    const { data, error } = await (admin as any)
       .from("inventory_items")
       .insert({
         code: "TEST-001",
@@ -90,9 +92,8 @@ describe("Module 19: Inventory / Stock", () => {
     expect(data.code).toBe("TEST-001");
     expect(data.category).toBe("raw_material");
 
-    // Cleanup
     if (data?.id) {
-      await (supabase as any)
+      await (admin as any)
         .from("inventory_items")
         .delete()
         .eq("id", data.id);

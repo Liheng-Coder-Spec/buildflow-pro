@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS public.client_invoices (
   client_id uuid,
   certified_amount numeric(15,2),
   retention_pct numeric(5,2) DEFAULT 0,
-  retention_amount numeric(15,2) GENERATED ALWAYS AS (total_amount * (retention_pct / 100)) STORED,
+  retention_amount numeric(15,2) DEFAULT 0,
   notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),

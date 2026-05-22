@@ -16,11 +16,12 @@ create table if not exists public.report_schedules (
   updated_at timestamptz not null default now()
 );
 
-create index idx_report_schedules_project on public.report_schedules (project_id);
-create index idx_report_schedules_enabled on public.report_schedules (enabled) where enabled = true;
+create index if not exists idx_report_schedules_project on public.report_schedules (project_id);
+create index if not exists idx_report_schedules_enabled on public.report_schedules (enabled) where enabled = true;
 
 alter table public.report_schedules enable row level security;
 
+drop policy if exists "Users can view schedules for their projects" on public.report_schedules;
 create policy "Users can view schedules for their projects"
   on public.report_schedules for select
   using (
@@ -31,6 +32,7 @@ create policy "Users can view schedules for their projects"
     )
   );
 
+drop policy if exists "Users can manage schedules for their projects" on public.report_schedules;
 create policy "Users can manage schedules for their projects"
   on public.report_schedules for insert
   with check (
@@ -41,6 +43,7 @@ create policy "Users can manage schedules for their projects"
     )
   );
 
+drop policy if exists "Users can update schedules for their projects" on public.report_schedules;
 create policy "Users can update schedules for their projects"
   on public.report_schedules for update
   using (
@@ -51,6 +54,7 @@ create policy "Users can update schedules for their projects"
     )
   );
 
+drop policy if exists "Users can delete schedules for their projects" on public.report_schedules;
 create policy "Users can delete schedules for their projects"
   on public.report_schedules for delete
   using (

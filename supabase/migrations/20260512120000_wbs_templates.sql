@@ -55,7 +55,7 @@ CREATE POLICY "All users can view WBS templates"
 CREATE POLICY "Admins can manage WBS templates"
     ON public.wbs_templates FOR ALL
     TO authenticated
-    USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE POLICY "All users can view template nodes"
     ON public.wbs_template_nodes FOR SELECT
@@ -65,7 +65,7 @@ CREATE POLICY "All users can view template nodes"
 CREATE POLICY "Admins can manage template nodes"
     ON public.wbs_template_nodes FOR ALL
     TO authenticated
-    USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE POLICY "All users can view template tasks"
     ON public.wbs_template_tasks FOR SELECT
@@ -75,4 +75,4 @@ CREATE POLICY "All users can view template tasks"
 CREATE POLICY "Admins can manage template tasks"
     ON public.wbs_template_tasks FOR ALL
     TO authenticated
-    USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+    USING (has_role(auth.uid(), 'admin'::app_role));

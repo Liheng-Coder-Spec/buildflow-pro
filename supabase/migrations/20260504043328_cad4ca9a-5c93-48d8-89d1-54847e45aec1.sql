@@ -27,8 +27,8 @@ CREATE TABLE IF NOT EXISTS public.boq_items (
 CREATE INDEX IF NOT EXISTS idx_boq_items_project ON public.boq_items(project_id);
 CREATE INDEX IF NOT EXISTS idx_boq_items_task ON public.boq_items(task_id);
 ALTER TABLE public.boq_items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view boq_items" ON public.boq_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Planners can manage boq_items" ON public.boq_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
+DROP POLICY IF EXISTS "Authenticated can view boq_items" ON public.boq_items; CREATE POLICY "Authenticated can view boq_items" ON public.boq_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Planners can manage boq_items" ON public.boq_items; CREATE POLICY "Planners can manage boq_items" ON public.boq_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
 
 CREATE TABLE IF NOT EXISTS public.material_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS public.material_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_mr_project ON public.material_requests(project_id);
 ALTER TABLE public.material_requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view material_requests" ON public.material_requests FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can create material_requests" ON public.material_requests FOR INSERT TO authenticated WITH CHECK (requested_by = auth.uid());
-CREATE POLICY "Users can update own draft MRs" ON public.material_requests FOR UPDATE TO authenticated USING (requested_by = auth.uid() AND status = 'draft');
-CREATE POLICY "PMs can approve MRs" ON public.material_requests FOR UPDATE TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "Authenticated can view material_requests" ON public.material_requests; CREATE POLICY "Authenticated can view material_requests" ON public.material_requests FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can create material_requests" ON public.material_requests; CREATE POLICY "Users can create material_requests" ON public.material_requests FOR INSERT TO authenticated WITH CHECK (requested_by = auth.uid());
+DROP POLICY IF EXISTS "Users can update own draft MRs" ON public.material_requests; CREATE POLICY "Users can update own draft MRs" ON public.material_requests FOR UPDATE TO authenticated USING (requested_by = auth.uid() AND status = 'draft');
+DROP POLICY IF EXISTS "PMs can approve MRs" ON public.material_requests; CREATE POLICY "PMs can approve MRs" ON public.material_requests FOR UPDATE TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
 
 CREATE TABLE IF NOT EXISTS public.material_request_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,9 +62,9 @@ CREATE TABLE IF NOT EXISTS public.material_request_items (
 );
 CREATE INDEX IF NOT EXISTS idx_mr_items_mr ON public.material_request_items(mr_id);
 ALTER TABLE public.material_request_items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view mr_items" ON public.material_request_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can manage own MR items" ON public.material_request_items FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.material_requests WHERE id = mr_id AND requested_by = auth.uid() AND status = 'draft'));
-CREATE POLICY "PMs can update MR items" ON public.material_request_items FOR UPDATE TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "Authenticated can view mr_items" ON public.material_request_items; CREATE POLICY "Authenticated can view mr_items" ON public.material_request_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can manage own MR items" ON public.material_request_items; CREATE POLICY "Users can manage own MR items" ON public.material_request_items FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.material_requests WHERE id = mr_id AND requested_by = auth.uid() AND status = 'draft'));
+DROP POLICY IF EXISTS "PMs can update MR items" ON public.material_request_items; CREATE POLICY "PMs can update MR items" ON public.material_request_items FOR UPDATE TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
 
 CREATE TABLE IF NOT EXISTS public.purchase_orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS public.purchase_orders (
 );
 CREATE INDEX IF NOT EXISTS idx_po_project ON public.purchase_orders(project_id);
 ALTER TABLE public.purchase_orders ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view POs" ON public.purchase_orders FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and PMs manage POs" ON public.purchase_orders FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "Authenticated can view POs" ON public.purchase_orders; CREATE POLICY "Authenticated can view POs" ON public.purchase_orders FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins and PMs manage POs" ON public.purchase_orders; CREATE POLICY "Admins and PMs manage POs" ON public.purchase_orders FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
 
 CREATE TABLE IF NOT EXISTS public.purchase_order_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -94,8 +94,8 @@ CREATE TABLE IF NOT EXISTS public.purchase_order_items (
 );
 CREATE INDEX IF NOT EXISTS idx_po_items_po ON public.purchase_order_items(po_id);
 ALTER TABLE public.purchase_order_items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view PO items" ON public.purchase_order_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Admins and PMs manage PO items" ON public.purchase_order_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "Authenticated can view PO items" ON public.purchase_order_items; CREATE POLICY "Authenticated can view PO items" ON public.purchase_order_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Admins and PMs manage PO items" ON public.purchase_order_items; CREATE POLICY "Admins and PMs manage PO items" ON public.purchase_order_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
 
 CREATE TABLE IF NOT EXISTS public.grns (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -110,8 +110,8 @@ CREATE TABLE IF NOT EXISTS public.grns (
 CREATE INDEX IF NOT EXISTS idx_grns_po ON public.grns(po_id);
 CREATE INDEX IF NOT EXISTS idx_grns_project ON public.grns(project_id);
 ALTER TABLE public.grns ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view GRNs" ON public.grns FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Storekeepers/PMs manage GRNs" ON public.grns FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Authenticated can view GRNs" ON public.grns; CREATE POLICY "Authenticated can view GRNs" ON public.grns FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Storekeepers/PMs manage GRNs" ON public.grns; CREATE POLICY "Storekeepers/PMs manage GRNs" ON public.grns FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
 
 CREATE TABLE IF NOT EXISTS public.grn_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,8 +126,8 @@ CREATE TABLE IF NOT EXISTS public.grn_items (
 );
 CREATE INDEX IF NOT EXISTS idx_grn_items_grn ON public.grn_items(grn_id);
 ALTER TABLE public.grn_items ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view GRN items" ON public.grn_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Storekeepers/PMs manage GRN items" ON public.grn_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Authenticated can view GRN items" ON public.grn_items; CREATE POLICY "Authenticated can view GRN items" ON public.grn_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Storekeepers/PMs manage GRN items" ON public.grn_items; CREATE POLICY "Storekeepers/PMs manage GRN items" ON public.grn_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
 
 CREATE TABLE IF NOT EXISTS public.stock_balances (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -140,8 +140,8 @@ CREATE TABLE IF NOT EXISTS public.stock_balances (
   UNIQUE(project_id, material_name)
 );
 ALTER TABLE public.stock_balances ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view stock balances" ON public.stock_balances FOR SELECT TO authenticated USING (true);
-CREATE POLICY "System can manage stock balances" ON public.stock_balances FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Authenticated can view stock balances" ON public.stock_balances; CREATE POLICY "Authenticated can view stock balances" ON public.stock_balances FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "System can manage stock balances" ON public.stock_balances; CREATE POLICY "System can manage stock balances" ON public.stock_balances FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
 
 CREATE TABLE IF NOT EXISTS public.material_issues (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -157,8 +157,8 @@ CREATE TABLE IF NOT EXISTS public.material_issues (
 CREATE INDEX IF NOT EXISTS idx_mi_task ON public.material_issues(task_id);
 CREATE INDEX IF NOT EXISTS idx_mi_project ON public.material_issues(project_id);
 ALTER TABLE public.material_issues ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Authenticated can view material issues" ON public.material_issues FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can issue material" ON public.material_issues FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Authenticated can view material issues" ON public.material_issues; CREATE POLICY "Authenticated can view material issues" ON public.material_issues FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can issue material" ON public.material_issues; CREATE POLICY "Users can issue material" ON public.material_issues FOR INSERT TO authenticated WITH CHECK (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'supervisor'));
 
 -- ============= QA/QC MODULE =============
 DO $$ BEGIN CREATE TYPE public.ir_status AS ENUM ('draft','requested','scheduled','passed','failed','passed_with_remarks'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -239,10 +239,15 @@ CREATE TABLE IF NOT EXISTS public.punch_list_items (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DROP TRIGGER IF EXISTS update_inspection_checklists_updated_at ON public.inspection_checklists;
 CREATE TRIGGER update_inspection_checklists_updated_at BEFORE UPDATE ON public.inspection_checklists FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_inspection_requests_updated_at ON public.inspection_requests;
 CREATE TRIGGER update_inspection_requests_updated_at BEFORE UPDATE ON public.inspection_requests FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_inspection_results_updated_at ON public.inspection_results;
 CREATE TRIGGER update_inspection_results_updated_at BEFORE UPDATE ON public.inspection_results FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_ncrs_updated_at ON public.ncrs;
 CREATE TRIGGER update_ncrs_updated_at BEFORE UPDATE ON public.ncrs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+DROP TRIGGER IF EXISTS update_punch_list_items_updated_at ON public.punch_list_items;
 CREATE TRIGGER update_punch_list_items_updated_at BEFORE UPDATE ON public.punch_list_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 ALTER TABLE public.inspection_checklists ENABLE ROW LEVEL SECURITY;
@@ -252,19 +257,19 @@ ALTER TABLE public.inspection_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ncrs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.punch_list_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Authenticated view checklists" ON public.inspection_checklists FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated view checklist items" ON public.inspection_checklist_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated view IRs" ON public.inspection_requests FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated view results" ON public.inspection_results FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated view NCRs" ON public.ncrs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Authenticated view punch" ON public.punch_list_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view checklists" ON public.inspection_checklists; CREATE POLICY "Authenticated view checklists" ON public.inspection_checklists FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view checklist items" ON public.inspection_checklist_items; CREATE POLICY "Authenticated view checklist items" ON public.inspection_checklist_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view IRs" ON public.inspection_requests; CREATE POLICY "Authenticated view IRs" ON public.inspection_requests FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view results" ON public.inspection_results; CREATE POLICY "Authenticated view results" ON public.inspection_results FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view NCRs" ON public.ncrs; CREATE POLICY "Authenticated view NCRs" ON public.ncrs FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Authenticated view punch" ON public.punch_list_items; CREATE POLICY "Authenticated view punch" ON public.punch_list_items FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "Manage checklists" ON public.inspection_checklists FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
-CREATE POLICY "Manage checklist items" ON public.inspection_checklist_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
-CREATE POLICY "Manage IRs" ON public.inspection_requests FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
-CREATE POLICY "Manage results" ON public.inspection_results FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
-CREATE POLICY "Manage NCRs" ON public.ncrs FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
-CREATE POLICY "Manage punch" ON public.punch_list_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Manage checklists" ON public.inspection_checklists; CREATE POLICY "Manage checklists" ON public.inspection_checklists FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
+DROP POLICY IF EXISTS "Manage checklist items" ON public.inspection_checklist_items; CREATE POLICY "Manage checklist items" ON public.inspection_checklist_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer'));
+DROP POLICY IF EXISTS "Manage IRs" ON public.inspection_requests; CREATE POLICY "Manage IRs" ON public.inspection_requests FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Manage results" ON public.inspection_results; CREATE POLICY "Manage results" ON public.inspection_results FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Manage NCRs" ON public.ncrs; CREATE POLICY "Manage NCRs" ON public.ncrs FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
+DROP POLICY IF EXISTS "Manage punch" ON public.punch_list_items; CREATE POLICY "Manage punch" ON public.punch_list_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager') OR has_role(auth.uid(),'engineer') OR has_role(auth.uid(),'supervisor'));
 
 -- ============= FINANCIALS MODULE =============
 DO $$ BEGIN CREATE TYPE public.claim_status AS ENUM ('draft','submitted','certified','paid','rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$;
@@ -348,9 +353,10 @@ ALTER TABLE public.resource_rates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.progress_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.claim_items ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "View resource rates" ON public.resource_rates FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Manage rates" ON public.resource_rates FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
-CREATE POLICY "View claims" ON public.progress_claims FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Manage claims" ON public.progress_claims FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
-CREATE POLICY "View claim items" ON public.claim_items FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Manage claim items" ON public.claim_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "View resource rates" ON public.resource_rates; CREATE POLICY "View resource rates" ON public.resource_rates FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Manage rates" ON public.resource_rates; CREATE POLICY "Manage rates" ON public.resource_rates FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "View claims" ON public.progress_claims; CREATE POLICY "View claims" ON public.progress_claims FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Manage claims" ON public.progress_claims; CREATE POLICY "Manage claims" ON public.progress_claims FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+DROP POLICY IF EXISTS "View claim items" ON public.claim_items; CREATE POLICY "View claim items" ON public.claim_items FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Manage claim items" ON public.claim_items; CREATE POLICY "Manage claim items" ON public.claim_items FOR ALL TO authenticated USING (has_role(auth.uid(),'admin') OR has_role(auth.uid(),'project_manager'));
+

@@ -13,7 +13,7 @@ END $$;
 
 -- 1. RFQ Main Table
 CREATE TABLE IF NOT EXISTS public.rfq (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
     pr_id uuid REFERENCES public.purchase_requisitions(id) ON DELETE SET NULL,
     rfq_number text NOT NULL UNIQUE DEFAULT 'RFQ-' || to_char(now(), 'YYYYMMDD-') || nextval('rfq_number_seq'),
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.rfq (
 
 -- 2. RFQ Suppliers (invited suppliers)
 CREATE TABLE IF NOT EXISTS public.rfq_suppliers (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     rfq_id uuid NOT NULL REFERENCES public.rfq(id) ON DELETE CASCADE,
     supplier_id uuid NOT NULL REFERENCES public.suppliers(id) ON DELETE CASCADE,
     invitation_date date,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.rfq_suppliers (
 
 -- 3. Supplier Quotations
 CREATE TABLE IF NOT EXISTS public.supplier_quotations (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     rfq_id uuid NOT NULL REFERENCES public.rfq(id) ON DELETE CASCADE,
     supplier_id uuid NOT NULL REFERENCES public.suppliers(id) ON DELETE CASCADE,
     quotation_number text,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.supplier_quotations (
 
 -- 4. Quotation Line Items
 CREATE TABLE IF NOT EXISTS public.quotation_items (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     quotation_id uuid NOT NULL REFERENCES public.supplier_quotations(id) ON DELETE CASCADE,
     item_description text NOT NULL,
     quantity numeric(10,2) NOT NULL DEFAULT 0,

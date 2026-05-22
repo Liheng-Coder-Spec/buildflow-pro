@@ -25,6 +25,7 @@ import {
   getBriefPrefs,
   upsertBriefPrefs,
 } from "@/services/telegramBriefService";
+import { getTelegramAdminConfig } from "@/services/telegramAdminConfigService";
 
 const FALLBACK_TZS = [
   "UTC",
@@ -107,11 +108,17 @@ export function TelegramTab() {
   const loadPrefs = React.useCallback(async () => {
     if (!user) return;
     try {
+      // Get admin defaults first
+      const adminConfig = await getTelegramAdminConfig();
+      const adminMorningDefault = toTimeInput(adminConfig.morning_default) || "08:00";
+      const adminEveningDefault = toTimeInput(adminConfig.evening_default) || "18:00";
+
+      // Then get user preferences (will override admin defaults if set)
       const p = await getBriefPrefs(user.id);
       const mEn = !!p?.morning_at;
       const eEn = !!p?.evening_at;
-      const mT = toTimeInput(p?.morning_at ?? null) || "08:00";
-      const eT = toTimeInput(p?.evening_at ?? null) || "18:00";
+      const mT = toTimeInput(p?.morning_at ?? null) || adminMorningDefault;
+      const eT = toTimeInput(p?.evening_at ?? null) || adminEveningDefault;
       const tz = p?.timezone || detectTz();
       setMorningEnabled(mEn);
       setMorningTime(mT);
