@@ -120,10 +120,10 @@ export default function TaskTemplates() {
   const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number]>(TASK_GROUPING_METHODS[0]);
   const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number]>(QUANTITY_UNITS[0]);
   const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number]>(TASK_STATUSES[0]);
-  const [taskSteps] = React.useState(DEFAULT_TASK_STEPS);
-  const [taskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
-  const [taskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
-  const [taskDocuments] = React.useState(DEFAULT_TASK_DOCUMENTS);
+  const [taskSteps, setTaskSteps] = React.useState(DEFAULT_TASK_STEPS);
+  const [taskDependencies, setTaskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
+  const [taskChecklist, setTaskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
+  const [taskDocuments, setTaskDocuments] = React.useState(DEFAULT_TASK_DOCUMENTS);
 
   const resetElementForm = () => {
     setElementCode("");
@@ -144,6 +144,39 @@ export default function TaskTemplates() {
     setTaskGroupingMethod(TASK_GROUPING_METHODS[0]);
     setTaskUnit(QUANTITY_UNITS[0]);
     setTaskStatus(TASK_STATUSES[0]);
+  };
+
+  const addTaskStep = () => {
+    const nextNo = String(taskSteps.length + 1).padStart(2, "0");
+    const lastCode = taskSteps[taskSteps.length - 1]?.code ?? "TPL-STR-001-CON-00";
+    const parts = lastCode.split("-");
+    const nextNum = String(Number(parts[parts.length - 1]) + 1).padStart(2, "0");
+    parts[parts.length - 1] = nextNum;
+    setTaskSteps([...taskSteps, {
+      no: nextNo,
+      code: parts.join("-"),
+      name: "New Step",
+      duration: "1 day",
+      role: "Engineer",
+      required: true,
+    }]);
+  };
+
+  const addDependency = () => {
+    setTaskDependencies([...taskDependencies, {
+      predecessor: "Previous Step",
+      type: "FS",
+      successor: "Next Step",
+      lag: "0 day",
+    }]);
+  };
+
+  const addChecklistItem = () => {
+    setTaskChecklist([...taskChecklist, "New checklist item"]);
+  };
+
+  const addDocument = () => {
+    setTaskDocuments([...taskDocuments, "New required document"]);
   };
 
   const openEditElement = (element: ElementTemplate) => {
@@ -478,7 +511,7 @@ export default function TaskTemplates() {
                       Define the standard execution sequence. Each row can later become one generated task.
                     </p>
                   </div>
-                  <Button type="button" variant="outline" size="sm">
+                  <Button type="button" variant="outline" size="sm" onClick={addTaskStep}>
                     + Add Step
                   </Button>
                 </div>
@@ -520,7 +553,7 @@ export default function TaskTemplates() {
                       Define predecessor and successor links for the generated task flow.
                     </p>
                   </div>
-                  <Button type="button" variant="outline" size="sm">
+                  <Button type="button" variant="outline" size="sm" onClick={addDependency}>
                     + Add Dependency
                   </Button>
                 </div>
@@ -603,7 +636,12 @@ export default function TaskTemplates() {
                 </section>
 
                 <section className="rounded-lg border bg-white p-4">
-                  <h3 className="text-sm font-semibold">5. QA/QC Checklist</h3>
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-sm font-semibold">5. QA/QC Checklist</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addChecklistItem}>
+                      + Add
+                    </Button>
+                  </div>
                   <div className="mt-4 space-y-3">
                     {taskChecklist.map((item) => (
                       <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
@@ -617,7 +655,12 @@ export default function TaskTemplates() {
 
               <div className="grid gap-5 lg:grid-cols-2">
                 <section className="rounded-lg border bg-white p-4">
-                  <h3 className="text-sm font-semibold">6. Required Documents</h3>
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-sm font-semibold">6. Required Documents</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addDocument}>
+                      + Add
+                    </Button>
+                  </div>
                   <div className="mt-4 space-y-3">
                     {taskDocuments.map((item) => (
                       <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
