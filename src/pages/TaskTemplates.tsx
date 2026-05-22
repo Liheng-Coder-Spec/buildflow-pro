@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ClipboardList, Layers3 } from "lucide-react";
+import { ClipboardList, Layers3, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -32,6 +33,7 @@ const ELEMENT_CATEGORIES = ["Structure", "Archiecture", "MEP"] as const;
 type ElementCategory = typeof ELEMENT_CATEGORIES[number];
 
 interface ElementTemplate {
+  id: string;
   code: string;
   category: ElementCategory;
   name: string;
@@ -39,6 +41,7 @@ interface ElementTemplate {
 }
 
 interface ElementTemplateRow {
+  id: string;
   element_code: string;
   category: ElementCategory;
   element_name: string;
@@ -46,6 +49,7 @@ interface ElementTemplateRow {
 }
 
 const mapElementTemplate = (row: ElementTemplateRow): ElementTemplate => ({
+  id: row.id,
   code: row.element_code,
   category: row.category,
   name: row.element_name,
@@ -58,6 +62,7 @@ export default function TaskTemplates() {
   const [loadingElements, setLoadingElements] = React.useState(true);
   const [creatingElement, setCreatingElement] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [editingElement, setEditingElement] = React.useState<ElementTemplate | null>(null);
   const [elementCode, setElementCode] = React.useState("");
   const [category, setCategory] = React.useState<ElementCategory | "">("");
   const [elementName, setElementName] = React.useState("");
@@ -70,13 +75,22 @@ export default function TaskTemplates() {
     setNote("");
   };
 
+  const openEditElement = (element: ElementTemplate) => {
+    setEditingElement(element);
+    setElementCode(element.code);
+    setCategory(element.category);
+    setElementName(element.name);
+    setNote(element.note);
+    setCreateDialogOpen(true);
+  };
+
   const loadElements = React.useCallback(async () => {
     setLoadingElements(true);
     const { data, error } = await (supabase as any)
       .from("master_element_templates")
-      .select("element_code, category, element_name, note")
+      .select("id, element_code, category, element_name, note")
       .eq("is_active", true)
-      .order("created_at", { ascending: false });
+      .order("element_code", { ascending: true });
 
     if (error) {
       toast.error(error.message);
@@ -113,15 +127,23 @@ export default function TaskTemplates() {
     }
 
     setCreatingElement(true);
-    const { data, error } = await (supabase as any)
-      .from("master_element_templates")
-      .insert({
-        element_code: code,
-        category,
-        element_name: name,
-        note: cleanNote || null
-      })
-      .select("element_code, category, element_name, note")
+    const payload = {
+      element_code: code,
+      category,
+      element_name: name,
+      note: cleanNote || null
+    };
+    const query = editingElement
+      ? (supabase as any)
+        .from("master_element_templates")
+        .update(payload)
+        .eq("id", editingElement.id)
+      : (supabase as any)
+        .from("master_element_templates")
+        .insert(payload);
+
+    const { data, error } = await query
+      .select("id, element_code, category, element_name, note")
       .single();
 
     setCreatingElement(false);
@@ -131,10 +153,34 @@ export default function TaskTemplates() {
       return;
     }
 
-    setElements((current) => [mapElementTemplate(data as ElementTemplateRow), ...current]);
+    const savedElement = mapElementTemplate(data as ElementTemplateRow);
+    setElements((current) => editingElement
+      ? current.map((item) => item.id === savedElement.id ? savedElement : item)
+      : [...current, savedElement].sort((first, second) => first.code.localeCompare(second.code)));
     resetElementForm();
+    setEditingElement(null);
     setCreateDialogOpen(false);
-    toast.success("Element template created");
+    toast.success(editingElement ? "Element template updated" : "Element template created");
+  };
+
+  const handleDeleteElement = async (element: ElementTemplate) => {
+    const confirmed = window.confirm(`Delete element template ${element.code}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const { error } = await (supabase as any)
+      .from("master_element_templates")
+      .update({ is_active: false })
+      .eq("id", element.id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setElements((current) => current.filter((item) => item.id !== element.id));
+    toast.success("Element template deleted");
   };
 
   return (
@@ -152,6 +198,7 @@ export default function TaskTemplates() {
           onOpenChange={(open) => {
             setCreateDialogOpen(open);
             if (!open) {
+              setEditingElement(null);
               resetElementForm();
             }
           }}
@@ -170,7 +217,7 @@ export default function TaskTemplates() {
 
           <DialogContent className="sm:max-w-xl">
             <DialogHeader>
-              <DialogTitle>Create Element Template</DialogTitle>
+              <DialogTitle>{editingElement ? "Edit Element Template" : "Create Element Template"}</DialogTitle>
               <DialogDescription>
                 Define a reusable element before combining it into task templates.
               </DialogDescription>
@@ -230,13 +277,14 @@ export default function TaskTemplates() {
                   variant="outline"
                   onClick={() => {
                     resetElementForm();
+                    setEditingElement(null);
                     setCreateDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={creatingElement}>
-                  {creatingElement ? "Creating..." : "Create"}
+                  {creatingElement ? "Saving..." : editingElement ? "Save" : "Create"}
                 </Button>
               </DialogFooter>
             </form>
@@ -257,38 +305,55 @@ export default function TaskTemplates() {
               </span>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {loadingElements && (
-                  <div className="rounded-md border bg-card px-3 py-3 text-sm text-muted-foreground">
-                    Loading element templates...
-                  </div>
-                )}
-                {!loadingElements && elements.length === 0 && (
-                  <div className="rounded-md border bg-card px-3 py-3 text-sm text-muted-foreground">
-                    No element templates created yet.
-                  </div>
-                )}
-                {!loadingElements && elements.map((item) => (
-                  <div
-                    key={`${item.code}-${item.name}`}
-                    className="rounded-md border bg-card px-3 py-3"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">{item.code}</span>
-                          <Badge variant="secondary">{item.category}</Badge>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-32">Code</TableHead>
+                    <TableHead className="w-36">Categories</TableHead>
+                    <TableHead>Element Name</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="w-36 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loadingElements && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-muted-foreground">
+                        Loading element templates...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingElements && elements.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-muted-foreground">
+                        No element templates created yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loadingElements && elements.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{item.code}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{item.category}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.note || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => openEditElement(item)}>
+                            <Pencil className="mr-1 h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteElement(item)}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" />
+                            Delete
+                          </Button>
                         </div>
-                        <p className="mt-1 text-sm font-medium">{item.name}</p>
-                      </div>
-                      <Badge variant="outline">Element</Badge>
-                    </div>
-                    {item.note && (
-                      <p className="mt-2 text-sm text-muted-foreground">{item.note}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
