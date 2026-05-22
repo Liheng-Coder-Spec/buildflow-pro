@@ -19,12 +19,7 @@ ALTER TABLE public.telegram_admin_config ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Admins can manage telegram config"
   ON public.telegram_admin_config
   FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid() AND 'admin' = ANY(roles)
-    )
-  );
+  USING (public.has_role(auth.uid(), 'admin'));
 
 -- Policy: Users can read (to get defaults)
 CREATE POLICY "Users can read telegram config"
