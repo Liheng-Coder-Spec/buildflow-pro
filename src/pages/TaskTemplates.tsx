@@ -44,6 +44,7 @@ const DEFAULT_ELEMENT_TEMPLATES: ElementTemplate[] = [
 ];
 
 export default function TaskTemplates() {
+  const [activeTab, setActiveTab] = React.useState("elements");
   const [elements, setElements] = React.useState<ElementTemplate[]>(DEFAULT_ELEMENT_TEMPLATES);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [elementCode, setElementCode] = React.useState("");
@@ -96,11 +97,100 @@ export default function TaskTemplates() {
         </p>
       </div>
 
-      <Tabs defaultValue="elements" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="elements">Elements Template</TabsTrigger>
-          <TabsTrigger value="tasks">Task Template</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Dialog
+          open={createDialogOpen}
+          onOpenChange={(open) => {
+            setCreateDialogOpen(open);
+            if (!open) {
+              resetElementForm();
+            }
+          }}
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList>
+              <TabsTrigger value="elements">Elements Template</TabsTrigger>
+              <TabsTrigger value="tasks">Task Template</TabsTrigger>
+            </TabsList>
+            {activeTab === "elements" && (
+              <DialogTrigger asChild>
+                <Button type="button">Create Element</Button>
+              </DialogTrigger>
+            )}
+          </div>
+
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Create Element Template</DialogTitle>
+              <DialogDescription>
+                Define a reusable element before combining it into task templates.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleCreateElement} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="element-code">Element Code</Label>
+                <Input
+                  id="element-code"
+                  value={elementCode}
+                  onChange={(event) => setElementCode(event.target.value)}
+                  placeholder="STR-001"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Categories</Label>
+                <Select value={category} onValueChange={(value) => setCategory(value as ElementCategory)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ELEMENT_CATEGORIES.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="element-name">Element name</Label>
+                <Input
+                  id="element-name"
+                  value={elementName}
+                  onChange={(event) => setElementName(event.target.value)}
+                  placeholder="Concrete column inspection"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="element-note">Note</Label>
+                <Textarea
+                  id="element-note"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Add template notes or usage guidance"
+                  rows={4}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetElementForm();
+                    setCreateDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">Create</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <TabsContent value="elements">
           <Card>
@@ -116,91 +206,6 @@ export default function TaskTemplates() {
               </span>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Dialog
-                open={createDialogOpen}
-                onOpenChange={(open) => {
-                  setCreateDialogOpen(open);
-                  if (!open) {
-                    resetElementForm();
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button type="button">Create Element</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-xl">
-                  <DialogHeader>
-                    <DialogTitle>Create Element Template</DialogTitle>
-                    <DialogDescription>
-                      Define a reusable element before combining it into task templates.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <form onSubmit={handleCreateElement} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="element-code">Element Code</Label>
-                      <Input
-                        id="element-code"
-                        value={elementCode}
-                        onChange={(event) => setElementCode(event.target.value)}
-                        placeholder="STR-001"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Categories</Label>
-                      <Select value={category} onValueChange={(value) => setCategory(value as ElementCategory)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ELEMENT_CATEGORIES.map((item) => (
-                            <SelectItem key={item} value={item}>
-                              {item}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="element-name">Element name</Label>
-                      <Input
-                        id="element-name"
-                        value={elementName}
-                        onChange={(event) => setElementName(event.target.value)}
-                        placeholder="Concrete column inspection"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="element-note">Note</Label>
-                      <Textarea
-                        id="element-note"
-                        value={note}
-                        onChange={(event) => setNote(event.target.value)}
-                        placeholder="Add template notes or usage guidance"
-                        rows={4}
-                      />
-                    </div>
-
-                    <DialogFooter>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          resetElementForm();
-                          setCreateDialogOpen(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit">Create</Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
               <div className="space-y-2">
                 {elements.map((item) => (
                   <div
