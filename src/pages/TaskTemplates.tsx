@@ -1,4 +1,6 @@
 import * as React from "react";
+import { ClipboardList, Layers3 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,8 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { ClipboardList, Layers3 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const TASK_ITEMS = ["Design review", "Site inspection", "Procurement follow-up", "Daily progress update"];
 const ELEMENT_CATEGORIES = ["Structure", "Archiecture", "MEP"] as const;
@@ -37,15 +38,25 @@ interface ElementTemplate {
   note: string;
 }
 
-const DEFAULT_ELEMENT_TEMPLATES: ElementTemplate[] = [
-  { code: "STR-001", category: "Structure", name: "Work package", note: "Core structural work element." },
-  { code: "ARC-001", category: "Archiecture", name: "Quality checkpoint", note: "Architectural finish review." },
-  { code: "MEP-001", category: "MEP", name: "Safety activity", note: "MEP safety coordination." }
-];
+interface ElementTemplateRow {
+  element_code: string;
+  category: ElementCategory;
+  element_name: string;
+  note: string | null;
+}
+
+const mapElementTemplate = (row: ElementTemplateRow): ElementTemplate => ({
+  code: row.element_code,
+  category: row.category,
+  name: row.element_name,
+  note: row.note ?? ""
+});
 
 export default function TaskTemplates() {
   const [activeTab, setActiveTab] = React.useState("elements");
-  const [elements, setElements] = React.useState<ElementTemplate[]>(DEFAULT_ELEMENT_TEMPLATES);
+  const [elements, setElements] = React.useState<ElementTemplate[]>([]);
+  const [loadingElements, setLoadingElements] = React.useState(true);
+  const [creatingElement, setCreatingElement] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
   const [elementCode, setElementCode] = React.useState("");
   const [category, setCategory] = React.useState<ElementCategory | "">("");
@@ -59,7 +70,29 @@ export default function TaskTemplates() {
     setNote("");
   };
 
-  const handleCreateElement = (event: React.FormEvent<HTMLFormElement>) => {
+  const loadElements = React.useCallback(async () => {
+    setLoadingElements(true);
+    const { data, error } = await (supabase as any)
+      .from("master_element_templates")
+      .select("element_code, category, element_name, note")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error(error.message);
+      setLoadingElements(false);
+      return;
+    }
+
+    setElements(((data ?? []) as ElementTemplateRow[]).map(mapElementTemplate));
+    setLoadingElements(false);
+  }, []);
+
+  React.useEffect(() => {
+    void loadElements();
+  }, [loadElements]);
+
+  const handleCreateElement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const code = elementCode.trim();
@@ -79,10 +112,26 @@ export default function TaskTemplates() {
       return;
     }
 
-    setElements((current) => [
-      { code, category, name, note: cleanNote },
-      ...current
-    ]);
+    setCreatingElement(true);
+    const { data, error } = await (supabase as any)
+      .from("master_element_templates")
+      .insert({
+        element_code: code,
+        category,
+        element_name: name,
+        note: cleanNote || null
+      })
+      .select("element_code, category, element_name, note")
+      .single();
+
+    setCreatingElement(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setElements((current) => [mapElementTemplate(data as ElementTemplateRow), ...current]);
     resetElementForm();
     setCreateDialogOpen(false);
     toast.success("Element template created");
@@ -186,7 +235,9 @@ export default function TaskTemplates() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Create</Button>
+                <Button type="submit" disabled={creatingElement}>
+                  {creatingElement ? "Creating..." : "Create"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -207,7 +258,17 @@ export default function TaskTemplates() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                {elements.map((item) => (
+                {loadingElements && (
+                  <div className="rounded-md border bg-card px-3 py-3 text-sm text-muted-foreground">
+                    Loading element templates...
+                  </div>
+                )}
+                {!loadingElements && elements.length === 0 && (
+                  <div className="rounded-md border bg-card px-3 py-3 text-sm text-muted-foreground">
+                    No element templates created yet.
+                  </div>
+                )}
+                {!loadingElements && elements.map((item) => (
                   <div
                     key={`${item.code}-${item.name}`}
                     className="rounded-md border bg-card px-3 py-3"
