@@ -223,8 +223,8 @@ export default function TaskTemplates() {
           element_code: taskElement || null,
           description: taskDescription.trim() || null,
           grouping_method: taskGroupingMethod || null,
-          default_unit: taskUnit || null,
-          default_status: taskStatus || null,
+          default_quantity_unit: taskUnit || null,
+          default_task_status: taskStatus || null,
         })
         .select("id")
         .single();
@@ -236,12 +236,13 @@ export default function TaskTemplates() {
       if (taskSteps.length > 0) {
         const stepsPayload = taskSteps.map((step, i) => ({
           template_id: templateId,
-          step_order: i + 1,
+          step_no: step.no,
           step_code: step.code,
           step_name: step.name,
           duration: step.duration,
-          role: step.role,
+          default_role: step.role,
           required: step.required,
+          sort_order: i + 1,
         }));
         const { error: stepsError } = await (supabase as any)
           .from("master_task_template_steps")
@@ -266,7 +267,7 @@ export default function TaskTemplates() {
       if (taskChecklist.length > 0) {
         const checklistPayload = taskChecklist.map((item) => ({
           template_id: templateId,
-          item_name: item,
+          item: item,
         }));
         const { error: clError } = await (supabase as any)
           .from("master_task_template_checklist")
