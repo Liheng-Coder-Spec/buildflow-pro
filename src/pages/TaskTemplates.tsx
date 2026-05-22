@@ -1,7 +1,14 @@
 import * as React from "react";
-import { ClipboardList, Filter, Layers3, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, ClipboardList, Filter, Layers3, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -501,18 +508,51 @@ export default function TaskTemplates() {
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Element Code / Element Name</Label>
-                    <Select value={taskElement} onValueChange={setTaskElement}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="STR-001 | Bored Pile">STR-001 | Bored Pile</SelectItem>
-                        <SelectItem value="STR-004 | Pile Cap">STR-004 | Pile Cap</SelectItem>
-                        <SelectItem value="STR-014 | Column">STR-014 | Column</SelectItem>
-                        <SelectItem value="ARC-017 | Door">ARC-017 | Door</SelectItem>
-                        <SelectItem value="MEP-007 | Power Cable">MEP-007 | Power Cable</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                        >
+                          {taskElement || "Search element..."}
+                          <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <Command
+                          filter={(value, search) =>
+                            value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                          }
+                        >
+                          <CommandInput placeholder="Search by code or name..." />
+                          <CommandList>
+                            <CommandEmpty>No elements found.</CommandEmpty>
+                            <CommandGroup>
+                              {elements.map((el) => (
+                                <CommandItem
+                                  key={el.id}
+                                  value={`${el.code} | ${el.name}`}
+                                  onSelect={(currentValue) => {
+                                    setTaskElement(currentValue);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "h-4 w-4 mr-2 shrink-0",
+                                      taskElement === `${el.code} | ${el.name}` ? "opacity-100" : "opacity-0",
+                                    )}
+                                  />
+                                  <span className="font-mono text-xs text-muted-foreground mr-2">{el.code}</span>
+                                  <span>{el.name}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="task-template-name">Template Name</Label>
