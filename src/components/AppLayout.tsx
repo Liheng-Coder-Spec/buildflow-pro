@@ -42,6 +42,7 @@ import {
   Package,
   Calendar,
   BookOpen,
+  LibraryBig,
   Receipt,
   GitCompareArrows,
   TrendingUp,
@@ -105,6 +106,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/architecture", label: "Architecture", icon: Layout, module: "architecture" },
       { to: "/structural", label: "Structural Engineering", icon: HardHat, module: "structural" },
       { to: "/mep", label: "MEP Engineering", icon: Zap, module: "mep" },
+    ],
+  },
+  {
+    label: "Mater Libraries",
+    items: [
+      { to: "/mater-libraries/task-template", label: "Task Template", icon: LibraryBig },
     ],
   },
   {

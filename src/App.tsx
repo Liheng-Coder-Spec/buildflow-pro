@@ -86,6 +86,7 @@ const Budgets = React.lazy(() => import("./pages/Budgets"));
 const BudgetDetail = React.lazy(() => import("./pages/BudgetDetail"));
 const ProjectDetail = React.lazy(() => import("./pages/ProjectDetail"));
 const TelegramTaskUpdate = React.lazy(() => import("./pages/TelegramTaskUpdate"));
+const TaskTemplates = React.lazy(() => import("./pages/TaskTemplates"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -194,6 +195,7 @@ const App = () => (
                   <Route path="/architecture" element={<Architecture />} />
                   <Route path="/structural" element={<Structural />} />
                   <Route path="/mep" element={<MEP />} />
+                  <Route path="/mater-libraries/task-template" element={<TaskTemplates />} />
                   <Route path="/construction" element={<Construction />} />
                   <Route path="/construction/tasks/:id" element={<ConstructionTaskDetail />} />
                   <Route path="/construction/reports" element={<ConstructionReports />} />
