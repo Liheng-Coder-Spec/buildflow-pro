@@ -195,6 +195,22 @@ export default function TaskTemplates() {
     setTaskDocuments(taskDocuments.filter((_, i) => i !== index));
   };
 
+  const updateTaskStep = (index: number, field: string, value: string | boolean) => {
+    setTaskSteps(taskSteps.map((step, i) => i === index ? { ...step, [field]: value } : step));
+  };
+
+  const updateDependency = (index: number, field: string, value: string) => {
+    setTaskDependencies(taskDependencies.map((dep, i) => i === index ? { ...dep, [field]: value } : dep));
+  };
+
+  const updateChecklistItem = (index: number, value: string) => {
+    setTaskChecklist(taskChecklist.map((item, i) => i === index ? value : item));
+  };
+
+  const updateDocument = (index: number, value: string) => {
+    setTaskDocuments(taskDocuments.map((item, i) => i === index ? value : item));
+  };
+
   const openEditElement = (element: ElementTemplate) => {
     setEditingElement(element);
     setElementCode(element.code);
@@ -549,9 +565,27 @@ export default function TaskTemplates() {
                         <TableRow key={step.code}>
                           <TableCell>{step.no}</TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">{step.code}</TableCell>
-                          <TableCell>{step.name}</TableCell>
-                          <TableCell>{step.duration}</TableCell>
-                          <TableCell>{step.role}</TableCell>
+                          <TableCell>
+                            <Input
+                              value={step.name}
+                              onChange={(e) => updateTaskStep(index, "name", e.target.value)}
+                              className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={step.duration}
+                              onChange={(e) => updateTaskStep(index, "duration", e.target.value)}
+                              className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={step.role}
+                              onChange={(e) => updateTaskStep(index, "role", e.target.value)}
+                              className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                            />
+                          </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{step.required ? "Yes" : "No"}</Badge>
                           </TableCell>
@@ -593,11 +627,23 @@ export default function TaskTemplates() {
                     <TableBody>
                       {taskDependencies.map((dependency, index) => (
                         <TableRow key={`${dependency.predecessor}-${dependency.successor}-${index}`}>
-                          <TableCell>{dependency.predecessor}</TableCell>
+                          <TableCell>
+                            <Input
+                              value={dependency.predecessor}
+                              onChange={(e) => updateDependency(index, "predecessor", e.target.value)}
+                              className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                            />
+                          </TableCell>
                           <TableCell>
                             <Badge variant="secondary">{dependency.type}</Badge>
                           </TableCell>
-                          <TableCell>{dependency.successor}</TableCell>
+                          <TableCell>
+                            <Input
+                              value={dependency.successor}
+                              onChange={(e) => updateDependency(index, "successor", e.target.value)}
+                              className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                            />
+                          </TableCell>
                           <TableCell>{dependency.lag}</TableCell>
                           <TableCell className="text-right">
                             <Button type="button" variant="ghost" size="sm" onClick={() => removeDependency(index)}>
@@ -672,13 +718,17 @@ export default function TaskTemplates() {
                   </div>
                   <div className="mt-4 space-y-3">
                     {taskChecklist.map((item, index) => (
-                      <label key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                      <div key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
                         <input type="checkbox" defaultChecked className="h-4 w-4" />
-                        <span className="flex-1">{item}</span>
+                        <Input
+                          value={item}
+                          onChange={(e) => updateChecklistItem(index, e.target.value)}
+                          className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                        />
                         <button type="button" onClick={() => removeChecklistItem(index)} className="text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -694,13 +744,17 @@ export default function TaskTemplates() {
                   </div>
                   <div className="mt-4 space-y-3">
                     {taskDocuments.map((item, index) => (
-                      <label key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                      <div key={`${item}-${index}`} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
                         <input type="checkbox" defaultChecked className="h-4 w-4" />
-                        <span className="flex-1">{item}</span>
+                        <Input
+                          value={item}
+                          onChange={(e) => updateDocument(index, e.target.value)}
+                          className="h-7 border-transparent bg-transparent px-0 text-sm hover:border-input hover:bg-background focus:border-input focus:bg-background"
+                        />
                         <button type="button" onClick={() => removeDocument(index)} className="text-muted-foreground hover:text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 </section>
