@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,8 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { HardHat, Loader2 } from "lucide-react";
-import { DemoLoginPanel } from "@/components/org/DemoLoginPanel";
+import { Activity, BarChart3, Building2, CheckCircle2, HardHat, Loader2, ShieldCheck } from "lucide-react";
 import { ORG_REGISTRY, ORG_DEPT_LABELS, DEMO_PASSWORD } from "@/lib/orgMeta";
 
 const signInSchema = z.object({
@@ -26,8 +25,14 @@ const signUpSchema = signInSchema.extend({
 const DEMO_ACCOUNTS = ORG_REGISTRY.map((m) => ({
   email: m.email,
   name: m.full_name,
-  role: `${ORG_DEPT_LABELS[m.department]} · ${m.position}`,
+  role: `${ORG_DEPT_LABELS[m.department]} - ${m.position}`,
 }));
+
+const BRAND_METRICS = [
+  { label: "Project Control", value: "Live", icon: Activity },
+  { label: "Risk & Safety", value: "Tracked", icon: ShieldCheck },
+  { label: "Cost Visibility", value: "360", icon: BarChart3 },
+];
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -119,33 +124,64 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[1fr_minmax(420px,560px)] bg-background">
-      <h1 className="sr-only">BuildTrack — Sign in</h1>
-      {/* Brand panel — now hosts the demo org chart */}
-      <div className="hidden lg:flex flex-col bg-gradient-primary text-primary-foreground p-8 overflow-y-auto">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+      <h1 className="sr-only">BuildTrack - Sign in</h1>
+
+      <div className="relative hidden min-h-screen overflow-hidden lg:flex flex-col justify-between bg-gradient-primary text-primary-foreground p-8">
+        <img
+          src="/landing-highrise.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-35"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-deep via-primary-deep/85 to-primary/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary-deep via-transparent to-primary-deep/30" />
+        <div className="absolute left-10 top-32 h-40 w-px bg-accent/70 motion-safe:animate-pulse" />
+        <div className="absolute right-16 top-24 h-24 w-px bg-primary-foreground/45 motion-safe:animate-pulse" />
+        <div className="absolute bottom-36 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full border border-accent/25 motion-safe:animate-[spin_26s_linear_infinite]" />
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-elevated">
             <HardHat className="h-6 w-6" />
           </div>
           <span className="text-xl font-bold tracking-tight">BuildTrack</span>
         </div>
 
-        <div className="space-y-4 max-w-md">
+        <div className="relative z-10 space-y-6 max-w-xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 text-sm text-primary-foreground/85 backdrop-blur-md">
+            <Building2 className="h-4 w-4 text-accent" />
+            Enterprise high-rise construction platform
+          </div>
           <h1 className="text-4xl font-bold leading-tight">
             Digital Construction Operating System Control, end-to-end.
           </h1>
           <p className="text-base text-primary-foreground/80">
-            Tasks, timesheets, approvals, and audit-ready reporting — built for
+            Tasks, timesheets, approvals, and audit-ready reporting - built for
             project managers, engineers, and supervisors who need the truth
             about their job sites.
           </p>
+
+          <div className="grid max-w-2xl grid-cols-3 gap-3 pt-2">
+            {BRAND_METRICS.map((metric) => (
+              <div
+                key={metric.label}
+                className="rounded-lg border border-primary-foreground/15 bg-primary-foreground/10 p-4 backdrop-blur-md"
+              >
+                <div className="mb-5 flex items-center justify-between">
+                  <metric.icon className="h-4 w-4 text-accent" />
+                  <CheckCircle2 className="h-4 w-4 text-success-soft" />
+                </div>
+                <p className="text-lg font-bold">{metric.value}</p>
+                <p className="mt-1 text-xs text-primary-foreground/65">{metric.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="text-sm text-primary-foreground/60">
-          © {new Date().getFullYear()} BuildTrack. Internal company use.
+        <div className="relative z-10 text-sm text-primary-foreground/60">
+          (c) {new Date().getFullYear()} BuildTrack. Internal company use.
         </div>
       </div>
 
-      {/* Auth panel */}
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <div className="mb-6 flex items-center gap-2 lg:hidden">
@@ -192,7 +228,6 @@ export default function Auth() {
                     </Button>
                   </form>
 
-                  {/* Demo Accounts Section */}
                   <div className="mt-6 pt-6 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Demo Accounts</p>
                     <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
