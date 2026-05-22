@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ClipboardList, Layers3, Pencil, Trash2 } from "lucide-react";
+import { ClipboardList, Filter, Layers3, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,12 @@ import {
   DialogTitle,
   DialogTrigger
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,6 +65,7 @@ const mapElementTemplate = (row: ElementTemplateRow): ElementTemplate => ({
 export default function TaskTemplates() {
   const [activeTab, setActiveTab] = React.useState("elements");
   const [elements, setElements] = React.useState<ElementTemplate[]>([]);
+  const [categoryFilter, setCategoryFilter] = React.useState<ElementCategory | "all">("all");
   const [loadingElements, setLoadingElements] = React.useState(true);
   const [creatingElement, setCreatingElement] = React.useState(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -83,6 +90,12 @@ export default function TaskTemplates() {
     setNote(element.note);
     setCreateDialogOpen(true);
   };
+
+  const filteredElements = React.useMemo(() => (
+    categoryFilter === "all"
+      ? elements
+      : elements.filter((item) => item.category === categoryFilter)
+  ), [categoryFilter, elements]);
 
   const loadElements = React.useCallback(async () => {
     setLoadingElements(true);
@@ -305,6 +318,27 @@ export default function TaskTemplates() {
               </span>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline">
+                      <Filter className="mr-2 h-4 w-4" />
+                      {categoryFilter === "all" ? "Filter Categories" : categoryFilter}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setCategoryFilter("all")}>
+                      All Categories
+                    </DropdownMenuItem>
+                    {ELEMENT_CATEGORIES.map((item) => (
+                      <DropdownMenuItem key={item} onClick={() => setCategoryFilter(item)}>
+                        {item}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -323,14 +357,14 @@ export default function TaskTemplates() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {!loadingElements && elements.length === 0 && (
+                  {!loadingElements && filteredElements.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-muted-foreground">
-                        No element templates created yet.
+                        No element templates found.
                       </TableCell>
                     </TableRow>
                   )}
-                  {!loadingElements && elements.map((item) => (
+                  {!loadingElements && filteredElements.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{item.code}</TableCell>
                       <TableCell>
