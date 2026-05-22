@@ -139,13 +139,15 @@ export function TelegramTab() {
     try {
       const s = await getTelegramStatus(user.id);
       setStatus(s);
-      if (s?.linked) await loadPrefs();
+      // Only reload prefs during linking phase (when code exists) to detect when linking completes
+      // Once linked and code cleared, don't reload to preserve user's unsaved preference changes
+      if (code && s?.linked) await loadPrefs();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to load status");
     } finally {
       setLoading(false);
     }
-  }, [user, loadPrefs]);
+  }, [user, loadPrefs, code]);
 
   React.useEffect(() => {
     load();
