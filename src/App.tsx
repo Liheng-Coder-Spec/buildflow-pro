@@ -195,7 +195,7 @@ const App = () => (
                   <Route path="/architecture" element={<Architecture />} />
                   <Route path="/structural" element={<Structural />} />
                   <Route path="/mep" element={<MEP />} />
-                  <Route path="/mater-libraries/task-template" element={<TaskTemplates />} />
+                  <Route path="/master-libraries/task-template" element={<TaskTemplates />} />
                   <Route path="/construction" element={<Construction />} />
                   <Route path="/construction/tasks/:id" element={<ConstructionTaskDetail />} />
                   <Route path="/construction/reports" element={<ConstructionReports />} />

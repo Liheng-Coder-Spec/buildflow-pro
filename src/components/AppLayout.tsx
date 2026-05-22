@@ -109,9 +109,9 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
   {
-    label: "Mater Libraries",
+    label: "Master Libraries",
     items: [
-      { to: "/mater-libraries/task-template", label: "Task Template", icon: LibraryBig },
+      { to: "/master-libraries/task-template", label: "Task Template", icon: LibraryBig },
     ],
   },
   {
