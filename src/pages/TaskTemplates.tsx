@@ -48,34 +48,17 @@ const TASK_GROUPING_METHODS = ["Generate by Quantity", "Generate by Location", "
 const QUANTITY_UNITS = ["Each", "m2", "m3", "m", "Set"] as const;
 const TASK_STATUSES = ["Open", "Assigned", "On Hold"] as const;
 
-const DEFAULT_TASK_STEPS = [
-  { no: "01", code: "TPL-STR-001-CON-01", name: "Survey Setting Out", duration: "0.5 day", role: "Surveyor", required: true },
-  { no: "02", code: "TPL-STR-001-CON-02", name: "Borehole Drilling", duration: "1 day", role: "Site Engineer", required: true },
-  { no: "03", code: "TPL-STR-001-CON-03", name: "Rebar Cage Installation", duration: "0.5 day", role: "Steel Fixer Team", required: true },
-  { no: "04", code: "TPL-STR-001-CON-04", name: "Concrete Pouring", duration: "0.5 day", role: "Site Engineer", required: true }
-];
+const DEFAULT_TASK_STEPS: Array<{
+  no: string; code: string; name: string; duration: string; role: string; required: boolean;
+}> = [];
 
-const DEFAULT_TASK_DEPENDENCIES = [
-  { predecessor: "Survey Setting Out", type: "FS", successor: "Borehole Drilling", lag: "0 day" },
-  { predecessor: "Borehole Drilling", type: "FS", successor: "Rebar Cage Installation", lag: "0 day" },
-  { predecessor: "Rebar Cage Installation", type: "FS", successor: "Concrete Pouring", lag: "0 day" }
-];
+const DEFAULT_TASK_DEPENDENCIES: Array<{
+  predecessor: string; type: string; successor: string; lag: string;
+}> = [];
 
-const DEFAULT_TASK_CHECKLIST = [
-  "Approved drawing available before start",
-  "Reinforcement inspection required",
-  "Concrete slump test required",
-  "Cube test record required",
-  "Client witness point required"
-];
+const DEFAULT_TASK_CHECKLIST: string[] = [];
 
-const DEFAULT_TASK_DOCUMENTS = [
-  "Approved Drawing",
-  "Method Statement",
-  "Inspection Test Plan",
-  "Material Approval",
-  "Risk Assessment"
-];
+const DEFAULT_TASK_DOCUMENTS: string[] = [];
 
 type ElementCategory = typeof ELEMENT_CATEGORIES[number];
 
@@ -116,17 +99,15 @@ export default function TaskTemplates() {
   const [category, setCategory] = React.useState<ElementCategory | "">("");
   const [elementName, setElementName] = React.useState("");
   const [note, setNote] = React.useState("");
-  const [taskTemplateCode, setTaskTemplateCode] = React.useState("TPL-STR-001-CON");
-  const [taskDiscipline, setTaskDiscipline] = React.useState<(typeof TEMPLATE_DISCIPLINES)[number]>(TEMPLATE_DISCIPLINES[0]);
-  const [taskPhase, setTaskPhase] = React.useState<(typeof TEMPLATE_PHASES)[number]>(TEMPLATE_PHASES[0]);
-  const [taskElement, setTaskElement] = React.useState("STR-001 | Bored Pile");
-  const [taskTemplateName, setTaskTemplateName] = React.useState("Bored Pile Construction Template");
-  const [taskDescription, setTaskDescription] = React.useState(
-    "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
-  );
-  const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number]>(TASK_GROUPING_METHODS[0]);
-  const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number]>(QUANTITY_UNITS[0]);
-  const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number]>(TASK_STATUSES[0]);
+  const [taskTemplateCode, setTaskTemplateCode] = React.useState("");
+  const [taskDiscipline, setTaskDiscipline] = React.useState<(typeof TEMPLATE_DISCIPLINES)[number] | "">("");
+  const [taskPhase, setTaskPhase] = React.useState<(typeof TEMPLATE_PHASES)[number] | "">("");
+  const [taskElement, setTaskElement] = React.useState("");
+  const [taskTemplateName, setTaskTemplateName] = React.useState("");
+  const [taskDescription, setTaskDescription] = React.useState("");
+  const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number] | "">("");
+  const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number] | "">("");
+  const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number] | "">("");
   const [taskSteps, setTaskSteps] = React.useState(DEFAULT_TASK_STEPS);
   const [taskDependencies, setTaskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
   const [taskChecklist, setTaskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
@@ -140,17 +121,19 @@ export default function TaskTemplates() {
   };
 
   const resetTaskTemplateForm = () => {
-    setTaskTemplateCode("TPL-STR-001-CON");
-    setTaskDiscipline(TEMPLATE_DISCIPLINES[0]);
-    setTaskPhase(TEMPLATE_PHASES[0]);
-    setTaskElement("STR-001 | Bored Pile");
-    setTaskTemplateName("Bored Pile Construction Template");
-    setTaskDescription(
-      "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
-    );
-    setTaskGroupingMethod(TASK_GROUPING_METHODS[0]);
-    setTaskUnit(QUANTITY_UNITS[0]);
-    setTaskStatus(TASK_STATUSES[0]);
+    setTaskTemplateCode("");
+    setTaskDiscipline("");
+    setTaskPhase("");
+    setTaskElement("");
+    setTaskTemplateName("");
+    setTaskDescription("");
+    setTaskGroupingMethod("");
+    setTaskUnit("");
+    setTaskStatus("");
+    setTaskSteps([]);
+    setTaskDependencies([]);
+    setTaskChecklist([]);
+    setTaskDocuments([]);
   };
 
   const addTaskStep = () => {
@@ -216,6 +199,102 @@ export default function TaskTemplates() {
 
   const updateDocument = (index: number, value: string) => {
     setTaskDocuments(taskDocuments.map((item, i) => i === index ? value : item));
+  };
+
+  const [registerLoading, setRegisterLoading] = React.useState(false);
+
+  const handleRegisterTemplate = async () => {
+    if (!taskTemplateCode.trim()) {
+      toast.error("Task Template Code is required");
+      return;
+    }
+    if (!taskTemplateName.trim()) {
+      toast.error("Task Template Name is required");
+      return;
+    }
+
+    setRegisterLoading(true);
+    try {
+      const { data: header, error: headerError } = await (supabase as any)
+        .from("master_task_templates")
+        .insert({
+          template_code: taskTemplateCode.trim(),
+          template_name: taskTemplateName.trim(),
+          discipline: taskDiscipline || null,
+          phase: taskPhase || null,
+          element_code: taskElement || null,
+          description: taskDescription.trim() || null,
+          grouping_method: taskGroupingMethod || null,
+          default_unit: taskUnit || null,
+          default_status: taskStatus || null,
+        })
+        .select("id")
+        .single();
+
+      if (headerError) throw headerError;
+
+      const templateId = header.id;
+
+      if (taskSteps.length > 0) {
+        const stepsPayload = taskSteps.map((step, i) => ({
+          template_id: templateId,
+          step_order: i + 1,
+          step_code: step.code,
+          step_name: step.name,
+          duration: step.duration,
+          role: step.role,
+          required: step.required,
+        }));
+        const { error: stepsError } = await (supabase as any)
+          .from("master_task_template_steps")
+          .insert(stepsPayload);
+        if (stepsError) throw stepsError;
+      }
+
+      if (taskDependencies.length > 0) {
+        const depsPayload = taskDependencies.map((dep) => ({
+          template_id: templateId,
+          predecessor: dep.predecessor,
+          dependency_type: dep.type,
+          successor: dep.successor,
+          lag: dep.lag,
+        }));
+        const { error: depsError } = await (supabase as any)
+          .from("master_task_template_dependencies")
+          .insert(depsPayload);
+        if (depsError) throw depsError;
+      }
+
+      if (taskChecklist.length > 0) {
+        const checklistPayload = taskChecklist.map((item) => ({
+          template_id: templateId,
+          item_name: item,
+        }));
+        const { error: clError } = await (supabase as any)
+          .from("master_task_template_checklist")
+          .insert(checklistPayload);
+        if (clError) throw clError;
+      }
+
+      if (taskDocuments.length > 0) {
+        const docsPayload = taskDocuments.map((item) => ({
+          template_id: templateId,
+          document_name: item,
+        }));
+        const { error: docsError } = await (supabase as any)
+          .from("master_task_template_documents")
+          .insert(docsPayload);
+        if (docsError) throw docsError;
+      }
+
+      toast.success("Task template registered successfully");
+      setTaskTemplateOpen(false);
+      resetTaskTemplateForm();
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to register task template");
+    } finally {
+      setRegisterLoading(false);
+    }
   };
 
   const openEditElement = (element: ElementTemplate) => {
@@ -477,7 +556,7 @@ export default function TaskTemplates() {
                     <Label>Discipline</Label>
                     <Select value={taskDiscipline} onValueChange={(value) => setTaskDiscipline(value as (typeof TEMPLATE_DISCIPLINES)[number])}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select discipline" />
                       </SelectTrigger>
                       <SelectContent>
                         {TEMPLATE_DISCIPLINES.map((item) => (
@@ -492,7 +571,7 @@ export default function TaskTemplates() {
                     <Label>Phase</Label>
                     <Select value={taskPhase} onValueChange={(value) => setTaskPhase(value as (typeof TEMPLATE_PHASES)[number])}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select phase" />
                       </SelectTrigger>
                       <SelectContent>
                         {TEMPLATE_PHASES.map((item) => (
@@ -705,7 +784,7 @@ export default function TaskTemplates() {
                       <Label>Task Grouping Method</Label>
                       <Select value={taskGroupingMethod} onValueChange={(value) => setTaskGroupingMethod(value as (typeof TASK_GROUPING_METHODS)[number])}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select grouping method" />
                         </SelectTrigger>
                         <SelectContent>
                           {TASK_GROUPING_METHODS.map((item) => (
@@ -720,7 +799,7 @@ export default function TaskTemplates() {
                       <Label>Default Quantity Unit</Label>
                       <Select value={taskUnit} onValueChange={(value) => setTaskUnit(value as (typeof QUANTITY_UNITS)[number])}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select unit" />
                         </SelectTrigger>
                         <SelectContent>
                           {QUANTITY_UNITS.map((item) => (
@@ -735,7 +814,7 @@ export default function TaskTemplates() {
                       <Label>Default Task Status</Label>
                       <Select value={taskStatus} onValueChange={(value) => setTaskStatus(value as (typeof TASK_STATUSES)[number])}>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
                           {TASK_STATUSES.map((item) => (
@@ -865,12 +944,10 @@ export default function TaskTemplates() {
               </Button>
               <Button
                 type="button"
-                onClick={() => {
-                  setTaskTemplateOpen(false);
-                  toast.success("Task template registered");
-                }}
+                disabled={registerLoading}
+                onClick={handleRegisterTemplate}
               >
-                Register Task Template
+                {registerLoading ? "Registering..." : "Register Task Template"}
               </Button>
             </DialogFooter>
           </DialogContent>
