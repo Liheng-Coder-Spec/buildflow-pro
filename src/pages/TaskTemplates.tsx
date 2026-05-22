@@ -615,7 +615,7 @@ export default function TaskTemplates() {
                 </section>
               </div>
 
-              <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="grid gap-5 lg:grid-cols-2">
                 <section className="rounded-lg border bg-white p-4">
                   <h3 className="text-sm font-semibold">6. Required Documents</h3>
                   <div className="mt-4 space-y-3">
