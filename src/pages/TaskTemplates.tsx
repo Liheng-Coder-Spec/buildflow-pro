@@ -205,6 +205,7 @@ export default function TaskTemplates() {
   };
 
   const [registerLoading, setRegisterLoading] = React.useState(false);
+  const [editingTemplateId, setEditingTemplateId] = React.useState<string | null>(null);
 
   const handleRegisterTemplate = async () => {
     if (!taskTemplateCode.trim()) {
@@ -218,25 +219,51 @@ export default function TaskTemplates() {
 
     setRegisterLoading(true);
     try {
-      const { data: header, error: headerError } = await (supabase as any)
-        .from("master_task_templates")
-        .insert({
-          template_code: taskTemplateCode.trim(),
-          template_name: taskTemplateName.trim(),
-          discipline: taskDiscipline || null,
-          phase: taskPhase || null,
-          element_code: taskElement || null,
-          description: taskDescription.trim() || null,
-          grouping_method: taskGroupingMethod || null,
-          default_quantity_unit: taskUnit || null,
-          default_task_status: taskStatus || null,
-        })
-        .select("id")
-        .single();
+      const payload = {
+        template_code: taskTemplateCode.trim(),
+        template_name: taskTemplateName.trim(),
+        discipline: taskDiscipline || null,
+        phase: taskPhase || null,
+        element_code: taskElement || null,
+        description: taskDescription.trim() || null,
+        grouping_method: taskGroupingMethod || null,
+        default_quantity_unit: taskUnit || null,
+        default_task_status: taskStatus || null,
+      };
 
-      if (headerError) throw headerError;
+      let templateId: string;
 
-      const templateId = header.id;
+      if (editingTemplateId) {
+        const { error: updateError } = await (supabase as any)
+          .from("master_task_templates")
+          .update(payload)
+          .eq("id", editingTemplateId);
+
+        if (updateError) throw updateError;
+        templateId = editingTemplateId;
+
+        for (const table of [
+          "master_task_template_steps",
+          "master_task_template_dependencies",
+          "master_task_template_checklist",
+          "master_task_template_documents",
+        ]) {
+          const { error: delError } = await (supabase as any)
+            .from(table)
+            .delete()
+            .eq("template_id", templateId);
+          if (delError) throw delError;
+        }
+      } else {
+        const { data: header, error: headerError } = await (supabase as any)
+          .from("master_task_templates")
+          .insert(payload)
+          .select("id")
+          .single();
+
+        if (headerError) throw headerError;
+        templateId = header.id;
+      }
 
       if (taskSteps.length > 0) {
         const stepsPayload = taskSteps.map((step, i) => ({
@@ -291,8 +318,9 @@ export default function TaskTemplates() {
         if (docsError) throw docsError;
       }
 
-      toast.success("Task template registered successfully");
+      toast.success(editingTemplateId ? "Task template updated successfully" : "Task template registered successfully");
       setTaskTemplateOpen(false);
+      setEditingTemplateId(null);
       resetTaskTemplateForm();
       void loadTemplates();
     } catch (err: any) {
@@ -300,6 +328,32 @@ export default function TaskTemplates() {
     } finally {
       setRegisterLoading(false);
     }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm("Delete this task template? This cannot be undone.")) return;
+    const { error } = await (supabase as any)
+      .from("master_task_templates")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Task template deleted");
+      void loadTemplates();
+    }
+  };
+
+  const handleEditTemplate = (tpl: typeof templates[number]) => {
+    resetTaskTemplateForm();
+    setTaskTemplateCode(tpl.template_code);
+    setTaskDiscipline(tpl.discipline as (typeof TEMPLATE_DISCIPLINES)[number]);
+    setTaskPhase(tpl.phase as (typeof TEMPLATE_PHASES)[number]);
+    setTaskElement(tpl.element_code ?? "");
+    setTaskTemplateName(tpl.template_name);
+    setTaskDescription(tpl.description ?? "");
+    setEditingTemplateId(tpl.id);
+    setTaskTemplateOpen(true);
   };
 
   const openEditElement = (element: ElementTemplate) => {
@@ -554,9 +608,9 @@ export default function TaskTemplates() {
         >
           <DialogContent className="max-w-6xl flex max-h-[85vh] flex-col">
             <DialogHeader>
-              <DialogTitle>Create Task Template</DialogTitle>
+              <DialogTitle>{editingTemplateId ? "Edit Task Template" : "Create Task Template"}</DialogTitle>
               <DialogDescription>
-                Register a reusable task template with element, steps, dependencies, and control rules.
+                {editingTemplateId ? "Update the task template details below." : "Register a reusable task template with element, steps, dependencies, and control rules."}
               </DialogDescription>
             </DialogHeader>
 
@@ -1074,7 +1128,7 @@ export default function TaskTemplates() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" onClick={() => setTaskTemplateOpen(true)}>
+                <Button type="button" variant="outline" onClick={() => { resetTaskTemplateForm(); setEditingTemplateId(null); setTaskTemplateOpen(true); }}>
                   Register Task Template
                 </Button>
                 <span className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
@@ -1100,7 +1154,23 @@ export default function TaskTemplates() {
                           {tpl.element_code ? ` — ${tpl.element_code}` : ""}
                         </p>
                       </div>
-                      <Badge variant="outline">{tpl.discipline ?? "—"}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{tpl.discipline ?? "—"}</Badge>
+                        <button
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => handleEditTemplate(tpl)}
+                          title="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteTemplate(tpl.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
