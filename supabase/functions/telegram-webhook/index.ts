@@ -594,7 +594,7 @@ function resolveMenuAction(text: string): MenuAction | null {
   if (words.includes("overdue")) return "overdue";
   if (words.includes("update")) return "update";
   if (words.includes("settings")) return "settings";
-  if (lower === "/start" || lower === "/help" || words.includes("main menu")) return "welcome";
+  if (/^\/(start|help)(?:@\w+)?\b/i.test(trimmed) || words.includes("main menu")) return "welcome";
 
   return null;
 }
@@ -619,8 +619,8 @@ const kbSeen = new Set<number>();
 async function ensureMainKeyboard(chatId: number) {
   if (kbSeen.has(chatId)) return;
   kbSeen.add(chatId);
-  // Invisible LRM character; sole purpose is to (re)assert the persistent reply keyboard.
-  await tgSendMessage(chatId, "\u200E", mainKeyboard());
+  // Do not send a standalone invisible message: Telegram rejects it as empty via the connector gateway.
+  // Menu replies attach the keyboard directly when they send visible text.
 }
 
 const DONE_STATUSES = new Set(["completed", "closed", "approved"]);
