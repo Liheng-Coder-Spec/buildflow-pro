@@ -35,6 +35,40 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TASK_ITEMS = ["Design review", "Site inspection", "Procurement follow-up", "Daily progress update"];
 const ELEMENT_CATEGORIES = ["Structure", "Archiecture", "MEP"] as const;
+const TEMPLATE_DISCIPLINES = ["STR - Structural", "ARC - Architecture", "MEP - MEP"] as const;
+const TEMPLATE_PHASES = ["CON - Construction", "DES - Design", "PRC - Procurement", "QAC - QA/QC", "HND - Handover"] as const;
+const TASK_GROUPING_METHODS = ["Generate by Quantity", "Generate by Location", "Generate by Floor / Level", "Generate as Single Task Package"] as const;
+const QUANTITY_UNITS = ["Each", "m2", "m3", "m", "Set"] as const;
+const TASK_STATUSES = ["Open", "Assigned", "On Hold"] as const;
+
+const DEFAULT_TASK_STEPS = [
+  { no: "01", code: "TPL-STR-001-CON-01", name: "Survey Setting Out", duration: "0.5 day", role: "Surveyor", required: true },
+  { no: "02", code: "TPL-STR-001-CON-02", name: "Borehole Drilling", duration: "1 day", role: "Site Engineer", required: true },
+  { no: "03", code: "TPL-STR-001-CON-03", name: "Rebar Cage Installation", duration: "0.5 day", role: "Steel Fixer Team", required: true },
+  { no: "04", code: "TPL-STR-001-CON-04", name: "Concrete Pouring", duration: "0.5 day", role: "Site Engineer", required: true }
+];
+
+const DEFAULT_TASK_DEPENDENCIES = [
+  { predecessor: "Survey Setting Out", type: "FS", successor: "Borehole Drilling", lag: "0 day" },
+  { predecessor: "Borehole Drilling", type: "FS", successor: "Rebar Cage Installation", lag: "0 day" },
+  { predecessor: "Rebar Cage Installation", type: "FS", successor: "Concrete Pouring", lag: "0 day" }
+];
+
+const DEFAULT_TASK_CHECKLIST = [
+  "Approved drawing available before start",
+  "Reinforcement inspection required",
+  "Concrete slump test required",
+  "Cube test record required",
+  "Client witness point required"
+];
+
+const DEFAULT_TASK_DOCUMENTS = [
+  "Approved Drawing",
+  "Method Statement",
+  "Inspection Test Plan",
+  "Material Approval",
+  "Risk Assessment"
+];
 
 type ElementCategory = typeof ELEMENT_CATEGORIES[number];
 
@@ -65,6 +99,7 @@ const mapElementTemplate = (row: ElementTemplateRow): ElementTemplate => ({
 export default function TaskTemplates() {
   const [activeTab, setActiveTab] = React.useState("elements");
   const [elements, setElements] = React.useState<ElementTemplate[]>([]);
+  const [taskTemplateOpen, setTaskTemplateOpen] = React.useState(false);
   const [categoryFilter, setCategoryFilter] = React.useState<ElementCategory | "all">("all");
   const [loadingElements, setLoadingElements] = React.useState(true);
   const [creatingElement, setCreatingElement] = React.useState(false);
@@ -74,12 +109,41 @@ export default function TaskTemplates() {
   const [category, setCategory] = React.useState<ElementCategory | "">("");
   const [elementName, setElementName] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [taskTemplateCode, setTaskTemplateCode] = React.useState("TPL-STR-001-CON");
+  const [taskDiscipline, setTaskDiscipline] = React.useState<(typeof TEMPLATE_DISCIPLINES)[number]>(TEMPLATE_DISCIPLINES[0]);
+  const [taskPhase, setTaskPhase] = React.useState<(typeof TEMPLATE_PHASES)[number]>(TEMPLATE_PHASES[0]);
+  const [taskElement, setTaskElement] = React.useState("STR-001 | Bored Pile");
+  const [taskTemplateName, setTaskTemplateName] = React.useState("Bored Pile Construction Template");
+  const [taskDescription, setTaskDescription] = React.useState(
+    "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
+  );
+  const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number]>(TASK_GROUPING_METHODS[0]);
+  const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number]>(QUANTITY_UNITS[0]);
+  const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number]>(TASK_STATUSES[0]);
+  const [taskSteps] = React.useState(DEFAULT_TASK_STEPS);
+  const [taskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
+  const [taskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
+  const [taskDocuments] = React.useState(DEFAULT_TASK_DOCUMENTS);
 
   const resetElementForm = () => {
     setElementCode("");
     setCategory("");
     setElementName("");
     setNote("");
+  };
+
+  const resetTaskTemplateForm = () => {
+    setTaskTemplateCode("TPL-STR-001-CON");
+    setTaskDiscipline(TEMPLATE_DISCIPLINES[0]);
+    setTaskPhase(TEMPLATE_PHASES[0]);
+    setTaskElement("STR-001 | Bored Pile");
+    setTaskTemplateName("Bored Pile Construction Template");
+    setTaskDescription(
+      "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
+    );
+    setTaskGroupingMethod(TASK_GROUPING_METHODS[0]);
+    setTaskUnit(QUANTITY_UNITS[0]);
+    setTaskStatus(TASK_STATUSES[0]);
   };
 
   const openEditElement = (element: ElementTemplate) => {
@@ -304,6 +368,343 @@ export default function TaskTemplates() {
           </DialogContent>
         </Dialog>
 
+        <Dialog
+          open={taskTemplateOpen}
+          onOpenChange={(open) => {
+            setTaskTemplateOpen(open);
+            if (!open) {
+              resetTaskTemplateForm();
+            }
+          }}
+        >
+          <DialogContent className="max-w-6xl">
+            <DialogHeader>
+              <DialogTitle>Create Task Template</DialogTitle>
+              <DialogDescription>
+                Register a reusable task template with element, steps, dependencies, and control rules.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="max-h-[74vh] space-y-5 overflow-auto pr-1">
+              <section className="rounded-lg border bg-muted/20 p-4">
+                <h3 className="text-sm font-semibold">1. Template Identity</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Set the base data for this task template before saving.
+                </p>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="task-template-code">Template Code</Label>
+                    <Input
+                      id="task-template-code"
+                      value={taskTemplateCode}
+                      onChange={(event) => setTaskTemplateCode(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Discipline</Label>
+                    <Select value={taskDiscipline} onValueChange={(value) => setTaskDiscipline(value as (typeof TEMPLATE_DISCIPLINES)[number])}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TEMPLATE_DISCIPLINES.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phase</Label>
+                    <Select value={taskPhase} onValueChange={(value) => setTaskPhase(value as (typeof TEMPLATE_PHASES)[number])}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TEMPLATE_PHASES.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Element Code / Element Name</Label>
+                    <Select value={taskElement} onValueChange={setTaskElement}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="STR-001 | Bored Pile">STR-001 | Bored Pile</SelectItem>
+                        <SelectItem value="STR-004 | Pile Cap">STR-004 | Pile Cap</SelectItem>
+                        <SelectItem value="STR-014 | Column">STR-014 | Column</SelectItem>
+                        <SelectItem value="ARC-017 | Door">ARC-017 | Door</SelectItem>
+                        <SelectItem value="MEP-007 | Power Cable">MEP-007 | Power Cable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="task-template-name">Template Name</Label>
+                    <Input
+                      id="task-template-name"
+                      value={taskTemplateName}
+                      onChange={(event) => setTaskTemplateName(event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="task-description">Description</Label>
+                  <Textarea
+                    id="task-description"
+                    value={taskDescription}
+                    onChange={(event) => setTaskDescription(event.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </section>
+
+              <section className="rounded-lg border bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold">2. Task Steps</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Define the standard execution sequence. Each row can later become one generated task.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm">
+                    + Add Step
+                  </Button>
+                </div>
+                <div className="mt-4 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No.</TableHead>
+                        <TableHead>Step Code</TableHead>
+                        <TableHead>Step Name</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Default Role</TableHead>
+                        <TableHead>Required</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {taskSteps.map((step) => (
+                        <TableRow key={step.code}>
+                          <TableCell>{step.no}</TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">{step.code}</TableCell>
+                          <TableCell>{step.name}</TableCell>
+                          <TableCell>{step.duration}</TableCell>
+                          <TableCell>{step.role}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{step.required ? "Yes" : "No"}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </section>
+
+              <section className="rounded-lg border bg-white p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold">3. Dependencies</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Define predecessor and successor links for the generated task flow.
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm">
+                    + Add Dependency
+                  </Button>
+                </div>
+                <div className="mt-4 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Predecessor</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Successor</TableHead>
+                        <TableHead>Lag</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {taskDependencies.map((dependency) => (
+                        <TableRow key={`${dependency.predecessor}-${dependency.successor}`}>
+                          <TableCell>{dependency.predecessor}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">{dependency.type}</Badge>
+                          </TableCell>
+                          <TableCell>{dependency.successor}</TableCell>
+                          <TableCell>{dependency.lag}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </section>
+
+              <div className="grid gap-5 lg:grid-cols-2">
+                <section className="rounded-lg border bg-white p-4">
+                  <h3 className="text-sm font-semibold">4. Generation Rules</h3>
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Task Grouping Method</Label>
+                      <Select value={taskGroupingMethod} onValueChange={(value) => setTaskGroupingMethod(value as (typeof TASK_GROUPING_METHODS)[number])}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TASK_GROUPING_METHODS.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Default Quantity Unit</Label>
+                      <Select value={taskUnit} onValueChange={(value) => setTaskUnit(value as (typeof QUANTITY_UNITS)[number])}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {QUANTITY_UNITS.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Default Task Status</Label>
+                      <Select value={taskStatus} onValueChange={(value) => setTaskStatus(value as (typeof TASK_STATUSES)[number])}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TASK_STATUSES.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border bg-white p-4">
+                  <h3 className="text-sm font-semibold">5. QA/QC Checklist</h3>
+                  <div className="mt-4 space-y-3">
+                    {taskChecklist.map((item) => (
+                      <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <input type="checkbox" defaultChecked className="h-4 w-4" />
+                        <span>{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+                <section className="rounded-lg border bg-white p-4">
+                  <h3 className="text-sm font-semibold">6. Required Documents</h3>
+                  <div className="mt-4 space-y-3">
+                    {taskDocuments.map((item) => (
+                      <label key={item} className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                        <input type="checkbox" defaultChecked className="h-4 w-4" />
+                        <span>{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="rounded-lg border bg-slate-950 p-4 text-slate-100">
+                  <h3 className="text-sm font-semibold">7. Preview</h3>
+                  <div className="mt-4 space-y-3 border-t border-slate-800 pt-4 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <strong>Template Code</strong>
+                      <span>{taskTemplateCode}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <strong>Total Steps</strong>
+                      <span>{taskSteps.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <strong>Dependencies</strong>
+                      <span>{taskDependencies.length}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <strong>QA Items</strong>
+                      <span>{taskChecklist.length}</span>
+                    </div>
+                    <div className="mt-4 rounded-md bg-slate-900 p-4 font-mono text-xs leading-7 text-slate-200">
+                      Project: 24GDTT
+                      <br />
+                      WBS: B01 / L02 / Zone A
+                      <br />
+                      Element: {taskElement}
+                      <br />
+                      Quantity: 20 piles
+                      <br />
+                      <br />
+                      System will generate:
+                      <br />
+                      &#8594; {taskSteps.length} task groups
+                      <br />
+                      &#8594; {taskSteps.length * 20} child tasks
+                      <br />
+                      &#8594; QA checklist per pile
+                      <br />
+                      &#8594; FS dependency chain
+                      <br />
+                      &#8594; Required document control
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <DialogFooter className="sticky bottom-0 mt-4 bg-background/95 backdrop-blur">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetTaskTemplateForm();
+                  setTaskTemplateOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={resetTaskTemplateForm}
+              >
+                Clear
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setTaskTemplateOpen(false);
+                  toast.success("Task template registered");
+                }}
+              >
+                Register Task Template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <TabsContent value="elements">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
@@ -400,9 +801,14 @@ export default function TaskTemplates() {
                   Prebuilt task templates ready to use across construction workflows.
                 </p>
               </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                <ClipboardList className="h-5 w-5" />
-              </span>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" onClick={() => setTaskTemplateOpen(true)}>
+                  Register Task Template
+                </Button>
+                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                  <ClipboardList className="h-5 w-5" />
+                </span>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
