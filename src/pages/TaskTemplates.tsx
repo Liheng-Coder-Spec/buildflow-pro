@@ -313,12 +313,7 @@ export default function TaskTemplates() {
                   Standard elements that can be combined into task templates.
                 </p>
               </div>
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Layers3 className="h-5 w-5" />
-              </span>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-end">
+              <div className="flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button type="button" variant="outline">
@@ -337,8 +332,12 @@ export default function TaskTemplates() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                  <Layers3 className="h-5 w-5" />
+                </span>
               </div>
-
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Table>
                 <TableHeader>
                   <TableRow>
