@@ -149,7 +149,7 @@ export function TelegramTab() {
 
   React.useEffect(() => {
     load();
-    const t = setInterval(load, 5000); // poll while linking
+    const t = setInterval(load, 60000); // poll while linking (1 minute refresh)
     return () => clearInterval(t);
   }, [load]);
 
