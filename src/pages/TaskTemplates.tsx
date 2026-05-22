@@ -39,8 +39,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-
-const TASK_ITEMS = ["Design review", "Site inspection", "Procurement follow-up", "Daily progress update"];
 const ELEMENT_CATEGORIES = ["Structure", "Archiecture", "MEP"] as const;
 const TEMPLATE_DISCIPLINES = ["STR - Structural", "ARC - Architecture", "MEP - MEP"] as const;
 const TEMPLATE_PHASES = ["CON - Construction", "DES - Design", "PRC - Procurement", "QAC - QA/QC", "HND - Handover"] as const;
@@ -99,15 +97,17 @@ export default function TaskTemplates() {
   const [category, setCategory] = React.useState<ElementCategory | "">("");
   const [elementName, setElementName] = React.useState("");
   const [note, setNote] = React.useState("");
-  const [taskTemplateCode, setTaskTemplateCode] = React.useState("");
-  const [taskDiscipline, setTaskDiscipline] = React.useState<(typeof TEMPLATE_DISCIPLINES)[number] | "">("");
-  const [taskPhase, setTaskPhase] = React.useState<(typeof TEMPLATE_PHASES)[number] | "">("");
-  const [taskElement, setTaskElement] = React.useState("");
-  const [taskTemplateName, setTaskTemplateName] = React.useState("");
-  const [taskDescription, setTaskDescription] = React.useState("");
-  const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number] | "">("");
-  const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number] | "">("");
-  const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number] | "">("");
+  const [taskTemplateCode, setTaskTemplateCode] = React.useState("TPL-STR-001-CON");
+  const [taskDiscipline, setTaskDiscipline] = React.useState<(typeof TEMPLATE_DISCIPLINES)[number]>(TEMPLATE_DISCIPLINES[0]);
+  const [taskPhase, setTaskPhase] = React.useState<(typeof TEMPLATE_PHASES)[number]>(TEMPLATE_PHASES[0]);
+  const [taskElement, setTaskElement] = React.useState("STR-001 | Bored Pile");
+  const [taskTemplateName, setTaskTemplateName] = React.useState("Bored Pile Construction Template");
+  const [taskDescription, setTaskDescription] = React.useState(
+    "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
+  );
+  const [taskGroupingMethod, setTaskGroupingMethod] = React.useState<(typeof TASK_GROUPING_METHODS)[number]>(TASK_GROUPING_METHODS[0]);
+  const [taskUnit, setTaskUnit] = React.useState<(typeof QUANTITY_UNITS)[number]>(QUANTITY_UNITS[0]);
+  const [taskStatus, setTaskStatus] = React.useState<(typeof TASK_STATUSES)[number]>(TASK_STATUSES[0]);
   const [taskSteps, setTaskSteps] = React.useState(DEFAULT_TASK_STEPS);
   const [taskDependencies, setTaskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
   const [taskChecklist, setTaskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
@@ -121,19 +121,17 @@ export default function TaskTemplates() {
   };
 
   const resetTaskTemplateForm = () => {
-    setTaskTemplateCode("");
-    setTaskDiscipline("");
-    setTaskPhase("");
-    setTaskElement("");
-    setTaskTemplateName("");
-    setTaskDescription("");
-    setTaskGroupingMethod("");
-    setTaskUnit("");
-    setTaskStatus("");
-    setTaskSteps([]);
-    setTaskDependencies([]);
-    setTaskChecklist([]);
-    setTaskDocuments([]);
+    setTaskTemplateCode("TPL-STR-001-CON");
+    setTaskDiscipline(TEMPLATE_DISCIPLINES[0]);
+    setTaskPhase(TEMPLATE_PHASES[0]);
+    setTaskElement("STR-001 | Bored Pile");
+    setTaskTemplateName("Bored Pile Construction Template");
+    setTaskDescription(
+      "Standard task template for bored pile construction including survey, drilling, reinforcement, concreting, testing, QA/QC checklist, and required documents."
+    );
+    setTaskGroupingMethod(TASK_GROUPING_METHODS[0]);
+    setTaskUnit(QUANTITY_UNITS[0]);
+    setTaskStatus(TASK_STATUSES[0]);
   };
 
   const addTaskStep = () => {
@@ -556,7 +554,7 @@ export default function TaskTemplates() {
                     <Label>Discipline</Label>
                     <Select value={taskDiscipline} onValueChange={(value) => setTaskDiscipline(value as (typeof TEMPLATE_DISCIPLINES)[number])}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select discipline" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {TEMPLATE_DISCIPLINES.map((item) => (
@@ -571,7 +569,7 @@ export default function TaskTemplates() {
                     <Label>Phase</Label>
                     <Select value={taskPhase} onValueChange={(value) => setTaskPhase(value as (typeof TEMPLATE_PHASES)[number])}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select phase" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {TEMPLATE_PHASES.map((item) => (
@@ -784,7 +782,7 @@ export default function TaskTemplates() {
                       <Label>Task Grouping Method</Label>
                       <Select value={taskGroupingMethod} onValueChange={(value) => setTaskGroupingMethod(value as (typeof TASK_GROUPING_METHODS)[number])}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select grouping method" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {TASK_GROUPING_METHODS.map((item) => (
@@ -799,7 +797,7 @@ export default function TaskTemplates() {
                       <Label>Default Quantity Unit</Label>
                       <Select value={taskUnit} onValueChange={(value) => setTaskUnit(value as (typeof QUANTITY_UNITS)[number])}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select unit" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {QUANTITY_UNITS.map((item) => (
@@ -814,7 +812,7 @@ export default function TaskTemplates() {
                       <Label>Default Task Status</Label>
                       <Select value={taskStatus} onValueChange={(value) => setTaskStatus(value as (typeof TASK_STATUSES)[number])}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {TASK_STATUSES.map((item) => (
@@ -1059,14 +1057,9 @@ export default function TaskTemplates() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {TASK_ITEMS.map((item) => (
-                  <div key={item} className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
-                    <span className="text-sm font-medium">{item}</span>
-                    <Badge variant="outline">Template</Badge>
-                  </div>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">
+                No task templates registered yet. Click "Register Task Template" to create one.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
