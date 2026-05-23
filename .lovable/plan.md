@@ -1,34 +1,35 @@
-# Telegram Settings: Brief preferences UI
+# Telegram Bot: Edit-in-Place Menu Cards
 
-Add a Daily Briefs section to the existing `TelegramTab` so linked users can configure morning and evening brief delivery times and their timezone from the web app. Values feed the existing `telegram_brief_prefs` table consumed by the `telegram-briefs` edge function.
+## Goal
+When a user taps a main-menu inline button (Dashboard, My Tasks, Briefs, Settings, Help, Back, etc.), the bot edits the existing card message instead of sending a new one. Only one active menu card is visible in the chat at any time. Typed commands and the bottom reply keyboard keep current behavior (send a new card).
 
-## What the user sees
+## Behavior
 
-A new card section appears below the Connected state (only when Telegram is linked):
+- Tap **Dashboard** → bot sends one card with Dashboard content + inline menu buttons.
+- Tap **My Tasks** on that card → the same message is edited in place to show My Tasks content + inline menu buttons.
+- Tap **Briefs**, **Settings**, **Help**, **Back** → same edit-in-place swap.
+- Typing `/start`, `/help`, or tapping a bottom reply-keyboard button → sends a fresh card (unchanged).
+- Task detail drill-ins, update confirmations, and notifications → unchanged (still new messages).
 
-- Morning Brief — toggle on/off + time picker (defaults 08:00 when enabled, null = off)
-- Evening Wrap — toggle on/off + time picker (defaults 18:00 when enabled, null = off)
-- Timezone — searchable select of IANA zones (defaults to detected browser zone)
-- Save button (disabled until dirty), with toast feedback
-- Helper text explaining briefs are sent at the chosen local time on the selected timezone, in 15-minute increments
+## Implementation (single file: `supabase/functions/telegram-webhook/index.ts`)
 
-When Telegram is not linked, the briefs section is hidden (linking is prerequisite).
+1. **Detect callback queries** from inline buttons. Telegram delivers these as `update.callback_query` with `message.message_id` and `chat.id` of the original card.
+2. **Add an `editCard(chatId, messageId, text, replyMarkup)` helper** that calls `editMessageText` via the connector gateway (same `tgApi` pattern already in use). Fall back to `sendMessage` if the edit fails (e.g. message too old / identical content / not found).
+3. **Refactor the main-menu render functions** (Dashboard, My Tasks, Briefs, Settings, Help, Back) to return `{ text, reply_markup }` instead of sending directly. A single dispatcher then either:
+   - calls `sendMessage` (entry via `/start`, `/help`, or reply-keyboard tap), or
+   - calls `editCard` (entry via inline `callback_query` whose `data` matches a main-menu action).
+4. **Always answer the callback query** with `answerCallbackQuery` so Telegram clears the button spinner.
+5. **Keep the inline keyboard identical** across all main-menu views so the user can jump between sections from any card.
+6. **Leave non-menu callbacks alone** (task actions, pagination inside a detail view, settings sub-actions) — those keep their current send/edit behavior.
 
-## Technical details
+## Out of Scope
+- No DB schema changes.
+- No changes to `telegram-link-code`, `telegram-task-update`, `telegram-notify`, `telegram-briefs`.
+- No change to the bottom reply keyboard or to typed-command flows.
+- Task detail views and confirmations are not converted to edit-in-place in this pass.
 
-1. New service `src/services/telegramBriefService.ts`
-   - `getBriefPrefs(userId)` -> reads single row from `telegram_brief_prefs`
-   - `upsertBriefPrefs(userId, { morning_at, evening_at, timezone })` -> upsert by `user_id`
-
-2. Extend `TelegramTab.tsx`
-   - Load prefs alongside status (parallel) when linked
-   - Local form state: `morningEnabled`, `morningTime`, `eveningEnabled`, `eveningTime`, `timezone`
-   - Time picker: native `<input type="time" step="900">` (15-min increments to match cron slots)
-   - Timezone: shadcn Select populated from `Intl.supportedValuesOf('timeZone')` with browser zone as default; falls back to a curated short list if unsupported
-   - Save handler converts enabled+time to `"HH:MM:00"` or `null`, calls upsert, refreshes
-
-3. No DB/schema changes — table and RLS already exist.
-
-## Out of scope
-
-Per-project brief filters, weekly digests, push to mobile.
+## Verification
+- Deploy `telegram-webhook`.
+- From a linked chat: `/start` → tap Dashboard → tap My Tasks → tap Briefs → tap Back. Confirm the same message updates each time (no new cards stacked).
+- Confirm typing `/start` again still posts a fresh card.
+- Check edge function logs for any `editMessageText` errors and confirm the `sendMessage` fallback kicked in if needed.
