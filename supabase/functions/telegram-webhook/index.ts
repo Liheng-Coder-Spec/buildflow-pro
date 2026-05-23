@@ -387,6 +387,27 @@ async function appendUpdateToOriginalCard(
   }
 }
 
+async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string): Promise<boolean> {
+  const { data: rows } = await db
+    .from("telegram_outbox")
+    .select("notification_id, message_id")
+    .eq("chat_id", chatId)
+    .eq("entity_type", "task")
+    .eq("entity_id", taskId)
+    .not("message_id", "is", null)
+    .order("sent_at", { ascending: false })
+    .limit(1);
+  const row = rows?.[0];
+  if (!row?.message_id) return false;
+
+  await tgDeleteMessage(chatId, row.message_id);
+  await db
+    .from("telegram_outbox")
+    .update({ message_id: null })
+    .eq("notification_id", row.notification_id);
+  return true;
+}
+
 async function finalizeAndShow(db: any, chatId: number, state: any, note: string | null) {
   const task = await loadTask(db, state.task_id);
   if (!task) return;
@@ -418,9 +439,11 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
 
   // Try to append the update into the original task card so it sits
   // between the task details and the action buttons.
-  const appended = await appendUpdateToOriginalCard(
-    db, chatId, state.task_id, pct, finalStatus, note, byName,
-  );
+  const appended = pct >= 100
+    ? await deleteOriginalTaskCard(db, chatId, state.task_id)
+    : await appendUpdateToOriginalCard(
+        db, chatId, state.task_id, pct, finalStatus, note, byName,
+      );
 
   if (appended) {
     // Remove the standalone flow card so only the original (now-updated)
