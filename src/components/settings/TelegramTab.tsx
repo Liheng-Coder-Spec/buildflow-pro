@@ -25,7 +25,10 @@ import {
   getBriefPrefs,
   upsertBriefPrefs,
 } from "@/services/telegramBriefService";
-import { getTelegramAdminConfig } from "@/services/telegramAdminConfigService";
+import {
+  getTelegramAdminConfig,
+  updateTelegramAdminConfig,
+} from "@/services/telegramAdminConfigService";
 
 const FALLBACK_TZS = [
   "UTC",
