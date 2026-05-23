@@ -729,7 +729,7 @@ async function renderDashboard(db: any, profile: any) {
   ];
   return {
     text: lines.join("\n"),
-    keyboard: withMainMenu({
+    keyboard: {
       inline_keyboard: [
         [
           { text: "📋 My Tasks", callback_data: "list:all:0" },
@@ -737,7 +737,7 @@ async function renderDashboard(db: any, profile: any) {
           { text: "⚠️ Overdue", callback_data: "list:overdue:0" },
         ],
       ],
-    }, "dashboard"),
+    },
   };
 }
 
