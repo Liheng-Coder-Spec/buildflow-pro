@@ -96,7 +96,7 @@ export function TelegramAdminTab() {
               Morning Brief Default
             </Label>
             <p className="text-xs text-muted-foreground">
-              Users will see this as their default time when configuring preferences
+              Morning Brief (Due Today) is sent to all linked members at this time. Sundays are skipped.
             </p>
           </div>
           <input
