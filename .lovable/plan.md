@@ -1,63 +1,74 @@
 
-# Morning Brief System — Plan
+# Evening Update Reminder + Missed Report Alert — Plan
 
 ## Goal
-Send a Telegram "Morning Brief (Due Today)" to every linked member every day at the admin-configured time (default 08:00, Sunday excluded), listing each user's tasks due today with progress < 100%. If none, send a friendly empty-state message.
+Two new Telegram alert flows on top of the existing brief dispatcher:
+
+1. **Evening Reminder** — every day at admin-configured evening time (default 17:00 / 5:00 PM), Sunday excluded. Send to every linked user who has **no `task_updates` row today** (in their TZ): _"You are not update task status, Please update"_.
+2. **Midnight Missed-Report Alert** — at 00:00 (end of day) Sunday excluded. For every user who never updated today, send a per-task alert to **Admins + Managers (reports_to chain) + Task Owner (created_by)**: _"{userName} not update report"_ with the count of missed users.
 
 ## Scope
 
-### 1. Admin time config (Settings → Telegram → Admin tab)
-- Reuse existing `telegram_admin_config.morning_default` (already exists, already editable in `TelegramAdminTab.tsx`).
-- This value becomes the **system-wide send time** for the Morning Brief (no per-user override for this brief — spec says "send to all members" at admin time).
-- Add a short helper note in the UI clarifying: "Morning Brief is sent to all linked members at this time. Sundays are skipped."
+### 1. Admin time config
+Reuse existing `telegram_admin_config.evening_default` (already editable in `TelegramAdminTab.tsx`) as the Evening Reminder send time. Update helper text on that field to say: _"Evening Reminder is sent to users who haven't updated any task today. Sundays are skipped."_
 
 ### 2. Cron schedule
-- Schedule `telegram-briefs` edge function to run every 15 minutes via `pg_cron` + `pg_net` (insert via supabase insert tool, not migration, since URL/anon key are project-specific).
-- Verify `pg_cron` and `pg_net` extensions enabled.
+The existing `telegram-briefs-15min` pg_cron (every 15 min) already covers the evening slot. Add a second cron `telegram-missed-report-midnight` running hourly (or every 15 min) so it fires once per local-midnight slot across timezones; idempotency comes from `telegram_brief_log`.
 
-### 3. Edge function: rewrite morning logic in `supabase/functions/telegram-briefs/index.ts`
-- Load `telegram_admin_config.morning_default` once per invocation.
-- Compute current time in **company timezone** (use first profile's timezone or default `Asia/Phnom_Penh` / configurable; for v1 use each user's `telegram_brief_prefs.timezone` or `UTC` fallback, matching existing pattern).
-- **Skip Sunday** (`localDate.getDay() === 0` in user TZ).
-- For each profile with `telegram_chat_id IS NOT NULL`:
-  - Check if current 15-min slot matches `morning_default` in user's TZ.
-  - Idempotency: claim via `telegram_brief_log` (`user_id`, `brief_kind='morning'`, `local_date`).
-  - Query tasks: `task_assignments` join `tasks` where `user_id = profile.id`, `unassigned_at IS NULL`, `planned_end = today`, `progress_pct < 100`, status not in (`completed`,`closed`,`approved`).
-  - Build message:
-    - Title: `🌅 <b>Morning Brief (Due Today)</b>`
-    - If tasks: numbered list with task title, project, progress %, status.
-    - If none: `You have no task due today. Contact your manager for task assignment! 📋`
-- Keep evening logic untouched.
+### 3. Edge function changes — `telegram-briefs/index.ts`
+Add two new brief kinds alongside existing `morning` / `evening`:
 
-### 4. Coverage for ALL members (not only those with prefs)
-- Current code iterates `telegram_brief_prefs` only. Change morning loop to iterate **all profiles with `telegram_chat_id`** so every linked user receives it regardless of personal prefs.
-- Evening brief stays opt-in via prefs (unchanged).
+- **`evening_reminder`**: at admin `evening_default` time per user TZ, skip Sunday.
+  - Skip if any `task_updates.user_id = user AND created_at::date (in TZ) = today`.
+  - Skip if user has no assigned open tasks today (nothing to update).
+  - Idempotency claim: `telegram_brief_log(user, 'evening_reminder', local_date)`.
+  - Message: `⏰ <b>Daily Update Reminder</b>\n\nYou are not update task status, Please update.`
 
-### 5. Manual test path
-- After deploy, invoke via `curl_edge_functions` to confirm message rendering for the current user.
+- **`missed_report`**: at local 00:00 (covers previous day = `yesterday`), skip if yesterday was Sunday.
+  - Compute `missedUsers` = linked profiles with no `task_updates` row on yesterday in their TZ AND had at least one open assignment due ≤ yesterday.
+  - For each missed user, find recipients:
+    - All users with role `admin` (via `user_roles` + `has_role`).
+    - The user's manager chain (`profiles.reports_to`).
+    - Task owner = `tasks.created_by` of each missed task assigned to that user yesterday.
+  - Dedupe recipients (must have `telegram_chat_id`).
+  - Send: `🚨 <b>Missed Report Alert</b>\n\n<b>{count}</b> user(s) not update report:\n• {name1}\n• {name2}\n...`
+  - Idempotency claim: `telegram_brief_log(recipient_id, 'missed_report', yesterday_dateISO)`.
+
+### 4. Helpers
+Add inside `telegram-briefs/index.ts`:
+- `userUpdatedToday(db, userId, dateISO, tz)` — checks `task_updates`.
+- `getAdmins(db)` — pulls user_ids from `user_roles` where role='admin'.
+- `getManagerChain(db, userId)` — walks `profiles.reports_to`.
+
+### 5. No schema changes
+`telegram_brief_log.brief_kind` is text so new kinds `evening_reminder` and `missed_report` are accepted as-is.
 
 ## Technical Details
 
 **Files touched:**
-- `supabase/functions/telegram-briefs/index.ts` — new morning logic, admin-config-driven time, Sunday skip, all-members iteration, due-today filter, empty-state message.
-- `src/components/admin/TelegramAdminTab.tsx` — small descriptive helper text (optional).
-- DB: `pg_cron` schedule insert (via supabase insert tool, not migration).
+- `supabase/functions/telegram-briefs/index.ts` — add `evening_reminder` + `missed_report` logic; keep morning + legacy evening intact.
+- `src/components/admin/TelegramAdminTab.tsx` — update evening helper text.
 
-**No schema changes** — `telegram_admin_config`, `telegram_brief_log`, `task_assignments`, `tasks`, `profiles` all already exist.
+**Cron:**
+- Existing `telegram-briefs-15min` (every 15 min) handles the evening reminder.
+- New `telegram-missed-report-hourly` (top of every hour) handles the midnight pass per-TZ.
 
-**Query shape:**
-```ts
-db.from("task_assignments")
-  .select("task_id, tasks!inner(id, title, status, planned_end, progress_pct, project_id, projects(name))")
-  .eq("user_id", profile.id)
-  .is("unassigned_at", null)
-  .eq("tasks.planned_end", todayISO)
-  .lt("tasks.progress_pct", 100)
-  .not("tasks.status", "in", "(completed,closed,approved)");
+**Recipient query sketch:**
+```sql
+-- admins
+select user_id from user_roles where role='admin';
+-- managers chain (walk in code)
+select reports_to from profiles where id = $user_id;
+-- task owners
+select distinct t.created_by
+from task_assignments ta join tasks t on t.id=ta.task_id
+where ta.user_id=$user_id and ta.unassigned_at is null
+  and t.planned_end <= $yesterday;
 ```
 
 ## Todos
-1. Update `telegram-briefs/index.ts`: load admin morning time, skip Sunday, iterate all linked profiles, fetch due-today open tasks, format brief, send.
-2. Add small helper text in `TelegramAdminTab.tsx` describing Morning Brief behavior.
-3. Insert pg_cron job (every 15 min) calling `telegram-briefs`.
-4. Deploy `telegram-briefs` and test invocation manually.
+1. Add `evening_reminder` logic to `telegram-briefs/index.ts` (per-user TZ, skip Sunday, skip if updated, claim log, send message).
+2. Add `missed_report` logic: compute missed users for yesterday, build recipient set (admins + managers + task owners), send dedup'd alert per recipient.
+3. Update `TelegramAdminTab.tsx` evening helper text.
+4. Schedule new pg_cron `telegram-missed-report-hourly` calling the same edge function (function detects local midnight per TZ internally).
+5. Deploy `telegram-briefs` and smoke-test with `?force=evening_reminder` and `?force=missed_report`.
