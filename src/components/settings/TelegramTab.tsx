@@ -143,15 +143,20 @@ export function TelegramTab() {
     }
   }, [user]);
 
+  const prefsLoadedRef = React.useRef(false);
+
   const load = React.useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
       const s = await getTelegramStatus(user.id);
       setStatus(s);
-      // Only reload prefs during linking phase (when code exists) to detect when linking completes
-      // Once linked and code cleared, don't reload to preserve user's unsaved preference changes
-      if (code && s?.linked) await loadPrefs();
+      // Load prefs once on first link detection, and during linking handshake.
+      // After that, don't reload so polling doesn't clobber unsaved edits.
+      if (s?.linked && (!prefsLoadedRef.current || code)) {
+        await loadPrefs();
+        prefsLoadedRef.current = true;
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Failed to load status");
     } finally {
