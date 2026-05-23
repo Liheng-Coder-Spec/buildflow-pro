@@ -825,7 +825,7 @@ async function renderTaskPicker(db: any, profile: any, page: number) {
   if (pager.length) inline_keyboard.push(pager);
 
   const body = lines.length ? "\n\n" + lines.join("\n") : "\n\n<i>No open tasks.</i>";
-  return { text: head + body, keyboard: { inline_keyboard } };
+  return { text: head + body, keyboard: withMainMenu({ inline_keyboard }, "update") };
 }
 
 async function sendTaskDetail(db: any, chatId: number, taskId: string) {
