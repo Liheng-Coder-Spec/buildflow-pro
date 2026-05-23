@@ -1314,22 +1314,23 @@ Deno.serve(async (req) => {
       if (messageId) await tgDeleteMessage(chatId, messageId);
       if (menuAction === "dashboard") {
         const v = await renderDashboard(db, profile);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "dashboard" });
       } else if (menuAction === "mytasks") {
         const v = await renderTaskList(db, profile, "all", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "all", page: 0 });
       } else if (menuAction === "today") {
         const v = await renderTaskList(db, profile, "today", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "today", page: 0 });
       } else if (menuAction === "overdue") {
         const v = await renderTaskList(db, profile, "overdue", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "overdue", page: 0 });
       } else if (menuAction === "update") {
         const v = await renderTaskPicker(db, profile, 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "picker", page: 0 });
       } else if (menuAction === "settings") {
         const v = await renderSettings(db, profile);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "settings" });
+
       } else {
         await tgSendMessage(
           chatId,
