@@ -615,35 +615,34 @@ function mainKeyboard() {
   };
 }
 
-// Inline navigation row appended to every main-menu card so taps edit the
-// current card in place instead of stacking new messages.
-function mainInlineMenuRows(active?: MenuAction): any[][] {
-  const mark = (a: MenuAction, label: string) => (active === a ? `• ${label} •` : label);
-  return [
-    [
-      { text: mark("dashboard", "📊 Dashboard"), callback_data: "menu:dashboard" },
-      { text: mark("mytasks", "📋 My Tasks"), callback_data: "menu:mytasks" },
-      { text: mark("update", "✍️ Update"), callback_data: "menu:update" },
-    ],
-    [
-      { text: mark("today", "⏰ Today"), callback_data: "menu:today" },
-      { text: mark("overdue", "⚠️ Overdue"), callback_data: "menu:overdue" },
-      { text: mark("settings", "⚙️ Settings"), callback_data: "menu:settings" },
-    ],
-  ];
+// Track the last main-menu card per chat so navigating to a new section
+// replaces the previous card instead of stacking new ones.
+async function getLastMenuMessageId(db: any, chatId: number): Promise<number | null> {
+  const { data } = await db
+    .from("telegram_menu_state")
+    .select("message_id")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data?.message_id ?? null;
 }
 
-function withMainMenu(keyboard: any, active?: MenuAction) {
-  const existing: any[][] = Array.isArray(keyboard?.inline_keyboard) ? keyboard.inline_keyboard : [];
-  return { inline_keyboard: [...existing, ...mainInlineMenuRows(active)] };
+async function setLastMenuMessageId(db: any, chatId: number, messageId: number) {
+  await db.from("telegram_menu_state").upsert({
+    chat_id: chatId,
+    message_id: messageId,
+    updated_at: new Date().toISOString(),
+  });
 }
 
-const kbSeen = new Set<number>();
-async function ensureMainKeyboard(chatId: number) {
-  if (kbSeen.has(chatId)) return;
-  kbSeen.add(chatId);
-  // Do not send a standalone invisible message: Telegram rejects it as empty via the connector gateway.
-  // Menu replies attach the keyboard directly when they send visible text.
+async function sendMenuCard(db: any, chatId: number, text: string, keyboard: any) {
+  const prev = await getLastMenuMessageId(db, chatId);
+  if (prev) await tgDeleteMessage(chatId, prev);
+  const id = await tgSendMessage(chatId, text, keyboard);
+  if (id) await setLastMenuMessageId(db, chatId, id);
+}
+
+async function ensureMainKeyboard(_chatId: number) {
+  // Reply keyboard is attached to menu replies; no standalone send needed.
 }
 
 const DONE_STATUSES = new Set(["completed", "closed", "approved"]);
