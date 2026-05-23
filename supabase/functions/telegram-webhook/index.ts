@@ -436,7 +436,31 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
     }
   }
   await clearState(db, chatId);
+
+  // Refresh the user's current menu card (My Tasks / Due Today / Overdue / Dashboard)
+  // so it reflects the new progress / hides any task that just hit 100%.
+  try {
+    const menu = await getLastMenuState(db, chatId);
+    if (menu?.message_id) {
+      const { data: prof } = await db.from("profiles").select("id, full_name").eq("id", state.user_id).maybeSingle();
+      if (prof) {
+        if (menu.view === "list") {
+          const v = await renderTaskList(db, prof, menu.filter ?? "all", menu.page ?? 0);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        } else if (menu.view === "dashboard") {
+          const v = await renderDashboard(db, prof);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        } else if (menu.view === "picker") {
+          const v = await renderTaskPicker(db, prof, menu.page ?? 0);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("refresh menu after finalize failed:", (e as Error).message);
+  }
 }
+
 
 // ---------- Receive (acknowledge) flow ----------
 
@@ -626,20 +650,44 @@ async function getLastMenuMessageId(db: any, chatId: number): Promise<number | n
   return data?.message_id ?? null;
 }
 
-async function setLastMenuMessageId(db: any, chatId: number, messageId: number) {
+async function setLastMenuMessageId(
+  db: any,
+  chatId: number,
+  messageId: number,
+  meta?: { view?: string | null; filter?: string | null; page?: number | null },
+) {
   await db.from("telegram_menu_state").upsert({
     chat_id: chatId,
     message_id: messageId,
+    view: meta?.view ?? null,
+    filter: meta?.filter ?? null,
+    page: meta?.page ?? null,
     updated_at: new Date().toISOString(),
   });
 }
 
-async function sendMenuCard(db: any, chatId: number, text: string, keyboard: any) {
+async function getLastMenuState(db: any, chatId: number): Promise<{ message_id: number; view: string | null; filter: string | null; page: number | null } | null> {
+  const { data } = await db
+    .from("telegram_menu_state")
+    .select("message_id, view, filter, page")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function sendMenuCard(
+  db: any,
+  chatId: number,
+  text: string,
+  keyboard: any,
+  meta?: { view?: string | null; filter?: string | null; page?: number | null },
+) {
   const prev = await getLastMenuMessageId(db, chatId);
   if (prev) await tgDeleteMessage(chatId, prev);
   const id = await tgSendMessage(chatId, text, keyboard);
-  if (id) await setLastMenuMessageId(db, chatId, id);
+  if (id) await setLastMenuMessageId(db, chatId, id, meta);
 }
+
 
 async function ensureMainKeyboard(_chatId: number) {
   // Reply keyboard is attached to menu replies; no standalone send needed.
@@ -683,19 +731,22 @@ async function fetchMyTasks(db: any, userId: string) {
 
 function filterTasks(tasks: any[], filter: string): any[] {
   const today = todayISO();
+  const notFullyDone = (t: any) => (t.progress_pct ?? 0) < 100 && !DONE_STATUSES.has(t.status);
   switch (filter) {
     case "today":
-      return tasks.filter((t) => t.planned_end === today && !DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => t.planned_end === today && notFullyDone(t));
     case "overdue":
-      return tasks.filter((t) => t.planned_end && t.planned_end < today && !DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => t.planned_end && t.planned_end < today && notFullyDone(t));
     case "active":
-      return tasks.filter((t) => ACTIVE_STATUSES.has(t.status));
+      return tasks.filter((t) => ACTIVE_STATUSES.has(t.status) && notFullyDone(t));
     case "done":
-      return tasks.filter((t) => DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => DONE_STATUSES.has(t.status) || (t.progress_pct ?? 0) >= 100);
     default:
-      return tasks;
+      // "all" — hide tasks that are 100% complete or in a done status
+      return tasks.filter(notFullyDone);
   }
 }
+
 
 async function renderDashboard(db: any, profile: any) {
   const tasks = await fetchMyTasks(db, profile.id);
@@ -1172,11 +1223,17 @@ Deno.serve(async (req) => {
           await tgSendMessage(chatId, "❌ Telegram not linked.", mainKeyboard());
           return new Response(JSON.stringify({ ok: true }));
         }
-        const view = await renderTaskList(db, profile, filter, Number(pageStr) || 0);
+        const pageNum = Number(pageStr) || 0;
+        const view = await renderTaskList(db, profile, filter, pageNum);
         const messageId: number | undefined = cq.message?.message_id;
-        if (messageId) await tgEditMessage(chatId, messageId, view.text, view.keyboard);
-        else await tgSendMessage(chatId, view.text, view.keyboard);
+        if (messageId) {
+          await tgEditMessage(chatId, messageId, view.text, view.keyboard);
+          await setLastMenuMessageId(db, chatId, messageId, { view: "list", filter, page: pageNum });
+        } else {
+          await sendMenuCard(db, chatId, view.text, view.keyboard, { view: "list", filter, page: pageNum });
+        }
         return new Response(JSON.stringify({ ok: true }));
+
       }
 
       // open:<taskId>
@@ -1287,22 +1344,23 @@ Deno.serve(async (req) => {
       if (messageId) await tgDeleteMessage(chatId, messageId);
       if (menuAction === "dashboard") {
         const v = await renderDashboard(db, profile);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "dashboard" });
       } else if (menuAction === "mytasks") {
         const v = await renderTaskList(db, profile, "all", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "all", page: 0 });
       } else if (menuAction === "today") {
         const v = await renderTaskList(db, profile, "today", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "today", page: 0 });
       } else if (menuAction === "overdue") {
         const v = await renderTaskList(db, profile, "overdue", 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "list", filter: "overdue", page: 0 });
       } else if (menuAction === "update") {
         const v = await renderTaskPicker(db, profile, 0);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "picker", page: 0 });
       } else if (menuAction === "settings") {
         const v = await renderSettings(db, profile);
-        await sendMenuCard(db, chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard, { view: "settings" });
+
       } else {
         await tgSendMessage(
           chatId,

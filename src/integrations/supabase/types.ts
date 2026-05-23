@@ -7837,18 +7837,27 @@ export type Database = {
       telegram_menu_state: {
         Row: {
           chat_id: number
+          filter: string | null
           message_id: number
+          page: number | null
           updated_at: string
+          view: string | null
         }
         Insert: {
           chat_id: number
+          filter?: string | null
           message_id: number
+          page?: number | null
           updated_at?: string
+          view?: string | null
         }
         Update: {
           chat_id?: number
+          filter?: string | null
           message_id?: number
+          page?: number | null
           updated_at?: string
+          view?: string | null
         }
         Relationships: []
       }
