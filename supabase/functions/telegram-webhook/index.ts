@@ -856,7 +856,7 @@ async function renderTaskList(db: any, profile: any, filter: string, page: numbe
 
 async function renderTaskPicker(db: any, profile: any, page: number) {
   const all = await fetchMyTasks(db, profile.id);
-  const open = all.filter((t) => !DONE_STATUSES.has(t.status));
+  const open = all.filter((t) => !DONE_STATUSES.has(t.status) && (t.progress_pct ?? 0) < 100);
   const pageSize = 6;
   const totalPages = Math.max(1, Math.ceil(open.length / pageSize));
   const p = Math.min(Math.max(0, page), totalPages - 1);
@@ -1255,11 +1255,16 @@ Deno.serve(async (req) => {
         await tgAnswerCallback(cq.id);
         const profile = await resolveProfile(db, chatId);
         if (!profile) return new Response(JSON.stringify({ ok: true }));
-        const view = await renderTaskPicker(db, profile, Number(data.slice(4)) || 0);
+        const pageNum = Number(data.slice(4)) || 0;
+        const view = await renderTaskPicker(db, profile, pageNum);
         const messageId: number | undefined = cq.message?.message_id;
-        if (messageId) await tgEditMessage(chatId, messageId, view.text, view.keyboard);
+        if (messageId) {
+          await tgEditMessage(chatId, messageId, view.text, view.keyboard);
+          await setLastMenuMessageId(db, chatId, messageId, { view: "picker", page: pageNum });
+        }
         return new Response(JSON.stringify({ ok: true }));
       }
+
 
       // set:morning | set:evening | set:tz | set:unlink
       if (data.startsWith("set:")) {
