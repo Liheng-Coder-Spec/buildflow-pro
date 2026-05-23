@@ -116,7 +116,7 @@ export function TelegramAdminTab() {
               Evening Brief Default
             </Label>
             <p className="text-xs text-muted-foreground">
-              Users will see this as their default time when configuring preferences
+              Evening Reminder is sent to users who haven't updated any task today. Sundays are skipped.
             </p>
           </div>
           <input
