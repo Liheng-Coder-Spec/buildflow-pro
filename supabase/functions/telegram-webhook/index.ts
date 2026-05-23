@@ -889,14 +889,14 @@ async function renderSettings(db: any, profile: any) {
   ];
   return {
     text: lines.join("\n"),
-    keyboard: {
+    keyboard: withMainMenu({
       inline_keyboard: [
         [{ text: `🌅 Morning: ${morn}`, callback_data: "set:morning" }],
         [{ text: `🌙 Evening: ${eve}`, callback_data: "set:evening" }],
         [{ text: `🌐 TZ: ${tz}`, callback_data: "set:tz" }],
         [{ text: "🔗 Unlink Telegram", callback_data: "set:unlink" }],
       ],
-    },
+    }, "settings"),
   };
 }
 
