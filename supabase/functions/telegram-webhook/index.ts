@@ -856,7 +856,7 @@ async function renderTaskList(db: any, profile: any, filter: string, page: numbe
 
 async function renderTaskPicker(db: any, profile: any, page: number) {
   const all = await fetchMyTasks(db, profile.id);
-  const open = all.filter((t) => !DONE_STATUSES.has(t.status));
+  const open = all.filter((t) => !DONE_STATUSES.has(t.status) && (t.progress_pct ?? 0) < 100);
   const pageSize = 6;
   const totalPages = Math.max(1, Math.ceil(open.length / pageSize));
   const p = Math.min(Math.max(0, page), totalPages - 1);
