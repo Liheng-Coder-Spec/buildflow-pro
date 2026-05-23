@@ -615,35 +615,34 @@ function mainKeyboard() {
   };
 }
 
-// Inline navigation row appended to every main-menu card so taps edit the
-// current card in place instead of stacking new messages.
-function mainInlineMenuRows(active?: MenuAction): any[][] {
-  const mark = (a: MenuAction, label: string) => (active === a ? `• ${label} •` : label);
-  return [
-    [
-      { text: mark("dashboard", "📊 Dashboard"), callback_data: "menu:dashboard" },
-      { text: mark("mytasks", "📋 My Tasks"), callback_data: "menu:mytasks" },
-      { text: mark("update", "✍️ Update"), callback_data: "menu:update" },
-    ],
-    [
-      { text: mark("today", "⏰ Today"), callback_data: "menu:today" },
-      { text: mark("overdue", "⚠️ Overdue"), callback_data: "menu:overdue" },
-      { text: mark("settings", "⚙️ Settings"), callback_data: "menu:settings" },
-    ],
-  ];
+// Track the last main-menu card per chat so navigating to a new section
+// replaces the previous card instead of stacking new ones.
+async function getLastMenuMessageId(db: any, chatId: number): Promise<number | null> {
+  const { data } = await db
+    .from("telegram_menu_state")
+    .select("message_id")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data?.message_id ?? null;
 }
 
-function withMainMenu(keyboard: any, active?: MenuAction) {
-  const existing: any[][] = Array.isArray(keyboard?.inline_keyboard) ? keyboard.inline_keyboard : [];
-  return { inline_keyboard: [...existing, ...mainInlineMenuRows(active)] };
+async function setLastMenuMessageId(db: any, chatId: number, messageId: number) {
+  await db.from("telegram_menu_state").upsert({
+    chat_id: chatId,
+    message_id: messageId,
+    updated_at: new Date().toISOString(),
+  });
 }
 
-const kbSeen = new Set<number>();
-async function ensureMainKeyboard(chatId: number) {
-  if (kbSeen.has(chatId)) return;
-  kbSeen.add(chatId);
-  // Do not send a standalone invisible message: Telegram rejects it as empty via the connector gateway.
-  // Menu replies attach the keyboard directly when they send visible text.
+async function sendMenuCard(db: any, chatId: number, text: string, keyboard: any) {
+  const prev = await getLastMenuMessageId(db, chatId);
+  if (prev) await tgDeleteMessage(chatId, prev);
+  const id = await tgSendMessage(chatId, text, keyboard);
+  if (id) await setLastMenuMessageId(db, chatId, id);
+}
+
+async function ensureMainKeyboard(_chatId: number) {
+  // Reply keyboard is attached to menu replies; no standalone send needed.
 }
 
 const DONE_STATUSES = new Set(["completed", "closed", "approved"]);
@@ -730,7 +729,7 @@ async function renderDashboard(db: any, profile: any) {
   ];
   return {
     text: lines.join("\n"),
-    keyboard: withMainMenu({
+    keyboard: {
       inline_keyboard: [
         [
           { text: "📋 My Tasks", callback_data: "list:all:0" },
@@ -738,7 +737,7 @@ async function renderDashboard(db: any, profile: any) {
           { text: "⚠️ Overdue", callback_data: "list:overdue:0" },
         ],
       ],
-    }, "dashboard"),
+    },
   };
 }
 
@@ -793,8 +792,7 @@ async function renderTaskList(db: any, profile: any, filter: string, page: numbe
   if (pager.length) inline_keyboard.push(pager);
   if (numRow.length) inline_keyboard.push(numRow);
 
-  const active: MenuAction = filter === "today" ? "today" : filter === "overdue" ? "overdue" : "mytasks";
-  return { text: head + body, keyboard: withMainMenu({ inline_keyboard }, active) };
+  return { text: head + body, keyboard: { inline_keyboard } };
 }
 
 async function renderTaskPicker(db: any, profile: any, page: number) {
@@ -825,7 +823,7 @@ async function renderTaskPicker(db: any, profile: any, page: number) {
   if (pager.length) inline_keyboard.push(pager);
 
   const body = lines.length ? "\n\n" + lines.join("\n") : "\n\n<i>No open tasks.</i>";
-  return { text: head + body, keyboard: withMainMenu({ inline_keyboard }, "update") };
+  return { text: head + body, keyboard: { inline_keyboard } };
 }
 
 async function sendTaskDetail(db: any, chatId: number, taskId: string) {
@@ -889,14 +887,14 @@ async function renderSettings(db: any, profile: any) {
   ];
   return {
     text: lines.join("\n"),
-    keyboard: withMainMenu({
+    keyboard: {
       inline_keyboard: [
         [{ text: `🌅 Morning: ${morn}`, callback_data: "set:morning" }],
         [{ text: `🌙 Evening: ${eve}`, callback_data: "set:evening" }],
         [{ text: `🌐 TZ: ${tz}`, callback_data: "set:tz" }],
         [{ text: "🔗 Unlink Telegram", callback_data: "set:unlink" }],
       ],
-    }, "settings"),
+    },
   };
 }
 
@@ -1155,40 +1153,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }));
       }
 
-      // ---------- Menu navigation callbacks ----------
-      // menu:<action> — edits the current card in place to the chosen main-menu view
-      if (data.startsWith("menu:")) {
-        await tgAnswerCallback(cq.id);
-        const action = data.slice(5) as MenuAction;
-        const profile = await resolveProfile(db, chatId);
-        const messageId: number | undefined = cq.message?.message_id;
-        if (!profile) {
-          if (messageId) {
-            try {
-              await tgEditMessage(chatId, messageId, "❌ Telegram not linked. Open DCOS → Settings → Telegram.", { inline_keyboard: [] });
-            } catch { /* ignore */ }
-          }
-          return new Response(JSON.stringify({ ok: true }));
-        }
-        let view: { text: string; keyboard: any } | null = null;
-        if (action === "dashboard") view = await renderDashboard(db, profile);
-        else if (action === "mytasks") view = await renderTaskList(db, profile, "all", 0);
-        else if (action === "today") view = await renderTaskList(db, profile, "today", 0);
-        else if (action === "overdue") view = await renderTaskList(db, profile, "overdue", 0);
-        else if (action === "update") view = await renderTaskPicker(db, profile, 0);
-        else if (action === "settings") view = await renderSettings(db, profile);
-        if (view && messageId) {
-          try {
-            await tgEditMessage(chatId, messageId, view.text, view.keyboard);
-          } catch (e) {
-            console.error("menu edit failed, falling back to send:", e);
-            await tgSendMessage(chatId, view.text, view.keyboard);
-          }
-        } else if (view) {
-          await tgSendMessage(chatId, view.text, view.keyboard);
-        }
-        return new Response(JSON.stringify({ ok: true }));
-      }
+      // (menu: callbacks removed — main-menu navigation is via the bottom reply keyboard only)
 
       // list:<filter>:<page>
       if (data.startsWith("list:")) {
@@ -1312,22 +1277,22 @@ Deno.serve(async (req) => {
       await ensureMainKeyboard(chatId);
       if (menuAction === "dashboard") {
         const v = await renderDashboard(db, profile);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else if (menuAction === "mytasks") {
         const v = await renderTaskList(db, profile, "all", 0);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else if (menuAction === "today") {
         const v = await renderTaskList(db, profile, "today", 0);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else if (menuAction === "overdue") {
         const v = await renderTaskList(db, profile, "overdue", 0);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else if (menuAction === "update") {
         const v = await renderTaskPicker(db, profile, 0);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else if (menuAction === "settings") {
         const v = await renderSettings(db, profile);
-        await tgSendMessage(chatId, v.text, v.keyboard);
+        await sendMenuCard(db, chatId, v.text, v.keyboard);
       } else {
         await tgSendMessage(
           chatId,

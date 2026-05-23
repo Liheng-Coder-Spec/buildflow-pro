@@ -7834,6 +7834,24 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_menu_state: {
+        Row: {
+          chat_id: number
+          message_id: number
+          updated_at: string
+        }
+        Insert: {
+          chat_id: number
+          message_id: number
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: number
+          message_id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       telegram_outbox: {
         Row: {
           chat_id: number | null
