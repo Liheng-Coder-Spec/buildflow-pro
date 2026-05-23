@@ -93,9 +93,9 @@ async function tgDeleteMessage(chatId: number, messageId: number): Promise<boole
 // Telegram only lets bots delete their own messages within 48 hours.
 // For older cards we overwrite the message with a minimal "completed" line
 // and clear the inline keyboard so the task is effectively hidden from view.
-async function hideMessage(chatId: number, messageId: number, label = "✅ Task completed") {
+async function hideMessage(chatId: number, messageId: number, label = "✅ Task completed"): Promise<boolean> {
   const deleted = await tgDeleteMessage(chatId, messageId);
-  if (deleted) return;
+  if (deleted) return true;
   try {
     await tgApi("editMessageText", {
       chat_id: chatId,
@@ -105,8 +105,10 @@ async function hideMessage(chatId: number, messageId: number, label = "✅ Task 
       disable_web_page_preview: true,
       reply_markup: { inline_keyboard: [] },
     });
+    return true;
   } catch (e) {
     console.warn(`hideMessage edit fallback failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
+    return false;
   }
 }
 
@@ -422,12 +424,14 @@ async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string, h
   const row = rows?.[0];
   if (!row?.message_id) return false;
 
-  await hideMessage(chatId, row.message_id, hideLabel ?? "✅ Task completed");
-  await db
-    .from("telegram_outbox")
-    .update({ message_id: null })
-    .eq("notification_id", row.notification_id);
-  return true;
+  const hidden = await hideMessage(chatId, row.message_id, hideLabel ?? "✅ Task completed");
+  if (hidden) {
+    await db
+      .from("telegram_outbox")
+      .update({ message_id: null })
+      .eq("notification_id", row.notification_id);
+  }
+  return hidden;
 }
 
 async function finalizeAndShow(db: any, chatId: number, state: any, note: string | null) {
