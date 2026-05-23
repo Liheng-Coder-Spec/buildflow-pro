@@ -80,11 +80,33 @@ async function tgEditMessage(chatId: number, messageId: number, text: string, re
   });
 }
 
-async function tgDeleteMessage(chatId: number, messageId: number) {
+async function tgDeleteMessage(chatId: number, messageId: number): Promise<boolean> {
   try {
     await tgApi("deleteMessage", { chat_id: chatId, message_id: messageId });
+    return true;
   } catch (e) {
     console.warn(`tgDeleteMessage failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
+    return false;
+  }
+}
+
+// Telegram only lets bots delete their own messages within 48 hours.
+// For older cards we overwrite the message with a minimal "completed" line
+// and clear the inline keyboard so the task is effectively hidden from view.
+async function hideMessage(chatId: number, messageId: number, label = "✅ Task completed") {
+  const deleted = await tgDeleteMessage(chatId, messageId);
+  if (deleted) return;
+  try {
+    await tgApi("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: label,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [] },
+    });
+  } catch (e) {
+    console.warn(`hideMessage edit fallback failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
   }
 }
 
@@ -387,7 +409,7 @@ async function appendUpdateToOriginalCard(
   }
 }
 
-async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string): Promise<boolean> {
+async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string, hideLabel?: string): Promise<boolean> {
   const { data: rows } = await db
     .from("telegram_outbox")
     .select("notification_id, message_id")
@@ -400,7 +422,7 @@ async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string): 
   const row = rows?.[0];
   if (!row?.message_id) return false;
 
-  await tgDeleteMessage(chatId, row.message_id);
+  await hideMessage(chatId, row.message_id, hideLabel ?? "✅ Task completed");
   await db
     .from("telegram_outbox")
     .update({ message_id: null })
@@ -440,8 +462,9 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
   // Try to append the update into the original task card so it sits
   // between the task details and the action buttons.
   if (pct >= 100) {
-    await deleteOriginalTaskCard(db, chatId, state.task_id);
-    if (state.card_message_id) await tgDeleteMessage(chatId, state.card_message_id);
+    const label = `✅ <b>${escapeHtml(task.title)}</b> — completed${byName ? ` by ${escapeHtml(byName)}` : ""}`;
+    await deleteOriginalTaskCard(db, chatId, state.task_id, label);
+    if (state.card_message_id) await hideMessage(chatId, state.card_message_id, label);
   } else {
     const appended = await appendUpdateToOriginalCard(
       db, chatId, state.task_id, pct, finalStatus, note, byName,
