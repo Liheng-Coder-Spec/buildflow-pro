@@ -436,7 +436,31 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
     }
   }
   await clearState(db, chatId);
+
+  // Refresh the user's current menu card (My Tasks / Due Today / Overdue / Dashboard)
+  // so it reflects the new progress / hides any task that just hit 100%.
+  try {
+    const menu = await getLastMenuState(db, chatId);
+    if (menu?.message_id) {
+      const { data: prof } = await db.from("profiles").select("id, full_name").eq("id", state.user_id).maybeSingle();
+      if (prof) {
+        if (menu.view === "list") {
+          const v = await renderTaskList(db, prof, menu.filter ?? "all", menu.page ?? 0);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        } else if (menu.view === "dashboard") {
+          const v = await renderDashboard(db, prof);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        } else if (menu.view === "picker") {
+          const v = await renderTaskPicker(db, prof, menu.page ?? 0);
+          await tgEditMessage(chatId, menu.message_id, v.text, v.keyboard);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("refresh menu after finalize failed:", (e as Error).message);
+  }
 }
+
 
 // ---------- Receive (acknowledge) flow ----------
 
