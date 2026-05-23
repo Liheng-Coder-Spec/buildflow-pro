@@ -792,8 +792,7 @@ async function renderTaskList(db: any, profile: any, filter: string, page: numbe
   if (pager.length) inline_keyboard.push(pager);
   if (numRow.length) inline_keyboard.push(numRow);
 
-  const active: MenuAction = filter === "today" ? "today" : filter === "overdue" ? "overdue" : "mytasks";
-  return { text: head + body, keyboard: withMainMenu({ inline_keyboard }, active) };
+  return { text: head + body, keyboard: { inline_keyboard } };
 }
 
 async function renderTaskPicker(db: any, profile: any, page: number) {
