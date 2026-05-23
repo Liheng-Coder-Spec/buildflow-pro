@@ -1,5 +1,7 @@
 // Telegram morning + evening briefs dispatcher.
-// Triggered every 15 minutes by pg_cron. Sends one brief per (user, kind, local_date).
+// Triggered every 15 minutes by pg_cron.
+// - Morning Brief (Due Today): sent to ALL linked members at admin-configured time, Sundays skipped.
+// - Evening Brief: opt-in via telegram_brief_prefs.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 function botUrl(method: string): string {
@@ -24,18 +26,19 @@ async function tgSend(chatId: number, text: string) {
 }
 
 function localParts(tz: string, now: Date) {
-  // Returns { hh, mm, dateISO } in the user's timezone.
   try {
     const fmt = new Intl.DateTimeFormat("en-CA", {
       timeZone: tz,
       year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hour12: false,
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      weekday: "short", hour12: false,
     });
     const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
     return {
       hh: Number(parts.hour),
       mm: Number(parts.minute),
       dateISO: `${parts.year}-${parts.month}-${parts.day}`,
+      weekday: parts.weekday, // "Sun","Mon",...
     };
   } catch {
     return null;
@@ -45,10 +48,13 @@ function localParts(tz: string, now: Date) {
 function withinSlot(targetHHMM: string | null, hh: number, mm: number): boolean {
   if (!targetHHMM) return false;
   const [th, tm] = targetHHMM.split(":").map(Number);
-  // Match the 15-minute slot containing the target time
   const slotMin = Math.floor((hh * 60 + mm) / 15) * 15;
   const targetSlot = Math.floor((th * 60 + tm) / 15) * 15;
   return slotMin === targetSlot;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 Deno.serve(async (req) => {
@@ -60,19 +66,61 @@ Deno.serve(async (req) => {
   const db = createClient(SUPABASE_URL, SERVICE_KEY);
 
   const now = new Date();
+  const url = new URL(req.url);
+  const force = url.searchParams.get("force"); // "morning" | "evening" | null for testing
 
+  // Load admin-configured morning send time
+  const { data: adminCfg } = await db
+    .from("telegram_admin_config")
+    .select("morning_default")
+    .maybeSingle();
+  const adminMorning = adminCfg?.morning_default?.slice(0, 5) ?? "08:00";
+
+  // ---- MORNING BRIEF: all linked members ----
+  const { data: linkedMembers } = await db
+    .from("profiles")
+    .select("id, full_name, telegram_chat_id")
+    .not("telegram_chat_id", "is", null);
+
+  let sentMorning = 0;
+  for (const prof of linkedMembers ?? []) {
+    // Use user pref TZ if present, fallback UTC
+    const { data: pref } = await db
+      .from("telegram_brief_prefs")
+      .select("timezone")
+      .eq("user_id", prof.id)
+      .maybeSingle();
+    const tz = pref?.timezone || "UTC";
+    const lp = localParts(tz, now);
+    if (!lp) continue;
+
+    // Skip Sunday
+    if (lp.weekday === "Sun") continue;
+
+    const shouldSend = force === "morning" || withinSlot(adminMorning, lp.hh, lp.mm);
+    if (!shouldSend) continue;
+
+    // Idempotency claim
+    if (force !== "morning") {
+      const ok = await tryClaim(db, prof.id, "morning", lp.dateISO);
+      if (!ok) continue;
+    }
+
+    await sendMorningDueToday(db, prof, lp.dateISO);
+    sentMorning++;
+  }
+
+  // ---- EVENING BRIEF: opt-in via prefs (unchanged behavior) ----
   const { data: prefs } = await db
     .from("telegram_brief_prefs")
-    .select("user_id, morning_at, evening_at, timezone");
+    .select("user_id, evening_at, timezone");
 
-  let sent = 0;
+  let sentEvening = 0;
   for (const p of prefs ?? []) {
     const lp = localParts(p.timezone || "UTC", now);
     if (!lp) continue;
-
-    const wantMorning = withinSlot(p.morning_at, lp.hh, lp.mm);
-    const wantEvening = withinSlot(p.evening_at, lp.hh, lp.mm);
-    if (!wantMorning && !wantEvening) continue;
+    const shouldSend = force === "evening" || withinSlot(p.evening_at, lp.hh, lp.mm);
+    if (!shouldSend) continue;
 
     const { data: prof } = await db
       .from("profiles")
@@ -81,17 +129,15 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!prof?.telegram_chat_id) continue;
 
-    if (wantMorning) {
-      const ok = await tryClaim(db, p.user_id, "morning", lp.dateISO);
-      if (ok) { await sendMorning(db, prof); sent++; }
-    }
-    if (wantEvening) {
+    if (force !== "evening") {
       const ok = await tryClaim(db, p.user_id, "evening", lp.dateISO);
-      if (ok) { await sendEvening(db, prof, lp.dateISO, p.timezone || "UTC"); sent++; }
+      if (!ok) continue;
     }
+    await sendEvening(db, prof);
+    sentEvening++;
   }
 
-  return new Response(JSON.stringify({ ok: true, sent }), {
+  return new Response(JSON.stringify({ ok: true, sentMorning, sentEvening }), {
     headers: { "Content-Type": "application/json" },
   });
 });
@@ -103,34 +149,49 @@ async function tryClaim(db: any, userId: string, kind: string, dateISO: string):
   return !error;
 }
 
-async function sendMorning(db: any, prof: any) {
-  // Counts: due today, overdue
-  const today = new Date().toISOString().slice(0, 10);
+async function sendMorningDueToday(db: any, prof: any, todayISO: string) {
   const { data: assigns } = await db
     .from("task_assignments")
-    .select("task_id, tasks!inner(id, status, planned_end)")
+    .select("tasks!inner(id, code, title, status, planned_end, progress_pct, projects(name))")
     .eq("user_id", prof.id)
-    .is("unassigned_at", null);
+    .is("unassigned_at", null)
+    .eq("tasks.planned_end", todayISO)
+    .lt("tasks.progress_pct", 100);
 
   const open = (assigns ?? []).filter((a: any) =>
-    !["completed", "closed", "approved"].includes(a.tasks?.status));
-  const dueToday = open.filter((a: any) => a.tasks?.planned_end === today).length;
-  const overdue = open.filter((a: any) => a.tasks?.planned_end && a.tasks.planned_end < today).length;
+    a.tasks && !["completed", "closed", "approved"].includes(a.tasks.status));
 
   const name = prof.full_name?.split(" ")[0] ?? "";
-  const text = [
-    `🌅 <b>Morning Brief${name ? " — " + escapeHtml(name) : ""}</b>`,
-    "",
-    `📌 Today: <b>${dueToday}</b> task${dueToday === 1 ? "" : "s"} due`,
-    `⚠️ Overdue: <b>${overdue}</b>`,
-    "",
-    `👉 Tap <b>📋 My Tasks</b> below.`,
-  ].join("\n");
+  const header = `🌅 <b>Morning Brief (Due Today)</b>${name ? " — " + escapeHtml(name) : ""}`;
+
+  let text: string;
+  if (open.length === 0) {
+    text = [
+      header,
+      "",
+      `📭 You have no task due today. Contact your manager for task assignment! 📋`,
+    ].join("\n");
+  } else {
+    const lines = open.map((a: any, i: number) => {
+      const t = a.tasks;
+      const proj = t.projects?.name ? ` · <i>${escapeHtml(t.projects.name)}</i>` : "";
+      const code = t.code ? `[${escapeHtml(t.code)}] ` : "";
+      return `${i + 1}. ${code}${escapeHtml(t.title)}${proj} — <b>${t.progress_pct ?? 0}%</b>`;
+    });
+    text = [
+      header,
+      "",
+      `📌 You have <b>${open.length}</b> task${open.length === 1 ? "" : "s"} due today:`,
+      "",
+      ...lines,
+      "",
+      `👉 Tap <b>📋 My Tasks</b> below to update progress.`,
+    ].join("\n");
+  }
   await tgSend(prof.telegram_chat_id, text);
 }
 
-async function sendEvening(db: any, prof: any, _dateISO: string, _tz: string) {
-  // Today's activity: progress updates by this user
+async function sendEvening(db: any, prof: any) {
   const since = new Date(Date.now() - 12 * 3600_000).toISOString();
   const { data: updates } = await db
     .from("task_updates")
@@ -151,8 +212,4 @@ async function sendEvening(db: any, prof: any, _dateISO: string, _tz: string) {
     `Keep pushing. 💪`,
   ].join("\n");
   await tgSend(prof.telegram_chat_id, text);
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
