@@ -80,11 +80,33 @@ async function tgEditMessage(chatId: number, messageId: number, text: string, re
   });
 }
 
-async function tgDeleteMessage(chatId: number, messageId: number) {
+async function tgDeleteMessage(chatId: number, messageId: number): Promise<boolean> {
   try {
     await tgApi("deleteMessage", { chat_id: chatId, message_id: messageId });
+    return true;
   } catch (e) {
     console.warn(`tgDeleteMessage failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
+    return false;
+  }
+}
+
+// Telegram only lets bots delete their own messages within 48 hours.
+// For older cards we overwrite the message with a minimal "completed" line
+// and clear the inline keyboard so the task is effectively hidden from view.
+async function hideMessage(chatId: number, messageId: number, label = "✅ Task completed") {
+  const deleted = await tgDeleteMessage(chatId, messageId);
+  if (deleted) return;
+  try {
+    await tgApi("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text: label,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: [] },
+    });
+  } catch (e) {
+    console.warn(`hideMessage edit fallback failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
   }
 }
 
