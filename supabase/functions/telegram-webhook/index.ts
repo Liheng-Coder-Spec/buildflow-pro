@@ -707,19 +707,22 @@ async function fetchMyTasks(db: any, userId: string) {
 
 function filterTasks(tasks: any[], filter: string): any[] {
   const today = todayISO();
+  const notFullyDone = (t: any) => (t.progress_pct ?? 0) < 100 && !DONE_STATUSES.has(t.status);
   switch (filter) {
     case "today":
-      return tasks.filter((t) => t.planned_end === today && !DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => t.planned_end === today && notFullyDone(t));
     case "overdue":
-      return tasks.filter((t) => t.planned_end && t.planned_end < today && !DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => t.planned_end && t.planned_end < today && notFullyDone(t));
     case "active":
-      return tasks.filter((t) => ACTIVE_STATUSES.has(t.status));
+      return tasks.filter((t) => ACTIVE_STATUSES.has(t.status) && notFullyDone(t));
     case "done":
-      return tasks.filter((t) => DONE_STATUSES.has(t.status));
+      return tasks.filter((t) => DONE_STATUSES.has(t.status) || (t.progress_pct ?? 0) >= 100);
     default:
-      return tasks;
+      // "all" — hide tasks that are 100% complete or in a done status
+      return tasks.filter(notFullyDone);
   }
 }
+
 
 async function renderDashboard(db: any, profile: any) {
   const tasks = await fetchMyTasks(db, profile.id);
