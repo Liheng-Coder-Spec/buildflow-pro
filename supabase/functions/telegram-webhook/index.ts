@@ -439,23 +439,26 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
 
   // Try to append the update into the original task card so it sits
   // between the task details and the action buttons.
-  const appended = pct >= 100
-    ? await deleteOriginalTaskCard(db, chatId, state.task_id)
-    : await appendUpdateToOriginalCard(
-        db, chatId, state.task_id, pct, finalStatus, note, byName,
-      );
-
-  if (appended) {
-    // Remove the standalone flow card so only the original (now-updated)
-    // task card remains in chat.
+  if (pct >= 100) {
+    await deleteOriginalTaskCard(db, chatId, state.task_id);
     if (state.card_message_id) await tgDeleteMessage(chatId, state.card_message_id);
   } else {
-    // Fallback: original card not found — show standalone summary in place of the flow card.
-    const view = renderSummary(task, pct, finalStatus, note, byName);
-    if (state.card_message_id) {
-      await tgEditMessage(chatId, state.card_message_id, view.text, view.keyboard);
+    const appended = await appendUpdateToOriginalCard(
+      db, chatId, state.task_id, pct, finalStatus, note, byName,
+    );
+
+    if (appended) {
+      // Remove the standalone flow card so only the original (now-updated)
+      // task card remains in chat.
+      if (state.card_message_id) await tgDeleteMessage(chatId, state.card_message_id);
     } else {
-      await tgSendMessage(chatId, view.text);
+      // Fallback: original card not found — show standalone summary in place of the flow card.
+      const view = renderSummary(task, pct, finalStatus, note, byName);
+      if (state.card_message_id) {
+        await tgEditMessage(chatId, state.card_message_id, view.text, view.keyboard);
+      } else {
+        await tgSendMessage(chatId, view.text);
+      }
     }
   }
   await clearState(db, chatId);
