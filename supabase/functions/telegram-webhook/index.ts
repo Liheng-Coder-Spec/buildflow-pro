@@ -753,7 +753,15 @@ async function renderTaskList(db: any, profile: any, filter: string, page: numbe
   const p = Math.min(Math.max(0, page), totalPages - 1);
   const slice = filtered.slice(p * pageSize, p * pageSize + pageSize);
 
-  const head = `📋 <b>My Tasks</b> · Page ${p + 1}/${totalPages} · ${FILTER_LABELS[filter] ?? "All"} (${filtered.length})`;
+  const titleMap: Record<string, string> = {
+    all: "📋 My Tasks",
+    today: "⏰ Due Today",
+    overdue: "⚠️ Overdue",
+    active: "🟢 Active",
+    done: "✅ Done",
+  };
+  const title = titleMap[filter] ?? "📋 My Tasks";
+  const head = `${title} · Page ${p + 1}/${totalPages} (${filtered.length})`;
   const today = todayISO();
   const body = slice.length === 0
     ? "\n\n<i>No tasks in this view.</i>"
