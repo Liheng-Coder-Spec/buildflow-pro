@@ -8771,6 +8771,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      current_user_company_id: { Args: never; Returns: string }
       generate_document_number: {
         Args: {
           _discipline_code: string
