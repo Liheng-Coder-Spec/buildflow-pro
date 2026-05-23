@@ -409,7 +409,7 @@ async function appendUpdateToOriginalCard(
   }
 }
 
-async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string): Promise<boolean> {
+async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string, hideLabel?: string): Promise<boolean> {
   const { data: rows } = await db
     .from("telegram_outbox")
     .select("notification_id, message_id")
@@ -422,7 +422,7 @@ async function deleteOriginalTaskCard(db: any, chatId: number, taskId: string): 
   const row = rows?.[0];
   if (!row?.message_id) return false;
 
-  await tgDeleteMessage(chatId, row.message_id);
+  await hideMessage(chatId, row.message_id, hideLabel ?? "✅ Task completed");
   await db
     .from("telegram_outbox")
     .update({ message_id: null })
