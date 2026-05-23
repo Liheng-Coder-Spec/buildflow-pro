@@ -1,35 +1,63 @@
-# Telegram Bot: Edit-in-Place Menu Cards
+
+# Morning Brief System — Plan
 
 ## Goal
-When a user taps a main-menu inline button (Dashboard, My Tasks, Briefs, Settings, Help, Back, etc.), the bot edits the existing card message instead of sending a new one. Only one active menu card is visible in the chat at any time. Typed commands and the bottom reply keyboard keep current behavior (send a new card).
+Send a Telegram "Morning Brief (Due Today)" to every linked member every day at the admin-configured time (default 08:00, Sunday excluded), listing each user's tasks due today with progress < 100%. If none, send a friendly empty-state message.
 
-## Behavior
+## Scope
 
-- Tap **Dashboard** → bot sends one card with Dashboard content + inline menu buttons.
-- Tap **My Tasks** on that card → the same message is edited in place to show My Tasks content + inline menu buttons.
-- Tap **Briefs**, **Settings**, **Help**, **Back** → same edit-in-place swap.
-- Typing `/start`, `/help`, or tapping a bottom reply-keyboard button → sends a fresh card (unchanged).
-- Task detail drill-ins, update confirmations, and notifications → unchanged (still new messages).
+### 1. Admin time config (Settings → Telegram → Admin tab)
+- Reuse existing `telegram_admin_config.morning_default` (already exists, already editable in `TelegramAdminTab.tsx`).
+- This value becomes the **system-wide send time** for the Morning Brief (no per-user override for this brief — spec says "send to all members" at admin time).
+- Add a short helper note in the UI clarifying: "Morning Brief is sent to all linked members at this time. Sundays are skipped."
 
-## Implementation (single file: `supabase/functions/telegram-webhook/index.ts`)
+### 2. Cron schedule
+- Schedule `telegram-briefs` edge function to run every 15 minutes via `pg_cron` + `pg_net` (insert via supabase insert tool, not migration, since URL/anon key are project-specific).
+- Verify `pg_cron` and `pg_net` extensions enabled.
 
-1. **Detect callback queries** from inline buttons. Telegram delivers these as `update.callback_query` with `message.message_id` and `chat.id` of the original card.
-2. **Add an `editCard(chatId, messageId, text, replyMarkup)` helper** that calls `editMessageText` via the connector gateway (same `tgApi` pattern already in use). Fall back to `sendMessage` if the edit fails (e.g. message too old / identical content / not found).
-3. **Refactor the main-menu render functions** (Dashboard, My Tasks, Briefs, Settings, Help, Back) to return `{ text, reply_markup }` instead of sending directly. A single dispatcher then either:
-   - calls `sendMessage` (entry via `/start`, `/help`, or reply-keyboard tap), or
-   - calls `editCard` (entry via inline `callback_query` whose `data` matches a main-menu action).
-4. **Always answer the callback query** with `answerCallbackQuery` so Telegram clears the button spinner.
-5. **Keep the inline keyboard identical** across all main-menu views so the user can jump between sections from any card.
-6. **Leave non-menu callbacks alone** (task actions, pagination inside a detail view, settings sub-actions) — those keep their current send/edit behavior.
+### 3. Edge function: rewrite morning logic in `supabase/functions/telegram-briefs/index.ts`
+- Load `telegram_admin_config.morning_default` once per invocation.
+- Compute current time in **company timezone** (use first profile's timezone or default `Asia/Phnom_Penh` / configurable; for v1 use each user's `telegram_brief_prefs.timezone` or `UTC` fallback, matching existing pattern).
+- **Skip Sunday** (`localDate.getDay() === 0` in user TZ).
+- For each profile with `telegram_chat_id IS NOT NULL`:
+  - Check if current 15-min slot matches `morning_default` in user's TZ.
+  - Idempotency: claim via `telegram_brief_log` (`user_id`, `brief_kind='morning'`, `local_date`).
+  - Query tasks: `task_assignments` join `tasks` where `user_id = profile.id`, `unassigned_at IS NULL`, `planned_end = today`, `progress_pct < 100`, status not in (`completed`,`closed`,`approved`).
+  - Build message:
+    - Title: `🌅 <b>Morning Brief (Due Today)</b>`
+    - If tasks: numbered list with task title, project, progress %, status.
+    - If none: `You have no task due today. Contact your manager for task assignment! 📋`
+- Keep evening logic untouched.
 
-## Out of Scope
-- No DB schema changes.
-- No changes to `telegram-link-code`, `telegram-task-update`, `telegram-notify`, `telegram-briefs`.
-- No change to the bottom reply keyboard or to typed-command flows.
-- Task detail views and confirmations are not converted to edit-in-place in this pass.
+### 4. Coverage for ALL members (not only those with prefs)
+- Current code iterates `telegram_brief_prefs` only. Change morning loop to iterate **all profiles with `telegram_chat_id`** so every linked user receives it regardless of personal prefs.
+- Evening brief stays opt-in via prefs (unchanged).
 
-## Verification
-- Deploy `telegram-webhook`.
-- From a linked chat: `/start` → tap Dashboard → tap My Tasks → tap Briefs → tap Back. Confirm the same message updates each time (no new cards stacked).
-- Confirm typing `/start` again still posts a fresh card.
-- Check edge function logs for any `editMessageText` errors and confirm the `sendMessage` fallback kicked in if needed.
+### 5. Manual test path
+- After deploy, invoke via `curl_edge_functions` to confirm message rendering for the current user.
+
+## Technical Details
+
+**Files touched:**
+- `supabase/functions/telegram-briefs/index.ts` — new morning logic, admin-config-driven time, Sunday skip, all-members iteration, due-today filter, empty-state message.
+- `src/components/admin/TelegramAdminTab.tsx` — small descriptive helper text (optional).
+- DB: `pg_cron` schedule insert (via supabase insert tool, not migration).
+
+**No schema changes** — `telegram_admin_config`, `telegram_brief_log`, `task_assignments`, `tasks`, `profiles` all already exist.
+
+**Query shape:**
+```ts
+db.from("task_assignments")
+  .select("task_id, tasks!inner(id, title, status, planned_end, progress_pct, project_id, projects(name))")
+  .eq("user_id", profile.id)
+  .is("unassigned_at", null)
+  .eq("tasks.planned_end", todayISO)
+  .lt("tasks.progress_pct", 100)
+  .not("tasks.status", "in", "(completed,closed,approved)");
+```
+
+## Todos
+1. Update `telegram-briefs/index.ts`: load admin morning time, skip Sunday, iterate all linked profiles, fetch due-today open tasks, format brief, send.
+2. Add small helper text in `TelegramAdminTab.tsx` describing Morning Brief behavior.
+3. Insert pg_cron job (every 15 min) calling `telegram-briefs`.
+4. Deploy `telegram-briefs` and test invocation manually.
