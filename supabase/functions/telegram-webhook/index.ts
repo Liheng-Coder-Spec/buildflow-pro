@@ -1199,11 +1199,17 @@ Deno.serve(async (req) => {
           await tgSendMessage(chatId, "❌ Telegram not linked.", mainKeyboard());
           return new Response(JSON.stringify({ ok: true }));
         }
-        const view = await renderTaskList(db, profile, filter, Number(pageStr) || 0);
+        const pageNum = Number(pageStr) || 0;
+        const view = await renderTaskList(db, profile, filter, pageNum);
         const messageId: number | undefined = cq.message?.message_id;
-        if (messageId) await tgEditMessage(chatId, messageId, view.text, view.keyboard);
-        else await tgSendMessage(chatId, view.text, view.keyboard);
+        if (messageId) {
+          await tgEditMessage(chatId, messageId, view.text, view.keyboard);
+          await setLastMenuMessageId(db, chatId, messageId, { view: "list", filter, page: pageNum });
+        } else {
+          await sendMenuCard(db, chatId, view.text, view.keyboard, { view: "list", filter, page: pageNum });
+        }
         return new Response(JSON.stringify({ ok: true }));
+
       }
 
       // open:<taskId>
