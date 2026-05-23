@@ -83,8 +83,8 @@ async function tgEditMessage(chatId: number, messageId: number, text: string, re
 async function tgDeleteMessage(chatId: number, messageId: number) {
   try {
     await tgApi("deleteMessage", { chat_id: chatId, message_id: messageId });
-  } catch {
-    /* ignore */
+  } catch (e) {
+    console.warn(`tgDeleteMessage failed chat=${chatId} msg=${messageId}:`, (e as Error).message);
   }
 }
 
