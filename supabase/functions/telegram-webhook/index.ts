@@ -1275,6 +1275,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }));
       }
       await ensureMainKeyboard(chatId);
+      // Delete the user's button-tap message so only one menu card remains in the chat.
+      if (messageId) await tgDeleteMessage(chatId, messageId);
       if (menuAction === "dashboard") {
         const v = await renderDashboard(db, profile);
         await sendMenuCard(db, chatId, v.text, v.keyboard);
