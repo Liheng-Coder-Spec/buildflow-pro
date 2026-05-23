@@ -165,6 +165,8 @@ export default function Tasks() {
 
 
   const filtered = React.useMemo(() => tasks.filter((t) => {
+    const isComplete = t.progress_pct >= 100 || t.status === "approved" || t.status === "completed" || t.status === "closed";
+    if (isComplete && !["approved", "completed", "closed"].includes(statusFilter)) return false;
     if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
