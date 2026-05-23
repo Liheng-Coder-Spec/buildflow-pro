@@ -615,6 +615,29 @@ function mainKeyboard() {
   };
 }
 
+// Inline navigation row appended to every main-menu card so taps edit the
+// current card in place instead of stacking new messages.
+function mainInlineMenuRows(active?: MenuAction): any[][] {
+  const mark = (a: MenuAction, label: string) => (active === a ? `• ${label} •` : label);
+  return [
+    [
+      { text: mark("dashboard", "📊 Dashboard"), callback_data: "menu:dashboard" },
+      { text: mark("mytasks", "📋 My Tasks"), callback_data: "menu:mytasks" },
+      { text: mark("update", "✍️ Update"), callback_data: "menu:update" },
+    ],
+    [
+      { text: mark("today", "⏰ Today"), callback_data: "menu:today" },
+      { text: mark("overdue", "⚠️ Overdue"), callback_data: "menu:overdue" },
+      { text: mark("settings", "⚙️ Settings"), callback_data: "menu:settings" },
+    ],
+  ];
+}
+
+function withMainMenu(keyboard: any, active?: MenuAction) {
+  const existing: any[][] = Array.isArray(keyboard?.inline_keyboard) ? keyboard.inline_keyboard : [];
+  return { inline_keyboard: [...existing, ...mainInlineMenuRows(active)] };
+}
+
 const kbSeen = new Set<number>();
 async function ensureMainKeyboard(chatId: number) {
   if (kbSeen.has(chatId)) return;
