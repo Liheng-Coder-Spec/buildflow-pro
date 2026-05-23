@@ -462,8 +462,9 @@ async function finalizeAndShow(db: any, chatId: number, state: any, note: string
   // Try to append the update into the original task card so it sits
   // between the task details and the action buttons.
   if (pct >= 100) {
-    await deleteOriginalTaskCard(db, chatId, state.task_id);
-    if (state.card_message_id) await tgDeleteMessage(chatId, state.card_message_id);
+    const label = `✅ <b>${escapeHtml(task.title)}</b> — completed${byName ? ` by ${escapeHtml(byName)}` : ""}`;
+    await deleteOriginalTaskCard(db, chatId, state.task_id, label);
+    if (state.card_message_id) await hideMessage(chatId, state.card_message_id, label);
   } else {
     const appended = await appendUpdateToOriginalCard(
       db, chatId, state.task_id, pct, finalStatus, note, byName,
