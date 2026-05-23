@@ -1153,40 +1153,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ ok: true }));
       }
 
-      // ---------- Menu navigation callbacks ----------
-      // menu:<action> — edits the current card in place to the chosen main-menu view
-      if (data.startsWith("menu:")) {
-        await tgAnswerCallback(cq.id);
-        const action = data.slice(5) as MenuAction;
-        const profile = await resolveProfile(db, chatId);
-        const messageId: number | undefined = cq.message?.message_id;
-        if (!profile) {
-          if (messageId) {
-            try {
-              await tgEditMessage(chatId, messageId, "❌ Telegram not linked. Open DCOS → Settings → Telegram.", { inline_keyboard: [] });
-            } catch { /* ignore */ }
-          }
-          return new Response(JSON.stringify({ ok: true }));
-        }
-        let view: { text: string; keyboard: any } | null = null;
-        if (action === "dashboard") view = await renderDashboard(db, profile);
-        else if (action === "mytasks") view = await renderTaskList(db, profile, "all", 0);
-        else if (action === "today") view = await renderTaskList(db, profile, "today", 0);
-        else if (action === "overdue") view = await renderTaskList(db, profile, "overdue", 0);
-        else if (action === "update") view = await renderTaskPicker(db, profile, 0);
-        else if (action === "settings") view = await renderSettings(db, profile);
-        if (view && messageId) {
-          try {
-            await tgEditMessage(chatId, messageId, view.text, view.keyboard);
-          } catch (e) {
-            console.error("menu edit failed, falling back to send:", e);
-            await tgSendMessage(chatId, view.text, view.keyboard);
-          }
-        } else if (view) {
-          await tgSendMessage(chatId, view.text, view.keyboard);
-        }
-        return new Response(JSON.stringify({ ok: true }));
-      }
+      // (menu: callbacks removed — main-menu navigation is via the bottom reply keyboard only)
 
       // list:<filter>:<page>
       if (data.startsWith("list:")) {
