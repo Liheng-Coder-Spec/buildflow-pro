@@ -626,20 +626,44 @@ async function getLastMenuMessageId(db: any, chatId: number): Promise<number | n
   return data?.message_id ?? null;
 }
 
-async function setLastMenuMessageId(db: any, chatId: number, messageId: number) {
+async function setLastMenuMessageId(
+  db: any,
+  chatId: number,
+  messageId: number,
+  meta?: { view?: string | null; filter?: string | null; page?: number | null },
+) {
   await db.from("telegram_menu_state").upsert({
     chat_id: chatId,
     message_id: messageId,
+    view: meta?.view ?? null,
+    filter: meta?.filter ?? null,
+    page: meta?.page ?? null,
     updated_at: new Date().toISOString(),
   });
 }
 
-async function sendMenuCard(db: any, chatId: number, text: string, keyboard: any) {
+async function getLastMenuState(db: any, chatId: number): Promise<{ message_id: number; view: string | null; filter: string | null; page: number | null } | null> {
+  const { data } = await db
+    .from("telegram_menu_state")
+    .select("message_id, view, filter, page")
+    .eq("chat_id", chatId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function sendMenuCard(
+  db: any,
+  chatId: number,
+  text: string,
+  keyboard: any,
+  meta?: { view?: string | null; filter?: string | null; page?: number | null },
+) {
   const prev = await getLastMenuMessageId(db, chatId);
   if (prev) await tgDeleteMessage(chatId, prev);
   const id = await tgSendMessage(chatId, text, keyboard);
-  if (id) await setLastMenuMessageId(db, chatId, id);
+  if (id) await setLastMenuMessageId(db, chatId, id, meta);
 }
+
 
 async function ensureMainKeyboard(_chatId: number) {
   // Reply keyboard is attached to menu replies; no standalone send needed.
