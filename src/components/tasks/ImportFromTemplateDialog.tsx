@@ -615,13 +615,9 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                   ) : (
                     <div className="h-4 w-4 mt-0.5 shrink-0" />
                   )}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-1">
                     <div className="text-sm font-medium truncate">
                       {t.package_number} · {t.package_description}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground truncate">
-                      {t.trade || "No trade"}
-                      {t.brief_scope ? ` — ${t.brief_scope}` : ""}
                     </div>
                   </div>
                 </button>
