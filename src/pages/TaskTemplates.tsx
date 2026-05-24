@@ -46,6 +46,21 @@ const TASK_GROUPING_METHODS = ["Generate by Quantity", "Generate by Location", "
 const QUANTITY_UNITS = ["Each", "m2", "m3", "m", "Set"] as const;
 const TASK_STATUSES = ["Open", "Assigned", "On Hold"] as const;
 
+interface DesignStageOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface DesignTaskTemplate {
+  id: string;
+  task_code: string;
+  task_name: string;
+  design_stage_id: string | null;
+  note: string | null;
+  design_stages?: { code: string; name: string } | null;
+}
+
 const DEFAULT_TASK_STEPS: Array<{
   no: string; code: string; name: string; duration: string; role: string; required: boolean;
 }> = [];
@@ -117,6 +132,101 @@ export default function TaskTemplates() {
   const [taskDependencies, setTaskDependencies] = React.useState(DEFAULT_TASK_DEPENDENCIES);
   const [taskChecklist, setTaskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
   const [taskDocuments, setTaskDocuments] = React.useState(DEFAULT_TASK_DOCUMENTS);
+
+  // Design Task Templates state
+  const [designStages, setDesignStages] = React.useState<DesignStageOption[]>([]);
+  const [designTasks, setDesignTasks] = React.useState<DesignTaskTemplate[]>([]);
+  const [designLoading, setDesignLoading] = React.useState(false);
+  const [designDialogOpen, setDesignDialogOpen] = React.useState(false);
+  const [designSaving, setDesignSaving] = React.useState(false);
+  const [editingDesignId, setEditingDesignId] = React.useState<string | null>(null);
+  const [designTaskCode, setDesignTaskCode] = React.useState("");
+  const [designTaskName, setDesignTaskName] = React.useState("");
+  const [designStageId, setDesignStageId] = React.useState<string>("");
+  const [designNote, setDesignNote] = React.useState("");
+
+  const resetDesignForm = () => {
+    setEditingDesignId(null);
+    setDesignTaskCode("");
+    setDesignTaskName("");
+    setDesignStageId("");
+    setDesignNote("");
+  };
+
+  const loadDesignStages = React.useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from("design_stages")
+      .select("id, code, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDesignStages((data ?? []) as DesignStageOption[]);
+  }, []);
+
+  const loadDesignTasks = React.useCallback(async () => {
+    setDesignLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("master_design_task_templates")
+      .select("id, task_code, task_name, design_stage_id, note, design_stages(code, name)")
+      .eq("is_active", true)
+      .order("task_code");
+    setDesignLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDesignTasks((data ?? []) as DesignTaskTemplate[]);
+  }, []);
+
+  const handleSaveDesignTask = async () => {
+    if (!designTaskCode.trim()) { toast.error("Task Code is required"); return; }
+    if (!designTaskName.trim()) { toast.error("Task Name is required"); return; }
+    if (!designStageId) { toast.error("Design Stage is required"); return; }
+
+    setDesignSaving(true);
+    const payload = {
+      task_code: designTaskCode.trim(),
+      task_name: designTaskName.trim(),
+      design_stage_id: designStageId,
+      note: designNote.trim() || null,
+    };
+    const query = editingDesignId
+      ? (supabase as any).from("master_design_task_templates").update(payload).eq("id", editingDesignId)
+      : (supabase as any).from("master_design_task_templates").insert(payload);
+    const { error } = await query;
+    setDesignSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That Task Code is already in use." : error.message);
+      return;
+    }
+    toast.success(editingDesignId ? "Design task updated" : "Design task created");
+    setDesignDialogOpen(false);
+    resetDesignForm();
+    void loadDesignTasks();
+  };
+
+  const handleEditDesignTask = (row: DesignTaskTemplate) => {
+    setEditingDesignId(row.id);
+    setDesignTaskCode(row.task_code);
+    setDesignTaskName(row.task_name);
+    setDesignStageId(row.design_stage_id ?? "");
+    setDesignNote(row.note ?? "");
+    setDesignDialogOpen(true);
+  };
+
+  const handleDeleteDesignTask = async (id: string) => {
+    if (!confirm("Delete this design task template?")) return;
+    const { error } = await (supabase as any)
+      .from("master_design_task_templates")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Design task deleted");
+    void loadDesignTasks();
+  };
 
   const resetElementForm = () => {
     setElementCode("");
@@ -423,7 +533,9 @@ export default function TaskTemplates() {
   React.useEffect(() => {
     void loadElements();
     void loadTemplates();
-  }, [loadElements, loadTemplates]);
+    void loadDesignStages();
+    void loadDesignTasks();
+  }, [loadElements, loadTemplates, loadDesignStages, loadDesignTasks]);
 
   const handleCreateElement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -526,6 +638,7 @@ export default function TaskTemplates() {
             <TabsList>
               <TabsTrigger value="elements">Elements Template</TabsTrigger>
               <TabsTrigger value="tasks">Task Template</TabsTrigger>
+              <TabsTrigger value="design">Design Task Template</TabsTrigger>
             </TabsList>
             {activeTab === "elements" && (
               <DialogTrigger asChild>
@@ -1226,6 +1339,109 @@ export default function TaskTemplates() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="design">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle>Design Task Template</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Standalone design tasks linked to a Design Stage. Use them as quick-pick templates for design work.
+                </p>
+              </div>
+              <Button type="button" onClick={() => { resetDesignForm(); setDesignDialogOpen(true); }}>
+                + New Task
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-40">Task Code</TableHead>
+                    <TableHead>Task Name</TableHead>
+                    <TableHead className="w-48">Design Stage</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead className="w-32 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {designLoading && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">Loading...</TableCell></TableRow>
+                  )}
+                  {!designLoading && designTasks.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">No design tasks yet. Click "New Task" to add one.</TableCell></TableRow>
+                  )}
+                  {!designLoading && designTasks.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{row.task_code}</TableCell>
+                      <TableCell className="font-medium">{row.task_name}</TableCell>
+                      <TableCell>
+                        {row.design_stages ? (
+                          <Badge variant="secondary">{row.design_stages.code} · {row.design_stages.name}</Badge>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{row.note || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditDesignTask(row)}>
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteDesignTask(row.id)}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <Dialog open={designDialogOpen} onOpenChange={(open) => { setDesignDialogOpen(open); if (!open) resetDesignForm(); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingDesignId ? "Edit Design Task" : "Create Design Task"}</DialogTitle>
+              <DialogDescription>
+                Define a reusable design task tagged to a Design Stage from Admin Configuration.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="design-task-code">Task Code</Label>
+                <Input id="design-task-code" value={designTaskCode} onChange={(e) => setDesignTaskCode(e.target.value)} placeholder="DTK-001" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="design-task-name">Task Name</Label>
+                <Input id="design-task-name" value={designTaskName} onChange={(e) => setDesignTaskName(e.target.value)} placeholder="Schematic floor plan markup" />
+              </div>
+              <div className="space-y-2">
+                <Label>Design Stage</Label>
+                <Select value={designStageId} onValueChange={setDesignStageId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={designStages.length === 0 ? "No stages — set in Admin Configuration" : "Select design stage"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {designStages.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.code} · {s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="design-task-note">Note</Label>
+                <Textarea id="design-task-note" value={designNote} onChange={(e) => setDesignNote(e.target.value)} rows={3} placeholder="Optional notes or usage guidance" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setDesignDialogOpen(false); resetDesignForm(); }}>Cancel</Button>
+              <Button type="button" onClick={handleSaveDesignTask} disabled={designSaving}>
+                {designSaving ? "Saving..." : editingDesignId ? "Save" : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </Tabs>
     </div>
   );

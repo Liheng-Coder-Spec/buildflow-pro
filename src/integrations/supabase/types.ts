@@ -3007,6 +3007,47 @@ export type Database = {
         }
         Relationships: []
       }
+      master_design_task_templates: {
+        Row: {
+          created_at: string
+          design_stage_id: string | null
+          id: string
+          is_active: boolean
+          note: string | null
+          task_code: string
+          task_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          design_stage_id?: string | null
+          id?: string
+          is_active?: boolean
+          note?: string | null
+          task_code: string
+          task_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          design_stage_id?: string | null
+          id?: string
+          is_active?: boolean
+          note?: string | null
+          task_code?: string
+          task_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_design_task_templates_design_stage_id_fkey"
+            columns: ["design_stage_id"]
+            isOneToOne: false
+            referencedRelation: "design_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_element_templates: {
         Row: {
           category: Database["public"]["Enums"]["element_template_category"]
