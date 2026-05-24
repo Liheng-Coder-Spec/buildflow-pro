@@ -638,6 +638,7 @@ export default function TaskTemplates() {
             <TabsList>
               <TabsTrigger value="elements">Elements Template</TabsTrigger>
               <TabsTrigger value="tasks">Task Template</TabsTrigger>
+              <TabsTrigger value="design">Design Task Template</TabsTrigger>
             </TabsList>
             {activeTab === "elements" && (
               <DialogTrigger asChild>
