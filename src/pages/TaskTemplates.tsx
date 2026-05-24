@@ -179,7 +179,7 @@ export default function TaskTemplates() {
     setProcurementLoading(true);
     const { data, error } = await (supabase as any)
       .from("master_procurement_task_templates")
-      .select("id, package_number, package_description, trade, brief_scope")
+      .select("id, package_number, package_description, trade, brief_scope, note")
       .eq("is_active", true)
       .order("package_number");
     setProcurementLoading(false);
