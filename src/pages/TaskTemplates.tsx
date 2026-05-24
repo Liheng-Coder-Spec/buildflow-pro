@@ -61,6 +61,14 @@ interface DesignTaskTemplate {
   design_stages?: { code: string; name: string } | null;
 }
 
+interface ProcurementTaskTemplate {
+  id: string;
+  package_number: string;
+  package_description: string;
+  trade: string | null;
+  brief_scope: string | null;
+}
+
 const DEFAULT_TASK_STEPS: Array<{
   no: string; code: string; name: string; duration: string; role: string; required: boolean;
 }> = [];
@@ -145,6 +153,83 @@ export default function TaskTemplates() {
   const [designStageId, setDesignStageId] = React.useState<string>("");
   const [designNote, setDesignNote] = React.useState("");
 
+  // Procurement Task Templates state
+  const [procurementTasks, setProcurementTasks] = React.useState<ProcurementTaskTemplate[]>([]);
+  const [procurementLoading, setProcurementLoading] = React.useState(false);
+  const [procurementDialogOpen, setProcurementDialogOpen] = React.useState(false);
+  const [procurementSaving, setProcurementSaving] = React.useState(false);
+  const [editingProcurementId, setEditingProcurementId] = React.useState<string | null>(null);
+  const [procPackageNumber, setProcPackageNumber] = React.useState("");
+  const [procPackageDescription, setProcPackageDescription] = React.useState("");
+  const [procTrade, setProcTrade] = React.useState("");
+  const [procBriefScope, setProcBriefScope] = React.useState("");
+
+  const resetProcurementForm = () => {
+    setEditingProcurementId(null);
+    setProcPackageNumber("");
+    setProcPackageDescription("");
+    setProcTrade("");
+    setProcBriefScope("");
+  };
+
+  const loadProcurementTasks = React.useCallback(async () => {
+    setProcurementLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("master_procurement_task_templates")
+      .select("id, package_number, package_description, trade, brief_scope")
+      .eq("is_active", true)
+      .order("package_number");
+    setProcurementLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setProcurementTasks((data ?? []) as ProcurementTaskTemplate[]);
+  }, []);
+
+  const handleSaveProcurementTask = async () => {
+    if (!procPackageNumber.trim()) { toast.error("Package Number is required"); return; }
+    if (!procPackageDescription.trim()) { toast.error("Package Description is required"); return; }
+
+    setProcurementSaving(true);
+    const payload = {
+      package_number: procPackageNumber.trim(),
+      package_description: procPackageDescription.trim(),
+      trade: procTrade.trim() || null,
+      brief_scope: procBriefScope.trim() || null,
+    };
+    const query = editingProcurementId
+      ? (supabase as any).from("master_procurement_task_templates").update(payload).eq("id", editingProcurementId)
+      : (supabase as any).from("master_procurement_task_templates").insert(payload);
+    const { error } = await query;
+    setProcurementSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That Package Number is already in use." : error.message);
+      return;
+    }
+    toast.success(editingProcurementId ? "Procurement task updated" : "Procurement task created");
+    setProcurementDialogOpen(false);
+    resetProcurementForm();
+    void loadProcurementTasks();
+  };
+
+  const handleEditProcurementTask = (row: ProcurementTaskTemplate) => {
+    setEditingProcurementId(row.id);
+    setProcPackageNumber(row.package_number);
+    setProcPackageDescription(row.package_description);
+    setProcTrade(row.trade ?? "");
+    setProcBriefScope(row.brief_scope ?? "");
+    setProcurementDialogOpen(true);
+  };
+
+  const handleDeleteProcurementTask = async (id: string) => {
+    if (!confirm("Delete this procurement task template?")) return;
+    const { error } = await (supabase as any)
+      .from("master_procurement_task_templates")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Procurement task deleted");
+    void loadProcurementTasks();
+  };
+
   const resetDesignForm = () => {
     setEditingDesignId(null);
     setDesignTaskCode("");
@@ -152,6 +237,7 @@ export default function TaskTemplates() {
     setDesignStageId("");
     setDesignNote("");
   };
+
 
   const loadDesignStages = React.useCallback(async () => {
     const { data, error } = await (supabase as any)
@@ -547,7 +633,8 @@ export default function TaskTemplates() {
     void loadTemplates();
     void loadDesignStages();
     void loadDesignTasks();
-  }, [loadElements, loadTemplates, loadDesignStages, loadDesignTasks]);
+    void loadProcurementTasks();
+  }, [loadElements, loadTemplates, loadDesignStages, loadDesignTasks, loadProcurementTasks]);
 
   const handleCreateElement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -651,6 +738,7 @@ export default function TaskTemplates() {
               <TabsTrigger value="elements">Elements Template</TabsTrigger>
               <TabsTrigger value="tasks">Construction Task Template</TabsTrigger>
               <TabsTrigger value="design">Design Task Template</TabsTrigger>
+              <TabsTrigger value="procurement">Procurement Task Template</TabsTrigger>
             </TabsList>
             {activeTab === "elements" && (
               <DialogTrigger asChild>
@@ -1410,6 +1498,98 @@ export default function TaskTemplates() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="procurement">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle>Procurement Task Template</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Reusable procurement packages defined by package number, trade and scope.
+                </p>
+              </div>
+              <Button type="button" onClick={() => { resetProcurementForm(); setProcurementDialogOpen(true); }}>
+                + Create Task
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-40">Package Number</TableHead>
+                    <TableHead>Package Description</TableHead>
+                    <TableHead className="w-40">Trade</TableHead>
+                    <TableHead>Brief Scope</TableHead>
+                    <TableHead className="w-32 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {procurementLoading && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">Loading...</TableCell></TableRow>
+                  )}
+                  {!procurementLoading && procurementTasks.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
+                  )}
+                  {!procurementLoading && procurementTasks.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{row.package_number}</TableCell>
+                      <TableCell className="font-medium">{row.package_description}</TableCell>
+                      <TableCell>
+                        {row.trade ? <Badge variant="secondary">{row.trade}</Badge> : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{row.brief_scope || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditProcurementTask(row)}>
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteProcurementTask(row.id)}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <Dialog open={procurementDialogOpen} onOpenChange={(open) => { setProcurementDialogOpen(open); if (!open) resetProcurementForm(); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingProcurementId ? "Edit Procurement Task" : "Create Procurement Task"}</DialogTitle>
+              <DialogDescription>
+                Define a reusable procurement package with trade and brief scope.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="proc-package-number">Package Number</Label>
+                <Input id="proc-package-number" value={procPackageNumber} onChange={(e) => setProcPackageNumber(e.target.value)} placeholder="PKG-001" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-package-description">Package Description</Label>
+                <Input id="proc-package-description" value={procPackageDescription} onChange={(e) => setProcPackageDescription(e.target.value)} placeholder="Aluminium & Glazing Works" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-trade">Trade</Label>
+                <Input id="proc-trade" value={procTrade} onChange={(e) => setProcTrade(e.target.value)} placeholder="Facade / MEP / Civil ..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-brief-scope">Brief Scope</Label>
+                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={4} placeholder="Summarize what is included in this package" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setProcurementDialogOpen(false); resetProcurementForm(); }}>Cancel</Button>
+              <Button type="button" onClick={handleSaveProcurementTask} disabled={procurementSaving}>
+                {procurementSaving ? "Saving..." : editingProcurementId ? "Save" : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={designDialogOpen} onOpenChange={(open) => { setDesignDialogOpen(open); if (!open) resetDesignForm(); }}>
           <DialogContent className="sm:max-w-lg">

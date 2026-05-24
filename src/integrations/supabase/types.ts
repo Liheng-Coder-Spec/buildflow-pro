@@ -3099,6 +3099,42 @@ export type Database = {
           },
         ]
       }
+      master_procurement_task_templates: {
+        Row: {
+          brief_scope: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          package_description: string
+          package_number: string
+          trade: string | null
+          updated_at: string
+        }
+        Insert: {
+          brief_scope?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          package_description: string
+          package_number: string
+          trade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brief_scope?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          package_description?: string
+          package_number?: string
+          trade?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       master_task_template_checklist: {
         Row: {
           id: string
