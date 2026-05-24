@@ -170,7 +170,12 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
         .from("master_design_task_templates")
         .select("id, task_code, task_name, note, design_stage_id, design_stages:design_stage_id(code, name)")
         .eq("is_active", true),
-    ]).then(([tpl, dsn]: any[]) => {
+      (supabase as any)
+        .from("master_procurement_task_templates")
+        .select("id, package_number, package_description, trade, brief_scope, note")
+        .eq("is_active", true)
+        .order("package_number", { ascending: true }),
+    ]).then(([tpl, dsn, prc]: any[]) => {
       setLoading(false);
       if (tpl.error) toast.error(tpl.error.message);
       else setTemplates(tpl.data ?? []);
@@ -179,16 +184,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
         const rows = (dsn.data ?? []) as DesignTaskRow[];
         setDesignTasks(sortByCodeSeries(rows.map((r) => ({ ...r, code: r.task_code }))) as any);
       }
+      if (prc.error) toast.error(prc.error.message);
+      else setProcurementTasks((prc.data ?? []) as ProcurementTaskRow[]);
     });
   }, [open]);
 
   const reset = () => {
     setSource("construction");
-    setTemplateId(""); setDesignTaskId("");
+    setTemplateId(""); setDesignTaskId(""); setProcurementTaskId("");
     setWbsNodeId(null); setWbsNode(null);
     setPlannedStart(new Date().toISOString().slice(0, 10));
-    setQuantity("1"); setGroupList(""); setDesignDuration("1");
-    setSearch(""); setDisciplineFilter("all"); setStageFilter("all");
+    setQuantity("1"); setGroupList(""); setDesignDuration("1"); setProcurementDuration("1");
+    setSearch(""); setDisciplineFilter("all"); setStageFilter("all"); setTradeFilter("all");
   };
 
   // Distinct filter options
