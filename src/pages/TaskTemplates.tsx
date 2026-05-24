@@ -164,6 +164,7 @@ export default function TaskTemplates() {
   const [procPackageDescription, setProcPackageDescription] = React.useState("");
   const [procTrade, setProcTrade] = React.useState("");
   const [procBriefScope, setProcBriefScope] = React.useState("");
+  const [procNote, setProcNote] = React.useState("");
 
   const resetProcurementForm = () => {
     setEditingProcurementId(null);
@@ -171,6 +172,7 @@ export default function TaskTemplates() {
     setProcPackageDescription("");
     setProcTrade("");
     setProcBriefScope("");
+    setProcNote("");
   };
 
   const loadProcurementTasks = React.useCallback(async () => {
