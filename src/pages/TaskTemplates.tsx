@@ -1499,6 +1499,98 @@ export default function TaskTemplates() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="procurement">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle>Procurement Task Template</CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Reusable procurement packages defined by package number, trade and scope.
+                </p>
+              </div>
+              <Button type="button" onClick={() => { resetProcurementForm(); setProcurementDialogOpen(true); }}>
+                + Create Task
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-40">Package Number</TableHead>
+                    <TableHead>Package Description</TableHead>
+                    <TableHead className="w-40">Trade</TableHead>
+                    <TableHead>Brief Scope</TableHead>
+                    <TableHead className="w-32 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {procurementLoading && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">Loading...</TableCell></TableRow>
+                  )}
+                  {!procurementLoading && procurementTasks.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
+                  )}
+                  {!procurementLoading && procurementTasks.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{row.package_number}</TableCell>
+                      <TableCell className="font-medium">{row.package_description}</TableCell>
+                      <TableCell>
+                        {row.trade ? <Badge variant="secondary">{row.trade}</Badge> : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{row.brief_scope || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditProcurementTask(row)}>
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteProcurementTask(row.id)}>
+                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <Dialog open={procurementDialogOpen} onOpenChange={(open) => { setProcurementDialogOpen(open); if (!open) resetProcurementForm(); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{editingProcurementId ? "Edit Procurement Task" : "Create Procurement Task"}</DialogTitle>
+              <DialogDescription>
+                Define a reusable procurement package with trade and brief scope.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="proc-package-number">Package Number</Label>
+                <Input id="proc-package-number" value={procPackageNumber} onChange={(e) => setProcPackageNumber(e.target.value)} placeholder="PKG-001" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-package-description">Package Description</Label>
+                <Input id="proc-package-description" value={procPackageDescription} onChange={(e) => setProcPackageDescription(e.target.value)} placeholder="Aluminium & Glazing Works" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-trade">Trade</Label>
+                <Input id="proc-trade" value={procTrade} onChange={(e) => setProcTrade(e.target.value)} placeholder="Facade / MEP / Civil ..." />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-brief-scope">Brief Scope</Label>
+                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={4} placeholder="Summarize what is included in this package" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setProcurementDialogOpen(false); resetProcurementForm(); }}>Cancel</Button>
+              <Button type="button" onClick={handleSaveProcurementTask} disabled={procurementSaving}>
+                {procurementSaving ? "Saving..." : editingProcurementId ? "Save" : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={designDialogOpen} onOpenChange={(open) => { setDesignDialogOpen(open); if (!open) resetDesignForm(); }}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
