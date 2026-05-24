@@ -171,14 +171,26 @@ export default function TaskTemplates() {
     const { data, error } = await (supabase as any)
       .from("master_design_task_templates")
       .select("id, task_code, task_name, design_stage_id, note, design_stages(code, name)")
-      .eq("is_active", true)
-      .order("task_code");
+      .eq("is_active", true);
     setDesignLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    setDesignTasks((data ?? []) as DesignTaskTemplate[]);
+    const rows = (data ?? []) as DesignTaskTemplate[];
+    rows.sort((a, b) => {
+      const extract = (code: string) => {
+        const match = code.match(/^([A-Za-z]+)-(\d+)$/);
+        if (match) return { prefix: match[1].toUpperCase(), num: parseInt(match[2], 10) };
+        const numMatch = code.match(/(\d+)/);
+        return { prefix: code.replace(/\d+/g, "").toUpperCase(), num: numMatch ? parseInt(numMatch[1], 10) : 0 };
+      };
+      const aa = extract(a.task_code);
+      const bb = extract(b.task_code);
+      if (aa.prefix !== bb.prefix) return aa.prefix.localeCompare(bb.prefix);
+      return aa.num - bb.num;
+    });
+    setDesignTasks(rows);
   }, []);
 
   const handleSaveDesignTask = async () => {
