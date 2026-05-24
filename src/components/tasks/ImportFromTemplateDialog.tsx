@@ -345,7 +345,7 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
           newValues: { template: selectedTemplate.template_code, count: rows.length, groups: groups.length },
           severity: "medium",
         });
-      } else {
+      } else if (source === "design") {
         if (!selectedDesign) throw new Error("Pick a design task");
         const days = Math.max(1, Math.floor(Number(designDuration) || 1));
         const hours = days * 8;
@@ -385,6 +385,49 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
           newValues: { task: selectedDesign.task_code, stage: stageLabel },
           severity: "low",
         });
+      } else {
+        if (!selectedProcurement) throw new Error("Pick a procurement task");
+        const days = Math.max(1, Math.floor(Number(procurementDuration) || 1));
+        const hours = days * 8;
+        const workflow_type: TaskWorkflowType = "procurement";
+        const category: TaskCategory = CATEGORIES_BY_WORKFLOW[workflow_type][0];
+        const tradeLabel = selectedProcurement.trade || "Procurement";
+        const descParts = [
+          selectedProcurement.brief_scope,
+          selectedProcurement.note ? `Note: ${selectedProcurement.note}` : "",
+          `[${selectedProcurement.package_number} · ${tradeLabel}]`,
+        ].filter(Boolean);
+        rows.push({
+          project_id: activeProject.id,
+          wbs_node_id: wbsNodeId,
+          location_zone: `${wbsNode.path_text} · ${tradeLabel}`,
+          title: `${selectedProcurement.package_number} · ${selectedProcurement.package_description}`,
+          description: descParts.join("\n").trim(),
+          task_type: "other",
+          priority: "medium",
+          status: "open" as TaskStatus,
+          department: "construction" as Department,
+          dept_status: DEPT_INITIAL_STAGE["construction"],
+          discipline_meta: {},
+          workflow_type,
+          category,
+          planned_start: plannedStart,
+          planned_end: addDays(plannedStart, days - 1),
+          estimated_hours: hours,
+          created_by: user?.id,
+        });
+
+        await recordAuditEventSafe({
+          moduleCode: "TASK",
+          entityType: "procurement_task_template_import",
+          entityId: selectedProcurement.id,
+          actionType: "CREATE",
+          actionLabel: "Procurement Task Imported from Template",
+          projectId: activeProject.id,
+          wbsNodeId,
+          newValues: { package: selectedProcurement.package_number, trade: tradeLabel },
+          severity: "low",
+        });
       }
 
       const { error: insErr } = await (supabase as any).from("tasks").insert(rows);
@@ -401,9 +444,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
     }
   };
 
-  const list = source === "construction" ? filteredTemplates : filteredDesigns;
-  const selectedId = source === "construction" ? templateId : designTaskId;
-  const setSelectedId = source === "construction" ? setTemplateId : setDesignTaskId;
+  const list =
+    source === "construction" ? filteredTemplates :
+    source === "design" ? filteredDesigns :
+    filteredProcurements;
+  const selectedId =
+    source === "construction" ? templateId :
+    source === "design" ? designTaskId :
+    procurementTaskId;
+  const setSelectedId =
+    source === "construction" ? setTemplateId :
+    source === "design" ? setDesignTaskId :
+    setProcurementTaskId;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
