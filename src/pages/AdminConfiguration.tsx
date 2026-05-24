@@ -19,6 +19,12 @@ const COLUMNS: Record<string, ColumnDef[]> = {
     { key: "sort_order", label: "Sort Order", type: "number" },
     { key: "is_active", label: "Active", type: "boolean" },
   ],
+  design_stages: [
+    { key: "code", label: "Code", required: true, placeholder: "e.g. SD, DD, CD" },
+    { key: "name", label: "Name", required: true, placeholder: "e.g. Schematic Design" },
+    { key: "sort_order", label: "Sort Order", type: "number" },
+    { key: "is_active", label: "Active", type: "boolean" },
+  ],
   project_types: [
     { key: "code", label: "Code", required: true, placeholder: "e.g. tender" },
     { key: "name", label: "Name", required: true, placeholder: "e.g. Tender / Pre-Contract" },
