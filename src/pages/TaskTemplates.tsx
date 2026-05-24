@@ -1586,7 +1586,11 @@ export default function TaskTemplates() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="proc-brief-scope">Brief Scope</Label>
-                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={4} placeholder="Summarize what is included in this package" />
+                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={3} placeholder="Summarize what is included in this package" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-note">Note</Label>
+                <Textarea id="proc-note" value={procNote} onChange={(e) => setProcNote(e.target.value)} rows={2} placeholder="Optional remarks or internal notes" />
               </div>
             </div>
             <DialogFooter>
