@@ -110,6 +110,7 @@ const COLUMNS: Record<string, ColumnDef[]> = {
 
 const DESCRIPTION: Record<string, string> = {
   disciplines: "Configure discipline types used across design and execution modules.",
+  design_stages: "Manage design stage codes (e.g. Schematic Design, DD, CD) used by Master Task Templates.",
   project_types: "Manage project classification types (tender, awarded, internal, etc.).",
   wbs_node_types: "Define node types available in the WBS tree structure.",
   document_types: "Manage document classification codes used in the document register.",
