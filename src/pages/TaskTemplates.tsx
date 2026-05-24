@@ -67,6 +67,7 @@ interface ProcurementTaskTemplate {
   package_description: string;
   trade: string | null;
   brief_scope: string | null;
+  note: string | null;
 }
 
 const DEFAULT_TASK_STEPS: Array<{
