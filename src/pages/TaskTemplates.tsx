@@ -61,6 +61,14 @@ interface DesignTaskTemplate {
   design_stages?: { code: string; name: string } | null;
 }
 
+interface ProcurementTaskTemplate {
+  id: string;
+  package_number: string;
+  package_description: string;
+  trade: string | null;
+  brief_scope: string | null;
+}
+
 const DEFAULT_TASK_STEPS: Array<{
   no: string; code: string; name: string; duration: string; role: string; required: boolean;
 }> = [];
