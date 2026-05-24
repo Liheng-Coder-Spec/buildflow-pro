@@ -1525,6 +1525,7 @@ export default function TaskTemplates() {
                     <TableHead>Package Description</TableHead>
                     <TableHead className="w-40">Trade</TableHead>
                     <TableHead>Brief Scope</TableHead>
+                    <TableHead>Note</TableHead>
                     <TableHead className="w-32 text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
