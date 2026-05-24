@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check, ChevronsUpDown, ClipboardList, Filter, Layers3, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronsUpDown, ClipboardList, Filter, Layers3, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -1330,15 +1330,24 @@ export default function TaskTemplates() {
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-muted-foreground">{item.note || "-"}</TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => openEditElement(item)}>
-                            <Pencil className="mr-1 h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteElement(item)}>
-                            <Trash2 className="mr-1 h-3.5 w-3.5" />
-                            Delete
-                          </Button>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEditElement(item)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteElement(item)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1422,20 +1431,26 @@ export default function TaskTemplates() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{tpl.discipline ?? "—"}</Badge>
-                        <button
-                          className="text-muted-foreground hover:text-foreground"
-                          onClick={() => handleEditTemplate(tpl)}
-                          title="Edit"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteTemplate(tpl.id)}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className="text-muted-foreground hover:text-foreground"
+                              title="More options"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditTemplate(tpl)}>
+                              <Pencil className="mr-2 h-3.5 w-3.5" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteTemplate(tpl.id)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="mr-2 h-3.5 w-3.5" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))}
@@ -1487,13 +1502,24 @@ export default function TaskTemplates() {
                       </TableCell>
                       <TableCell className="text-muted-foreground">{row.note || "-"}</TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditDesignTask(row)}>
-                            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteDesignTask(row.id)}>
-                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
-                          </Button>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditDesignTask(row)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteDesignTask(row.id)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1546,13 +1572,24 @@ export default function TaskTemplates() {
                       <TableCell className="text-muted-foreground">{row.brief_scope || "-"}</TableCell>
                       <TableCell className="text-muted-foreground">{row.note || "-"}</TableCell>
                       <TableCell>
-                        <div className="flex justify-end gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditProcurementTask(row)}>
-                            <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
-                          </Button>
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteProcurementTask(row.id)}>
-                            <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
-                          </Button>
+                        <div className="flex justify-end">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditProcurementTask(row)}>
+                                <Pencil className="mr-2 h-3.5 w-3.5" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDeleteProcurementTask(row.id)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
