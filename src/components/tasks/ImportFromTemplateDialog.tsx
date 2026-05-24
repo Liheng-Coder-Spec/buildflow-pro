@@ -600,6 +600,32 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                   </div>
                 </button>
               ))}
+              {source === "procurement" && filteredProcurements.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelectedId(t.id)}
+                  className={cn(
+                    "w-full text-left p-2.5 hover:bg-muted/60 transition-colors flex items-start gap-2",
+                    procurementTaskId === t.id && "bg-primary/5 ring-1 ring-primary/40"
+                  )}
+                >
+                  {procurementTaskId === t.id ? (
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {t.package_number} · {t.package_description}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {t.trade || "No trade"}
+                      {t.brief_scope ? ` — ${t.brief_scope}` : ""}
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
