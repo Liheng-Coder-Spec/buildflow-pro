@@ -649,7 +649,7 @@ export default function TaskTemplates() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <TabsList>
               <TabsTrigger value="elements">Elements Template</TabsTrigger>
-              <TabsTrigger value="tasks">Task Template</TabsTrigger>
+              <TabsTrigger value="tasks">Construction Task Template</TabsTrigger>
               <TabsTrigger value="design">Design Task Template</TabsTrigger>
             </TabsList>
             {activeTab === "elements" && (
@@ -1260,7 +1260,7 @@ export default function TaskTemplates() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
-                <CardTitle>Task Template</CardTitle>
+                <CardTitle>Construction Task Template</CardTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Prebuilt task templates ready to use across construction workflows.
                 </p>
