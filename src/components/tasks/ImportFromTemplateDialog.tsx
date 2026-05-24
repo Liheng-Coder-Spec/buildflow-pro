@@ -132,15 +132,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
   const [source, setSource] = useState<SourceKind>("construction");
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [designTasks, setDesignTasks] = useState<DesignTaskRow[]>([]);
+  const [procurementTasks, setProcurementTasks] = useState<ProcurementTaskRow[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
   const [disciplineFilter, setDisciplineFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [tradeFilter, setTradeFilter] = useState<string>("all");
 
   // Selection
   const [templateId, setTemplateId] = useState("");
   const [designTaskId, setDesignTaskId] = useState("");
+  const [procurementTaskId, setProcurementTaskId] = useState("");
 
   const [wbsNodeId, setWbsNodeId] = useState<string | null>(null);
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
@@ -148,9 +151,11 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
   const [quantity, setQuantity] = useState<string>("1");
   const [groupList, setGroupList] = useState<string>("");
   const [designDuration, setDesignDuration] = useState<string>("1");
+  const [procurementDuration, setProcurementDuration] = useState<string>("1");
 
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const selectedDesign = useMemo(() => designTasks.find((t) => t.id === designTaskId), [designTasks, designTaskId]);
+  const selectedProcurement = useMemo(() => procurementTasks.find((t) => t.id === procurementTaskId), [procurementTasks, procurementTaskId]);
 
   useEffect(() => {
     if (!open) return;
