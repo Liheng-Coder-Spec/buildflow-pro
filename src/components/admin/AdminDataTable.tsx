@@ -70,6 +70,7 @@ export function AdminDataTable({ title, description, tableName, columns, orderBy
   const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
   const [editId, setEditId] = React.useState<string | null>(null);
+  const [originalRow, setOriginalRow] = React.useState<AdminRow | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [form, setForm] = React.useState<AdminForm>({});
 
@@ -92,6 +93,7 @@ export function AdminDataTable({ title, description, tableName, columns, orderBy
     });
     setForm(init);
     setEditId(null);
+    setOriginalRow(null);
   };
 
   const openEdit = (row: AdminRow) => {
@@ -102,7 +104,15 @@ export function AdminDataTable({ title, description, tableName, columns, orderBy
     });
     setForm(init);
     setEditId(String(row[idField] ?? ""));
+    setOriginalRow(row);
     setOpen(true);
+  };
+
+  const friendlyError = (msg: string): string => {
+    if (msg.includes("duplicate key") && /_code_|_key/.test(msg)) {
+      return "That code is already in use. Please pick a different code.";
+    }
+    return msg;
   };
 
   const save = async () => {
@@ -112,11 +122,28 @@ export function AdminDataTable({ title, description, tableName, columns, orderBy
       return;
     }
     setSaving(true);
-    const payload = { ...form };
     if (editId) {
-      const before = items.find((item) => String(item[idField]) === editId) ?? null;
+      // Only send changed fields to avoid re-writing unique columns unnecessarily
+      const payload: Partial<AdminForm> = {};
+      columns.forEach((c) => {
+        const originalRaw = originalRow ? originalRow[c.key] : undefined;
+        const normOriginal = c.type === "boolean"
+          ? Boolean(originalRaw)
+          : valueToFormValue(originalRaw);
+        const current = form[c.key];
+        const normCurrent = c.type === "boolean" ? Boolean(current) : current;
+        if (normOriginal !== normCurrent) {
+          payload[c.key] = current;
+        }
+      });
+      if (Object.keys(payload).length === 0) {
+        setSaving(false);
+        setOpen(false);
+        resetForm();
+        return;
+      }
       const { error } = await adminDb.from(tableName).update(payload).eq(idField, editId);
-      if (error) toast.error(error.message);
+      if (error) toast.error(friendlyError(error.message));
       else {
         toast.success("Updated");
         await recordAuditEventSafe({
@@ -125,15 +152,16 @@ export function AdminDataTable({ title, description, tableName, columns, orderBy
           entityId: editId,
           actionType: "CONFIG_CHANGE",
           actionLabel: `Updated ${title}`,
-          oldValues: before as unknown as Json,
+          oldValues: originalRow as unknown as Json,
           newValues: payload as unknown as Json,
           changedFields: Object.keys(payload),
           severity: tableName.includes("notification") || tableName.includes("approval") ? "high" : "medium"
         });
       }
     } else {
+      const payload = { ...form };
       const { error } = await adminDb.from(tableName).insert(payload);
-      if (error) toast.error(error.message);
+      if (error) toast.error(friendlyError(error.message));
       else {
         toast.success("Created");
         await recordAuditEventSafe({
