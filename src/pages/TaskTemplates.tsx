@@ -46,6 +46,21 @@ const TASK_GROUPING_METHODS = ["Generate by Quantity", "Generate by Location", "
 const QUANTITY_UNITS = ["Each", "m2", "m3", "m", "Set"] as const;
 const TASK_STATUSES = ["Open", "Assigned", "On Hold"] as const;
 
+interface DesignStageOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface DesignTaskTemplate {
+  id: string;
+  task_code: string;
+  task_name: string;
+  design_stage_id: string | null;
+  note: string | null;
+  design_stages?: { code: string; name: string } | null;
+}
+
 const DEFAULT_TASK_STEPS: Array<{
   no: string; code: string; name: string; duration: string; role: string; required: boolean;
 }> = [];
