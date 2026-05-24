@@ -1,0 +1,1 @@
+ALTER TABLE public.master_procurement_task_templates ADD COLUMN note TEXT;

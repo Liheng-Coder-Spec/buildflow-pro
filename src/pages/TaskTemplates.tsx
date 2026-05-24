@@ -67,6 +67,7 @@ interface ProcurementTaskTemplate {
   package_description: string;
   trade: string | null;
   brief_scope: string | null;
+  note: string | null;
 }
 
 const DEFAULT_TASK_STEPS: Array<{
@@ -163,6 +164,7 @@ export default function TaskTemplates() {
   const [procPackageDescription, setProcPackageDescription] = React.useState("");
   const [procTrade, setProcTrade] = React.useState("");
   const [procBriefScope, setProcBriefScope] = React.useState("");
+  const [procNote, setProcNote] = React.useState("");
 
   const resetProcurementForm = () => {
     setEditingProcurementId(null);
@@ -170,13 +172,14 @@ export default function TaskTemplates() {
     setProcPackageDescription("");
     setProcTrade("");
     setProcBriefScope("");
+    setProcNote("");
   };
 
   const loadProcurementTasks = React.useCallback(async () => {
     setProcurementLoading(true);
     const { data, error } = await (supabase as any)
       .from("master_procurement_task_templates")
-      .select("id, package_number, package_description, trade, brief_scope")
+      .select("id, package_number, package_description, trade, brief_scope, note")
       .eq("is_active", true)
       .order("package_number");
     setProcurementLoading(false);
@@ -194,6 +197,7 @@ export default function TaskTemplates() {
       package_description: procPackageDescription.trim(),
       trade: procTrade.trim() || null,
       brief_scope: procBriefScope.trim() || null,
+      note: procNote.trim() || null,
     };
     const query = editingProcurementId
       ? (supabase as any).from("master_procurement_task_templates").update(payload).eq("id", editingProcurementId)
@@ -216,6 +220,7 @@ export default function TaskTemplates() {
     setProcPackageDescription(row.package_description);
     setProcTrade(row.trade ?? "");
     setProcBriefScope(row.brief_scope ?? "");
+    setProcNote(row.note ?? "");
     setProcurementDialogOpen(true);
   };
 
@@ -1520,15 +1525,16 @@ export default function TaskTemplates() {
                     <TableHead>Package Description</TableHead>
                     <TableHead className="w-40">Trade</TableHead>
                     <TableHead>Brief Scope</TableHead>
+                    <TableHead>Note</TableHead>
                     <TableHead className="w-32 text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {procurementLoading && (
-                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">Loading...</TableCell></TableRow>
                   )}
                   {!procurementLoading && procurementTasks.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
                   )}
                   {!procurementLoading && procurementTasks.map((row) => (
                     <TableRow key={row.id}>
@@ -1538,6 +1544,7 @@ export default function TaskTemplates() {
                         {row.trade ? <Badge variant="secondary">{row.trade}</Badge> : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{row.brief_scope || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.note || "-"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           <Button type="button" variant="outline" size="sm" onClick={() => handleEditProcurementTask(row)}>
@@ -1579,7 +1586,11 @@ export default function TaskTemplates() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="proc-brief-scope">Brief Scope</Label>
-                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={4} placeholder="Summarize what is included in this package" />
+                <Textarea id="proc-brief-scope" value={procBriefScope} onChange={(e) => setProcBriefScope(e.target.value)} rows={3} placeholder="Summarize what is included in this package" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proc-note">Note</Label>
+                <Textarea id="proc-note" value={procNote} onChange={(e) => setProcNote(e.target.value)} rows={2} placeholder="Optional remarks or internal notes" />
               </div>
             </div>
             <DialogFooter>

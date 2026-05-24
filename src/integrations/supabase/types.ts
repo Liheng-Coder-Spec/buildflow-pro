@@ -3106,6 +3106,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_active: boolean
+          note: string | null
           package_description: string
           package_number: string
           trade: string | null
@@ -3117,6 +3118,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          note?: string | null
           package_description: string
           package_number: string
           trade?: string | null
@@ -3128,6 +3130,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_active?: boolean
+          note?: string | null
           package_description?: string
           package_number?: string
           trade?: string | null
