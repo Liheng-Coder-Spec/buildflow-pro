@@ -26,7 +26,7 @@ import { TaskStatus } from "@/lib/taskMeta";
 import { recordAuditEventSafe } from "@/services/auditService";
 import { cn } from "@/lib/utils";
 
-type SourceKind = "construction" | "design";
+type SourceKind = "construction" | "design" | "procurement";
 
 interface TemplateRow {
   id: string;
@@ -48,6 +48,15 @@ interface DesignTaskRow {
   note: string | null;
   design_stage_id: string | null;
   design_stages: { code: string; name: string } | null;
+}
+
+interface ProcurementTaskRow {
+  id: string;
+  package_number: string;
+  package_description: string;
+  trade: string | null;
+  brief_scope: string | null;
+  note: string | null;
 }
 
 interface StepRow {
@@ -123,15 +132,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
   const [source, setSource] = useState<SourceKind>("construction");
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [designTasks, setDesignTasks] = useState<DesignTaskRow[]>([]);
+  const [procurementTasks, setProcurementTasks] = useState<ProcurementTaskRow[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
   const [disciplineFilter, setDisciplineFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [tradeFilter, setTradeFilter] = useState<string>("all");
 
   // Selection
   const [templateId, setTemplateId] = useState("");
   const [designTaskId, setDesignTaskId] = useState("");
+  const [procurementTaskId, setProcurementTaskId] = useState("");
 
   const [wbsNodeId, setWbsNodeId] = useState<string | null>(null);
   const [wbsNode, setWbsNode] = useState<WbsTreeNode | null>(null);
@@ -139,9 +151,11 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
   const [quantity, setQuantity] = useState<string>("1");
   const [groupList, setGroupList] = useState<string>("");
   const [designDuration, setDesignDuration] = useState<string>("1");
+  const [procurementDuration, setProcurementDuration] = useState<string>("1");
 
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
   const selectedDesign = useMemo(() => designTasks.find((t) => t.id === designTaskId), [designTasks, designTaskId]);
+  const selectedProcurement = useMemo(() => procurementTasks.find((t) => t.id === procurementTaskId), [procurementTasks, procurementTaskId]);
 
   useEffect(() => {
     if (!open) return;
@@ -156,7 +170,12 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
         .from("master_design_task_templates")
         .select("id, task_code, task_name, note, design_stage_id, design_stages:design_stage_id(code, name)")
         .eq("is_active", true),
-    ]).then(([tpl, dsn]: any[]) => {
+      (supabase as any)
+        .from("master_procurement_task_templates")
+        .select("id, package_number, package_description, trade, brief_scope, note")
+        .eq("is_active", true)
+        .order("package_number", { ascending: true }),
+    ]).then(([tpl, dsn, prc]: any[]) => {
       setLoading(false);
       if (tpl.error) toast.error(tpl.error.message);
       else setTemplates(tpl.data ?? []);
@@ -165,16 +184,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
         const rows = (dsn.data ?? []) as DesignTaskRow[];
         setDesignTasks(sortByCodeSeries(rows.map((r) => ({ ...r, code: r.task_code }))) as any);
       }
+      if (prc.error) toast.error(prc.error.message);
+      else setProcurementTasks((prc.data ?? []) as ProcurementTaskRow[]);
     });
   }, [open]);
 
   const reset = () => {
     setSource("construction");
-    setTemplateId(""); setDesignTaskId("");
+    setTemplateId(""); setDesignTaskId(""); setProcurementTaskId("");
     setWbsNodeId(null); setWbsNode(null);
     setPlannedStart(new Date().toISOString().slice(0, 10));
-    setQuantity("1"); setGroupList(""); setDesignDuration("1");
-    setSearch(""); setDisciplineFilter("all"); setStageFilter("all");
+    setQuantity("1"); setGroupList(""); setDesignDuration("1"); setProcurementDuration("1");
+    setSearch(""); setDisciplineFilter("all"); setStageFilter("all"); setTradeFilter("all");
   };
 
   // Distinct filter options
@@ -218,6 +239,26 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
       );
     });
   }, [designTasks, search, stageFilter]);
+
+  const tradeOptions = useMemo(() => {
+    const set = new Set(procurementTasks.map((t) => t.trade ?? "").filter(Boolean));
+    return Array.from(set).sort();
+  }, [procurementTasks]);
+
+  const filteredProcurements = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return procurementTasks.filter((t) => {
+      if (tradeFilter !== "all" && (t.trade ?? "") !== tradeFilter) return false;
+      if (!q) return true;
+      return (
+        t.package_number.toLowerCase().includes(q) ||
+        t.package_description.toLowerCase().includes(q) ||
+        (t.trade ?? "").toLowerCase().includes(q) ||
+        (t.brief_scope ?? "").toLowerCase().includes(q) ||
+        (t.note ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [procurementTasks, search, tradeFilter]);
 
   const groupingKind = (selectedTemplate?.grouping_method || "").toLowerCase();
   const isByQty = groupingKind.includes("quantity");
@@ -304,7 +345,7 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
           newValues: { template: selectedTemplate.template_code, count: rows.length, groups: groups.length },
           severity: "medium",
         });
-      } else {
+      } else if (source === "design") {
         if (!selectedDesign) throw new Error("Pick a design task");
         const days = Math.max(1, Math.floor(Number(designDuration) || 1));
         const hours = days * 8;
@@ -344,6 +385,49 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
           newValues: { task: selectedDesign.task_code, stage: stageLabel },
           severity: "low",
         });
+      } else {
+        if (!selectedProcurement) throw new Error("Pick a procurement task");
+        const days = Math.max(1, Math.floor(Number(procurementDuration) || 1));
+        const hours = days * 8;
+        const workflow_type: TaskWorkflowType = "procurement";
+        const category: TaskCategory = CATEGORIES_BY_WORKFLOW[workflow_type][0];
+        const tradeLabel = selectedProcurement.trade || "Procurement";
+        const descParts = [
+          selectedProcurement.brief_scope,
+          selectedProcurement.note ? `Note: ${selectedProcurement.note}` : "",
+          `[${selectedProcurement.package_number} · ${tradeLabel}]`,
+        ].filter(Boolean);
+        rows.push({
+          project_id: activeProject.id,
+          wbs_node_id: wbsNodeId,
+          location_zone: `${wbsNode.path_text} · ${tradeLabel}`,
+          title: `${selectedProcurement.package_number} · ${selectedProcurement.package_description}`,
+          description: descParts.join("\n").trim(),
+          task_type: "other",
+          priority: "medium",
+          status: "open" as TaskStatus,
+          department: "construction" as Department,
+          dept_status: DEPT_INITIAL_STAGE["construction"],
+          discipline_meta: {},
+          workflow_type,
+          category,
+          planned_start: plannedStart,
+          planned_end: addDays(plannedStart, days - 1),
+          estimated_hours: hours,
+          created_by: user?.id,
+        });
+
+        await recordAuditEventSafe({
+          moduleCode: "TASK",
+          entityType: "procurement_task_template_import",
+          entityId: selectedProcurement.id,
+          actionType: "CREATE",
+          actionLabel: "Procurement Task Imported from Template",
+          projectId: activeProject.id,
+          wbsNodeId,
+          newValues: { package: selectedProcurement.package_number, trade: tradeLabel },
+          severity: "low",
+        });
       }
 
       const { error: insErr } = await (supabase as any).from("tasks").insert(rows);
@@ -360,9 +444,18 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
     }
   };
 
-  const list = source === "construction" ? filteredTemplates : filteredDesigns;
-  const selectedId = source === "construction" ? templateId : designTaskId;
-  const setSelectedId = source === "construction" ? setTemplateId : setDesignTaskId;
+  const list =
+    source === "construction" ? filteredTemplates :
+    source === "design" ? filteredDesigns :
+    filteredProcurements;
+  const selectedId =
+    source === "construction" ? templateId :
+    source === "design" ? designTaskId :
+    procurementTaskId;
+  const setSelectedId =
+    source === "construction" ? setTemplateId :
+    source === "design" ? setDesignTaskId :
+    setProcurementTaskId;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
@@ -381,9 +474,10 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
 
         <div className="space-y-4">
           <Tabs value={source} onValueChange={(v) => { setSource(v as SourceKind); setSearch(""); }}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="construction">Construction Templates</TabsTrigger>
-              <TabsTrigger value="design">Design Task Templates</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="construction">Construction</TabsTrigger>
+              <TabsTrigger value="design">Design</TabsTrigger>
+              <TabsTrigger value="procurement">Procurement</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -393,7 +487,11 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-8 pr-8"
-                placeholder={source === "construction" ? "Search code, name, phase…" : "Search code, name, stage…"}
+                placeholder={
+                  source === "construction" ? "Search code, name, phase…" :
+                  source === "design" ? "Search code, name, stage…" :
+                  "Search package, trade, scope…"
+                }
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -407,7 +505,7 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                 </button>
               )}
             </div>
-            {source === "construction" ? (
+            {source === "construction" && (
               <Select value={disciplineFilter} onValueChange={setDisciplineFilter}>
                 <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Discipline" /></SelectTrigger>
                 <SelectContent>
@@ -417,13 +515,25 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
+            )}
+            {source === "design" && (
               <Select value={stageFilter} onValueChange={setStageFilter}>
                 <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Design Stage" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All stages</SelectItem>
                   {stageOptions.map(([code, name]) => (
                     <SelectItem key={code} value={code}>{code} · {name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {source === "procurement" && (
+              <Select value={tradeFilter} onValueChange={setTradeFilter}>
+                <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Trade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All trades</SelectItem>
+                  {tradeOptions.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -490,6 +600,32 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                   </div>
                 </button>
               ))}
+              {source === "procurement" && filteredProcurements.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelectedId(t.id)}
+                  className={cn(
+                    "w-full text-left p-2.5 hover:bg-muted/60 transition-colors flex items-start gap-2",
+                    procurementTaskId === t.id && "bg-primary/5 ring-1 ring-primary/40"
+                  )}
+                >
+                  {procurementTaskId === t.id ? (
+                    <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  ) : (
+                    <div className="h-4 w-4 mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {t.package_number} · {t.package_description}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {t.trade || "No trade"}
+                      {t.brief_scope ? ` — ${t.brief_scope}` : ""}
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -546,6 +682,21 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                 min={1}
                 value={designDuration}
                 onChange={(e) => setDesignDuration(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Used to set the planned end date (8h per day).
+              </p>
+            </div>
+          )}
+
+          {source === "procurement" && selectedProcurement && (
+            <div>
+              <Label>Duration (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={procurementDuration}
+                onChange={(e) => setProcurementDuration(e.target.value)}
               />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Used to set the planned end date (8h per day).
