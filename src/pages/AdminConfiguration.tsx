@@ -6,7 +6,7 @@ import { AdminDataTable, type ColumnDef } from "@/components/admin/AdminDataTabl
 import { TelegramAdminTab } from "@/components/admin/TelegramAdminTab";
 
 const WIDE_TABS = [
-  "disciplines", "project_types", "wbs_node_types", "document_types",
+  "disciplines", "design_stages", "project_types", "wbs_node_types", "document_types",
   "cost_codes", "material_codes", "equipment_types", "public_holidays",
   "notification_rules", "approval_templates", "checklist_templates", "labor_rates",
   "telegram_config", "construction_config",
@@ -16,6 +16,12 @@ const COLUMNS: Record<string, ColumnDef[]> = {
   disciplines: [
     { key: "code", label: "Code", required: true, placeholder: "e.g. architecture" },
     { key: "name", label: "Name", required: true, placeholder: "e.g. Architecture" },
+    { key: "sort_order", label: "Sort Order", type: "number" },
+    { key: "is_active", label: "Active", type: "boolean" },
+  ],
+  design_stages: [
+    { key: "code", label: "Code", required: true, placeholder: "e.g. SD, DD, CD" },
+    { key: "name", label: "Name", required: true, placeholder: "e.g. Schematic Design" },
     { key: "sort_order", label: "Sort Order", type: "number" },
     { key: "is_active", label: "Active", type: "boolean" },
   ],
@@ -104,6 +110,7 @@ const COLUMNS: Record<string, ColumnDef[]> = {
 
 const DESCRIPTION: Record<string, string> = {
   disciplines: "Configure discipline types used across design and execution modules.",
+  design_stages: "Manage design stage codes (e.g. Schematic Design, DD, CD) used by Master Task Templates.",
   project_types: "Manage project classification types (tender, awarded, internal, etc.).",
   wbs_node_types: "Define node types available in the WBS tree structure.",
   document_types: "Manage document classification codes used in the document register.",
