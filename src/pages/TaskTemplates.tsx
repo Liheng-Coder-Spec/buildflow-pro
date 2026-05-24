@@ -133,6 +133,101 @@ export default function TaskTemplates() {
   const [taskChecklist, setTaskChecklist] = React.useState(DEFAULT_TASK_CHECKLIST);
   const [taskDocuments, setTaskDocuments] = React.useState(DEFAULT_TASK_DOCUMENTS);
 
+  // Design Task Templates state
+  const [designStages, setDesignStages] = React.useState<DesignStageOption[]>([]);
+  const [designTasks, setDesignTasks] = React.useState<DesignTaskTemplate[]>([]);
+  const [designLoading, setDesignLoading] = React.useState(false);
+  const [designDialogOpen, setDesignDialogOpen] = React.useState(false);
+  const [designSaving, setDesignSaving] = React.useState(false);
+  const [editingDesignId, setEditingDesignId] = React.useState<string | null>(null);
+  const [designTaskCode, setDesignTaskCode] = React.useState("");
+  const [designTaskName, setDesignTaskName] = React.useState("");
+  const [designStageId, setDesignStageId] = React.useState<string>("");
+  const [designNote, setDesignNote] = React.useState("");
+
+  const resetDesignForm = () => {
+    setEditingDesignId(null);
+    setDesignTaskCode("");
+    setDesignTaskName("");
+    setDesignStageId("");
+    setDesignNote("");
+  };
+
+  const loadDesignStages = React.useCallback(async () => {
+    const { data, error } = await (supabase as any)
+      .from("design_stages")
+      .select("id, code, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDesignStages((data ?? []) as DesignStageOption[]);
+  }, []);
+
+  const loadDesignTasks = React.useCallback(async () => {
+    setDesignLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("master_design_task_templates")
+      .select("id, task_code, task_name, design_stage_id, note, design_stages(code, name)")
+      .eq("is_active", true)
+      .order("task_code");
+    setDesignLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setDesignTasks((data ?? []) as DesignTaskTemplate[]);
+  }, []);
+
+  const handleSaveDesignTask = async () => {
+    if (!designTaskCode.trim()) { toast.error("Task Code is required"); return; }
+    if (!designTaskName.trim()) { toast.error("Task Name is required"); return; }
+    if (!designStageId) { toast.error("Design Stage is required"); return; }
+
+    setDesignSaving(true);
+    const payload = {
+      task_code: designTaskCode.trim(),
+      task_name: designTaskName.trim(),
+      design_stage_id: designStageId,
+      note: designNote.trim() || null,
+    };
+    const query = editingDesignId
+      ? (supabase as any).from("master_design_task_templates").update(payload).eq("id", editingDesignId)
+      : (supabase as any).from("master_design_task_templates").insert(payload);
+    const { error } = await query;
+    setDesignSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That Task Code is already in use." : error.message);
+      return;
+    }
+    toast.success(editingDesignId ? "Design task updated" : "Design task created");
+    setDesignDialogOpen(false);
+    resetDesignForm();
+    void loadDesignTasks();
+  };
+
+  const handleEditDesignTask = (row: DesignTaskTemplate) => {
+    setEditingDesignId(row.id);
+    setDesignTaskCode(row.task_code);
+    setDesignTaskName(row.task_name);
+    setDesignStageId(row.design_stage_id ?? "");
+    setDesignNote(row.note ?? "");
+    setDesignDialogOpen(true);
+  };
+
+  const handleDeleteDesignTask = async (id: string) => {
+    if (!confirm("Delete this design task template?")) return;
+    const { error } = await (supabase as any)
+      .from("master_design_task_templates")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Design task deleted");
+    void loadDesignTasks();
+  };
+
   const resetElementForm = () => {
     setElementCode("");
     setCategory("");
