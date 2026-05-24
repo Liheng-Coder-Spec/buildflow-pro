@@ -6,7 +6,7 @@ import { AdminDataTable, type ColumnDef } from "@/components/admin/AdminDataTabl
 import { TelegramAdminTab } from "@/components/admin/TelegramAdminTab";
 
 const WIDE_TABS = [
-  "disciplines", "project_types", "wbs_node_types", "document_types",
+  "disciplines", "design_stages", "project_types", "wbs_node_types", "document_types",
   "cost_codes", "material_codes", "equipment_types", "public_holidays",
   "notification_rules", "approval_templates", "checklist_templates", "labor_rates",
   "telegram_config", "construction_config",
