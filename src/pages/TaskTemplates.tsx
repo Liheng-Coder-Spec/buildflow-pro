@@ -220,6 +220,7 @@ export default function TaskTemplates() {
     setProcPackageDescription(row.package_description);
     setProcTrade(row.trade ?? "");
     setProcBriefScope(row.brief_scope ?? "");
+    setProcNote(row.note ?? "");
     setProcurementDialogOpen(true);
   };
 
