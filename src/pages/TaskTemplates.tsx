@@ -1531,10 +1531,10 @@ export default function TaskTemplates() {
                 </TableHeader>
                 <TableBody>
                   {procurementLoading && (
-                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">Loading...</TableCell></TableRow>
                   )}
                   {!procurementLoading && procurementTasks.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">No procurement tasks yet. Click "Create Task" to add one.</TableCell></TableRow>
                   )}
                   {!procurementLoading && procurementTasks.map((row) => (
                     <TableRow key={row.id}>
@@ -1544,6 +1544,7 @@ export default function TaskTemplates() {
                         {row.trade ? <Badge variant="secondary">{row.trade}</Badge> : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{row.brief_scope || "-"}</TableCell>
+                      <TableCell className="text-muted-foreground">{row.note || "-"}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           <Button type="button" variant="outline" size="sm" onClick={() => handleEditProcurementTask(row)}>
