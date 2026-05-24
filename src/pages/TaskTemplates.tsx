@@ -153,13 +153,83 @@ export default function TaskTemplates() {
   const [designStageId, setDesignStageId] = React.useState<string>("");
   const [designNote, setDesignNote] = React.useState("");
 
-  const resetDesignForm = () => {
-    setEditingDesignId(null);
-    setDesignTaskCode("");
-    setDesignTaskName("");
-    setDesignStageId("");
-    setDesignNote("");
+  // Procurement Task Templates state
+  const [procurementTasks, setProcurementTasks] = React.useState<ProcurementTaskTemplate[]>([]);
+  const [procurementLoading, setProcurementLoading] = React.useState(false);
+  const [procurementDialogOpen, setProcurementDialogOpen] = React.useState(false);
+  const [procurementSaving, setProcurementSaving] = React.useState(false);
+  const [editingProcurementId, setEditingProcurementId] = React.useState<string | null>(null);
+  const [procPackageNumber, setProcPackageNumber] = React.useState("");
+  const [procPackageDescription, setProcPackageDescription] = React.useState("");
+  const [procTrade, setProcTrade] = React.useState("");
+  const [procBriefScope, setProcBriefScope] = React.useState("");
+
+  const resetProcurementForm = () => {
+    setEditingProcurementId(null);
+    setProcPackageNumber("");
+    setProcPackageDescription("");
+    setProcTrade("");
+    setProcBriefScope("");
   };
+
+  const loadProcurementTasks = React.useCallback(async () => {
+    setProcurementLoading(true);
+    const { data, error } = await (supabase as any)
+      .from("master_procurement_task_templates")
+      .select("id, package_number, package_description, trade, brief_scope")
+      .eq("is_active", true)
+      .order("package_number");
+    setProcurementLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setProcurementTasks((data ?? []) as ProcurementTaskTemplate[]);
+  }, []);
+
+  const handleSaveProcurementTask = async () => {
+    if (!procPackageNumber.trim()) { toast.error("Package Number is required"); return; }
+    if (!procPackageDescription.trim()) { toast.error("Package Description is required"); return; }
+
+    setProcurementSaving(true);
+    const payload = {
+      package_number: procPackageNumber.trim(),
+      package_description: procPackageDescription.trim(),
+      trade: procTrade.trim() || null,
+      brief_scope: procBriefScope.trim() || null,
+    };
+    const query = editingProcurementId
+      ? (supabase as any).from("master_procurement_task_templates").update(payload).eq("id", editingProcurementId)
+      : (supabase as any).from("master_procurement_task_templates").insert(payload);
+    const { error } = await query;
+    setProcurementSaving(false);
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "That Package Number is already in use." : error.message);
+      return;
+    }
+    toast.success(editingProcurementId ? "Procurement task updated" : "Procurement task created");
+    setProcurementDialogOpen(false);
+    resetProcurementForm();
+    void loadProcurementTasks();
+  };
+
+  const handleEditProcurementTask = (row: ProcurementTaskTemplate) => {
+    setEditingProcurementId(row.id);
+    setProcPackageNumber(row.package_number);
+    setProcPackageDescription(row.package_description);
+    setProcTrade(row.trade ?? "");
+    setProcBriefScope(row.brief_scope ?? "");
+    setProcurementDialogOpen(true);
+  };
+
+  const handleDeleteProcurementTask = async (id: string) => {
+    if (!confirm("Delete this procurement task template?")) return;
+    const { error } = await (supabase as any)
+      .from("master_procurement_task_templates")
+      .update({ is_active: false })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Procurement task deleted");
+    void loadProcurementTasks();
+  };
+
 
   const loadDesignStages = React.useCallback(async () => {
     const { data, error } = await (supabase as any)
