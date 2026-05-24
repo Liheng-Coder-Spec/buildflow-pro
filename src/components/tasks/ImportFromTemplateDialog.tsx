@@ -240,6 +240,26 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
     });
   }, [designTasks, search, stageFilter]);
 
+  const tradeOptions = useMemo(() => {
+    const set = new Set(procurementTasks.map((t) => t.trade ?? "").filter(Boolean));
+    return Array.from(set).sort();
+  }, [procurementTasks]);
+
+  const filteredProcurements = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return procurementTasks.filter((t) => {
+      if (tradeFilter !== "all" && (t.trade ?? "") !== tradeFilter) return false;
+      if (!q) return true;
+      return (
+        t.package_number.toLowerCase().includes(q) ||
+        t.package_description.toLowerCase().includes(q) ||
+        (t.trade ?? "").toLowerCase().includes(q) ||
+        (t.brief_scope ?? "").toLowerCase().includes(q) ||
+        (t.note ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [procurementTasks, search, tradeFilter]);
+
   const groupingKind = (selectedTemplate?.grouping_method || "").toLowerCase();
   const isByQty = groupingKind.includes("quantity");
   const isByLoc = groupingKind.includes("location");
