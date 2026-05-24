@@ -474,9 +474,10 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
 
         <div className="space-y-4">
           <Tabs value={source} onValueChange={(v) => { setSource(v as SourceKind); setSearch(""); }}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="construction">Construction Templates</TabsTrigger>
-              <TabsTrigger value="design">Design Task Templates</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="construction">Construction</TabsTrigger>
+              <TabsTrigger value="design">Design</TabsTrigger>
+              <TabsTrigger value="procurement">Procurement</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -486,7 +487,11 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 className="pl-8 pr-8"
-                placeholder={source === "construction" ? "Search code, name, phase…" : "Search code, name, stage…"}
+                placeholder={
+                  source === "construction" ? "Search code, name, phase…" :
+                  source === "design" ? "Search code, name, stage…" :
+                  "Search package, trade, scope…"
+                }
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -500,7 +505,7 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                 </button>
               )}
             </div>
-            {source === "construction" ? (
+            {source === "construction" && (
               <Select value={disciplineFilter} onValueChange={setDisciplineFilter}>
                 <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Discipline" /></SelectTrigger>
                 <SelectContent>
@@ -510,13 +515,25 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
+            )}
+            {source === "design" && (
               <Select value={stageFilter} onValueChange={setStageFilter}>
                 <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Design Stage" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All stages</SelectItem>
                   {stageOptions.map(([code, name]) => (
                     <SelectItem key={code} value={code}>{code} · {name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {source === "procurement" && (
+              <Select value={tradeFilter} onValueChange={setTradeFilter}>
+                <SelectTrigger className="w-full sm:w-52"><SelectValue placeholder="Trade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All trades</SelectItem>
+                  {tradeOptions.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
