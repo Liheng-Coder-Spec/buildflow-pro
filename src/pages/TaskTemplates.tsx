@@ -230,6 +230,14 @@ export default function TaskTemplates() {
     void loadProcurementTasks();
   };
 
+  const resetDesignForm = () => {
+    setEditingDesignId(null);
+    setDesignTaskCode("");
+    setDesignTaskName("");
+    setDesignStageId("");
+    setDesignNote("");
+  };
+
 
   const loadDesignStages = React.useCallback(async () => {
     const { data, error } = await (supabase as any)
