@@ -197,6 +197,7 @@ export default function TaskTemplates() {
       package_description: procPackageDescription.trim(),
       trade: procTrade.trim() || null,
       brief_scope: procBriefScope.trim() || null,
+      note: procNote.trim() || null,
     };
     const query = editingProcurementId
       ? (supabase as any).from("master_procurement_task_templates").update(payload).eq("id", editingProcurementId)
