@@ -29,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
+import { ImportFromTemplateDialog } from "@/components/tasks/ImportFromTemplateDialog";
 import { DisciplineMetaFields } from "@/components/tasks/DisciplineMetaFields";
 import {
   TaskStatus, TaskPriority, TaskType,
@@ -393,7 +394,10 @@ export default function Tasks() {
             {activeProject.name}
           </p>
         </div>
-        <CreateTaskDialog onCreated={load} />
+        <div className="flex items-center gap-2">
+          <ImportFromTemplateDialog onCreated={load} />
+          <CreateTaskDialog onCreated={load} />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
