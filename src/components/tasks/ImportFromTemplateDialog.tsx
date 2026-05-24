@@ -689,6 +689,21 @@ export function ImportFromTemplateDialog({ onCreated }: { onCreated?: () => void
             </div>
           )}
 
+          {source === "procurement" && selectedProcurement && (
+            <div>
+              <Label>Duration (days)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={procurementDuration}
+                onChange={(e) => setProcurementDuration(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Used to set the planned end date (8h per day).
+              </p>
+            </div>
+          )}
+
           <div>
             <Label>Planned start</Label>
             <Input
