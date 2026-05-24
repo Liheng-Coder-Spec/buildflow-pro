@@ -26,7 +26,7 @@ import { TaskStatus } from "@/lib/taskMeta";
 import { recordAuditEventSafe } from "@/services/auditService";
 import { cn } from "@/lib/utils";
 
-type SourceKind = "construction" | "design";
+type SourceKind = "construction" | "design" | "procurement";
 
 interface TemplateRow {
   id: string;
@@ -48,6 +48,15 @@ interface DesignTaskRow {
   note: string | null;
   design_stage_id: string | null;
   design_stages: { code: string; name: string } | null;
+}
+
+interface ProcurementTaskRow {
+  id: string;
+  package_number: string;
+  package_description: string;
+  trade: string | null;
+  brief_scope: string | null;
+  note: string | null;
 }
 
 interface StepRow {
