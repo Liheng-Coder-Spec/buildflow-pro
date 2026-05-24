@@ -629,7 +629,7 @@ export default function TaskTemplates() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Task Template</h1>
+        <h1 className="text-3xl font-bold">Task Templates</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Reusable construction task structures for project setup and repeat work.
         </p>
