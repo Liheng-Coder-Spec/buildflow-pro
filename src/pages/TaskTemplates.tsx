@@ -533,7 +533,9 @@ export default function TaskTemplates() {
   React.useEffect(() => {
     void loadElements();
     void loadTemplates();
-  }, [loadElements, loadTemplates]);
+    void loadDesignStages();
+    void loadDesignTasks();
+  }, [loadElements, loadTemplates, loadDesignStages, loadDesignTasks]);
 
   const handleCreateElement = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
