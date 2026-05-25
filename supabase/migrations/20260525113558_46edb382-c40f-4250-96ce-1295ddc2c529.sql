@@ -1,0 +1,1 @@
+UPDATE public.profiles SET department = 'accounting' WHERE employee_id IN ('C-0025','C-0026','C-0027');
