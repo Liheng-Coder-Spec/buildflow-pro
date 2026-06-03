@@ -83,14 +83,14 @@ export default function ApplyEleave() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    sb.from("leave_types").select("*").eq("active", true).order("name").then(({ data }: any) => setTypes(data ?? []));
+    sb.from("eleave_leave_types").select("*").eq("active", true).order("name").then(({ data }: any) => setTypes(data ?? []));
     sb.from("profiles").select("id, full_name, email").order("full_name").then(({ data }: any) => setTeammates((data ?? []) as Profile[]));
   }, []);
 
   useEffect(() => {
     if (!user) return;
     setBalancesLoading(true);
-    sb.from("leave_balances").select("*").eq("user_id", user.id).eq("year", currentYear).then(({ data }: any) => {
+    sb.from("eleave_leave_balances").select("*").eq("user_id", user.id).eq("year", currentYear).then(({ data }: any) => {
       setBalances(data ?? []);
       setBalancesLoading(false);
     });
@@ -106,7 +106,7 @@ export default function ApplyEleave() {
     const endYear = end_date ? new Date(end_date).getFullYear() : startYear;
     const from = `${startYear}-01-01`;
     const to = `${endYear}-12-31`;
-    sb.from("public_holidays").select("holiday_date, name").gte("holiday_date", from).lte("holiday_date", to).then(({ data }: any) => setHolidays((data ?? []) as Holiday[]));
+    sb.from("eleave_public_holidays").select("holiday_date, name").gte("holiday_date", from).lte("holiday_date", to).then(({ data }: any) => setHolidays((data ?? []) as Holiday[]));
   }, [start_date, end_date]);
 
   const holidayMap = useMemo(() => {
@@ -215,7 +215,7 @@ export default function ApplyEleave() {
       try {
         const requestId = result?.request?.id ?? result?.id ?? result?.request_id;
         if (requestId) {
-          const { data: appr } = await sb.from("request_approvals").select("approver_id").eq("request_id", requestId).eq("level", 1).maybeSingle();
+          const { data: appr } = await sb.from("eleave_request_approvals").select("approver_id").eq("request_id", requestId).eq("level", 1).maybeSingle();
           if (appr?.approver_id) {
             const { data: prof } = await sb.from("profiles").select("full_name, email").eq("id", appr.approver_id).maybeSingle();
             if (prof) approverName = prof.full_name || prof.email || approverName;

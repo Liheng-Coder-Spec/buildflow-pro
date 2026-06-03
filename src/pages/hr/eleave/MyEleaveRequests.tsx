@@ -36,13 +36,13 @@ export default function MyEleaveRequests() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const { data } = await sb.from("leave_requests").select("*, leave_types(name,color,cancel_cutoff_days)").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data } = await sb.from("eleave_leave_requests").select("*, leave_types(name,color,cancel_cutoff_days)").eq("user_id", user.id).order("created_at", { ascending: false });
     const list = data ?? [];
     setRows(list);
 
     const ids = list.map((r: any) => r.id);
     if (!ids.length) { setApprovalsByReq({}); return; }
-    const { data: appr } = await sb.from("request_approvals").select("request_id, level, decision, comment, decided_at, approver_id").in("request_id", ids).order("level", { ascending: true });
+    const { data: appr } = await sb.from("eleave_request_approvals").select("request_id, level, decision, comment, decided_at, approver_id").in("request_id", ids).order("level", { ascending: true });
     const approverIds = Array.from(new Set((appr ?? []).map((a: any) => a.approver_id)));
     const { data: profs } = approverIds.length ? await sb.from("profiles").select("id, full_name, email").in("id", approverIds) : { data: [] as any[] };
     const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));

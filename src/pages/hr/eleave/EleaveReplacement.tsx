@@ -34,7 +34,7 @@ export default function EleaveReplacement() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const { data } = await sb.from("replacement_credits").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    const { data } = await sb.from("eleave_replacement_credits").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
     setList(data ?? []);
   }, [user]);
   useEffect(() => { load(); }, [load]);

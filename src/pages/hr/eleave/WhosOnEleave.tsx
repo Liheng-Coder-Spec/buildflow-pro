@@ -62,7 +62,7 @@ export default function WhosOnEleave() {
     if (!from || !to || from > to) return;
     setLoading(true);
     try {
-      const { data: reqs, error } = await sb.from("leave_requests").select("id,user_id,start_date,end_date,days,half_day,leave_types(name,color)").eq("status", "approved").lte("start_date", to).gte("end_date", from);
+      const { data: reqs, error } = await sb.from("eleave_leave_requests").select("id,user_id,start_date,end_date,days,half_day,leave_types(name,color)").eq("status", "approved").lte("start_date", to).gte("end_date", from);
       if (error) throw error;
 
       const userIds = Array.from(new Set((reqs ?? []).map((r: any) => r.user_id)));
@@ -73,7 +73,7 @@ export default function WhosOnEleave() {
         profilesById = new Map((profs ?? []).map((p: any) => [p.id, { full_name: p.full_name, department_id: p.department_id }]));
         const deptIds = Array.from(new Set((profs ?? []).map((p: any) => p.department_id).filter(Boolean) as string[]));
         if (deptIds.length) {
-          const { data: ds } = await sb.from("departments").select("id,name").in("id", deptIds);
+          const { data: ds } = await sb.from("eleave_departments").select("id,name").in("id", deptIds);
           deptsById = new Map((ds ?? []).map((d: any) => [d.id, d.name]));
         }
       }

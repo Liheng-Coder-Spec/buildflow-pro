@@ -74,6 +74,26 @@ const LeaveRequestForm = React.lazy(() => import("./pages/hr/LeaveRequestForm"))
 const LeaveTypesAdmin = React.lazy(() => import("./pages/hr/LeaveTypesAdmin"));
 const Attendance = React.lazy(() => import("./pages/hr/Attendance"));
 const People = React.lazy(() => import("./pages/hr/People"));
+const EleaveDashboard = React.lazy(() => import("./pages/hr/eleave/EleaveDashboard"));
+const ApplyEleave = React.lazy(() => import("./pages/hr/eleave/ApplyEleave"));
+const MyEleaveRequests = React.lazy(() => import("./pages/hr/eleave/MyEleaveRequests"));
+const EleaveApprovals = React.lazy(() => import("./pages/hr/eleave/EleaveApprovals"));
+const EleaveTeamCalendar = React.lazy(() => import("./pages/hr/eleave/EleaveTeamCalendar"));
+const WhosOnEleave = React.lazy(() => import("./pages/hr/eleave/WhosOnEleave"));
+const EleaveReplacement = React.lazy(() => import("./pages/hr/eleave/EleaveReplacement"));
+const EleavePublicHolidays = React.lazy(() => import("./pages/hr/eleave/EleavePublicHolidays"));
+const EleaveNotifications = React.lazy(() => import("./pages/hr/eleave/EleaveNotifications"));
+const MyEleaveApprovalChain = React.lazy(() => import("./pages/hr/eleave/MyEleaveApprovalChain"));
+const EleaveAdminHome = React.lazy(() => import("./pages/hr/eleave/admin/EleaveAdminHome"));
+const AdminLeaveTypes = React.lazy(() => import("./pages/hr/eleave/admin/AdminLeaveTypes"));
+const AdminApprovalChains = React.lazy(() => import("./pages/hr/eleave/admin/AdminApprovalChains"));
+const AdminCapacity = React.lazy(() => import("./pages/hr/eleave/admin/AdminCapacity"));
+const AdminSeniority = React.lazy(() => import("./pages/hr/eleave/admin/AdminSeniority"));
+const AdminAllowances = React.lazy(() => import("./pages/hr/eleave/admin/AdminAllowances"));
+const AdminYearEnd = React.lazy(() => import("./pages/hr/eleave/admin/AdminYearEnd"));
+const AdminEleaveUsers = React.lazy(() => import("./pages/hr/eleave/admin/AdminUsers"));
+const AdminEleaveReports = React.lazy(() => import("./pages/hr/eleave/admin/AdminReports"));
+const AdminEleavePublicHolidays = React.lazy(() => import("./pages/hr/eleave/admin/AdminPublicHolidays"));
 const RFQs = React.lazy(() => import("./pages/RFQs"));
 const RFQDetail = React.lazy(() => import("./pages/RFQDetail"));
 const POs = React.lazy(() => import("./pages/POs"));
@@ -219,6 +239,26 @@ const App = () => (
                   <Route path="/hr/leave" element={<LeaveList />} />
                   <Route path="/hr/leave/new" element={<LeaveRequestForm />} />
                   <Route path="/hr/leave/types" element={<LeaveTypesAdmin />} />
+                  <Route path="/hr/eleave" element={<EleaveDashboard />} />
+                  <Route path="/hr/eleave/apply" element={<ApplyEleave />} />
+                  <Route path="/hr/eleave/my-requests" element={<MyEleaveRequests />} />
+                  <Route path="/hr/eleave/approvals" element={<EleaveApprovals />} />
+                  <Route path="/hr/eleave/calendar" element={<EleaveTeamCalendar />} />
+                  <Route path="/hr/eleave/whos-on-leave" element={<WhosOnEleave />} />
+                  <Route path="/hr/eleave/replacement" element={<EleaveReplacement />} />
+                  <Route path="/hr/eleave/holidays" element={<EleavePublicHolidays />} />
+                  <Route path="/hr/eleave/notifications" element={<EleaveNotifications />} />
+                  <Route path="/hr/eleave/my-approval-chain" element={<MyEleaveApprovalChain />} />
+                  <Route path="/hr/eleave/admin" element={<EleaveAdminHome />} />
+                  <Route path="/hr/eleave/admin/leave-types" element={<AdminLeaveTypes />} />
+                  <Route path="/hr/eleave/admin/approval-chains" element={<AdminApprovalChains />} />
+                  <Route path="/hr/eleave/admin/capacity" element={<AdminCapacity />} />
+                  <Route path="/hr/eleave/admin/seniority" element={<AdminSeniority />} />
+                  <Route path="/hr/eleave/admin/allowances" element={<AdminAllowances />} />
+                  <Route path="/hr/eleave/admin/year-end" element={<AdminYearEnd />} />
+                  <Route path="/hr/eleave/admin/users" element={<AdminEleaveUsers />} />
+                  <Route path="/hr/eleave/admin/reports" element={<AdminEleaveReports />} />
+                  <Route path="/hr/eleave/admin/holidays" element={<AdminEleavePublicHolidays />} />
                   <Route path="/hr/attendance" element={<Attendance />} />
                   <Route path="/hr/people" element={<People />} />
                   <Route path="/account/chart-of-accounts" element={<ChartOfAccounts />} />
