@@ -76,6 +76,8 @@ export default {
           amber: { DEFAULT: "hsl(var(--cat-amber))", fg: "hsl(var(--cat-amber-fg))" },
           red: { DEFAULT: "hsl(var(--cat-red))", fg: "hsl(var(--cat-red-fg))" },
           gray: { DEFAULT: "hsl(var(--cat-gray))", fg: "hsl(var(--cat-gray-fg))" },
+          pink: { DEFAULT: "hsl(var(--cat-pink))", fg: "hsl(var(--cat-pink-fg))" },
+          teal: { DEFAULT: "hsl(var(--cat-teal))", fg: "hsl(var(--cat-teal-fg))" },
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

@@ -77,6 +77,10 @@
     --cat-red-fg: 0 74% 50%;
     --cat-gray: 220 14% 95%;
     --cat-gray-fg: 220 9% 42%;
+    --cat-pink: 330 80% 94%;
+    --cat-pink-fg: 336 80% 50%;
+    --cat-teal: 168 76% 90%;
+    --cat-teal-fg: 173 80% 32%;
 
     /* Borders & inputs */
     --border: 210 22% 88%;
