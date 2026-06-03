@@ -404,7 +404,7 @@ function ContractForm({ projectId, subcontractors, onSuccess }: any) {
         ...formData,
         total_value: parseFloat(formData.total_value),
         retention_percentage: parseFloat(formData.retention_percentage),
-      });
+      } as any);
 
       if (error) throw error;
       toast.success(`Contract ${scNum} created successfully`);

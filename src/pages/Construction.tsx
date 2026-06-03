@@ -143,12 +143,12 @@ export default function Construction() {
         task_code: `CON-${format(new Date(), "yyyyMMdd")}-${Date.now().toString().slice(-3)}`,
         title: newTask.title,
         description: newTask.description || null,
-        priority: newTask.priority,
+        priority: newTask.priority as any,
         planned_start: newTask.planned_start || null,
         planned_finish: newTask.planned_finish || null,
         created_by: user.id,
         status: "open",
-      });
+      } as any);
     
     if (error) {
       toast.error(error.message);
