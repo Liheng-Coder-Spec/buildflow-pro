@@ -69,6 +69,14 @@ export default {
           foreground: "hsl(var(--mep-foreground))",
           soft: "hsl(var(--mep-soft))",
         },
+        cat: {
+          purple: { DEFAULT: "hsl(var(--cat-purple))", fg: "hsl(var(--cat-purple-fg))" },
+          green: { DEFAULT: "hsl(var(--cat-green))", fg: "hsl(var(--cat-green-fg))" },
+          blue: { DEFAULT: "hsl(var(--cat-blue))", fg: "hsl(var(--cat-blue-fg))" },
+          amber: { DEFAULT: "hsl(var(--cat-amber))", fg: "hsl(var(--cat-amber-fg))" },
+          red: { DEFAULT: "hsl(var(--cat-red))", fg: "hsl(var(--cat-red-fg))" },
+          gray: { DEFAULT: "hsl(var(--cat-gray))", fg: "hsl(var(--cat-gray-fg))" },
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",

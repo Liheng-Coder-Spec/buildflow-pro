@@ -64,6 +64,20 @@
     --mep-foreground: 0 0% 100%;
     --mep-soft: 190 90% 95%;
 
+    /* E-Leave category palette (HSL) */
+    --cat-purple: 258 90% 96%;
+    --cat-purple-fg: 262 83% 58%;
+    --cat-green: 152 76% 90%;
+    --cat-green-fg: 160 84% 30%;
+    --cat-blue: 213 94% 92%;
+    --cat-blue-fg: 217 91% 50%;
+    --cat-amber: 48 96% 89%;
+    --cat-amber-fg: 32 95% 44%;
+    --cat-red: 0 86% 92%;
+    --cat-red-fg: 0 74% 50%;
+    --cat-gray: 220 14% 95%;
+    --cat-gray-fg: 220 9% 42%;
+
     /* Borders & inputs */
     --border: 210 22% 88%;
     --input: 210 22% 88%;
