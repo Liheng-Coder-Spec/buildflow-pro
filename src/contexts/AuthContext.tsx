@@ -20,11 +20,15 @@ export interface Profile {
   job_title: string | null;
 }
 
+export type EleaveRole = "admin" | "supervisor" | "employee";
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   roles: AppRole[];
+  /** Compact role label used by the ported E-Leave module. */
+  role: EleaveRole | null;
   loading: boolean;
   hasRole: (role: AppRole) => boolean;
   signOut: () => Promise<void>;
@@ -90,23 +94,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      session,
-      profile,
-      roles,
-      loading,
-      hasRole: (role) => roles.includes(role),
-      signOut: async () => {
-        await supabase.auth.signOut();
-      },
-      refreshProfile: async () => {
-        if (user) {
-          loadedUserIdRef.current = null;
-          await loadProfileAndRoles(user.id);
-        }
-      },
-    }),
+    () => {
+      const role: EleaveRole | null = !user
+        ? null
+        : roles.includes("admin")
+          ? "admin"
+          : roles.includes("project_manager") || roles.includes("supervisor")
+            ? "supervisor"
+            : "employee";
+      return {
+        user,
+        session,
+        profile,
+        roles,
+        role,
+        loading,
+        hasRole: (r) => roles.includes(r),
+        signOut: async () => {
+          await supabase.auth.signOut();
+        },
+        refreshProfile: async () => {
+          if (user) {
+            loadedUserIdRef.current = null;
+            await loadProfileAndRoles(user.id);
+          }
+        },
+      };
+    },
     [user, session, profile, roles, loading],
   );
 
