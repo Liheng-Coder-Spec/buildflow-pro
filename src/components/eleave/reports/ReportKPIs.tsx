@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, Clock, XCircle, Ban, FileStack, CalendarClock } from "lucide-react";
-import { ReportKpis } from "@/lib/exportReport";
+import { ReportKpis } from "@/lib/eleave/exportReport";
 import { cn } from "@/lib/utils";
 
 const items = [

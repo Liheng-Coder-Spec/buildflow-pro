@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { StatusPill } from "@/components/StatusPill";
+import { StatusPill } from "@/components/eleave/StatusPill";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Check, X, Clock, FileText, Paperclip } from "lucide-react";

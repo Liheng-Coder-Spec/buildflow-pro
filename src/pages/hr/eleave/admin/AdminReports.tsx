@@ -7,13 +7,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusPill } from "@/components/StatusPill";
+import { StatusPill } from "@/components/eleave/StatusPill";
 import { Badge } from "@/components/ui/badge";
 import { ReportFilters, ReportFiltersValue } from "@/components/reports/ReportFilters";
 import { ReportKPIs } from "@/components/reports/ReportKPIs";
 import { ReportCharts } from "@/components/reports/ReportCharts";
 import { ReportDetailDialog, DetailRequest } from "@/components/reports/ReportDetailDialog";
-import { exportToCSV, exportToXLSX, ReportRow, ReportKpis } from "@/lib/exportReport";
+import { exportToCSV, exportToXLSX, ReportRow, ReportKpis } from "@/lib/eleave/exportReport";
 import { Download, FileSpreadsheet, ChevronLeft, ChevronRight, ArrowUpDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
