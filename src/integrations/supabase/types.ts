@@ -2104,6 +2104,550 @@ export type Database = {
           },
         ]
       }
+      eleave_approval_chains: {
+        Row: {
+          approver_id: string
+          created_at: string
+          department_id: string | null
+          id: string
+          level: number
+          scope: string
+          user_id: string | null
+        }
+        Insert: {
+          approver_id: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          level?: number
+          scope?: string
+          user_id?: string | null
+        }
+        Update: {
+          approver_id?: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          level?: number
+          scope?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_approval_chains_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          entity: string
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity: string
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity?: string
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      eleave_capacity_overrides: {
+        Row: {
+          date: string
+          department_id: string | null
+          id: string
+          max_percent: number
+        }
+        Insert: {
+          date: string
+          department_id?: string | null
+          id?: string
+          max_percent: number
+        }
+        Update: {
+          date?: string
+          department_id?: string | null
+          id?: string
+          max_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_capacity_overrides_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_departments: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      eleave_leave_balances: {
+        Row: {
+          adjustments: number
+          carried_over: number
+          expired: number
+          id: string
+          leave_type_id: string
+          used: number
+          user_id: string
+          year: number
+          yearly_allowance: number
+        }
+        Insert: {
+          adjustments?: number
+          carried_over?: number
+          expired?: number
+          id?: string
+          leave_type_id: string
+          used?: number
+          user_id: string
+          year: number
+          yearly_allowance?: number
+        }
+        Update: {
+          adjustments?: number
+          carried_over?: number
+          expired?: number
+          id?: string
+          leave_type_id?: string
+          used?: number
+          user_id?: string
+          year?: number
+          yearly_allowance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_leave_balances_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_leave_requests: {
+        Row: {
+          attachment_url: string | null
+          attachment_urls: string[]
+          cancellation_reason: string | null
+          cc_emails: string[]
+          cc_user_ids: string[]
+          created_at: string
+          current_level: number
+          days: number
+          decided_at: string | null
+          end_date: string
+          half_day: boolean
+          id: string
+          leave_type_id: string
+          reason: string
+          start_date: string
+          status: Database["public"]["Enums"]["eleave_status"]
+          total_levels: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          attachment_urls?: string[]
+          cancellation_reason?: string | null
+          cc_emails?: string[]
+          cc_user_ids?: string[]
+          created_at?: string
+          current_level?: number
+          days: number
+          decided_at?: string | null
+          end_date: string
+          half_day?: boolean
+          id?: string
+          leave_type_id: string
+          reason?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["eleave_status"]
+          total_levels?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          attachment_urls?: string[]
+          cancellation_reason?: string | null
+          cc_emails?: string[]
+          cc_user_ids?: string[]
+          created_at?: string
+          current_level?: number
+          days?: number
+          decided_at?: string | null
+          end_date?: string
+          half_day?: boolean
+          id?: string
+          leave_type_id?: string
+          reason?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["eleave_status"]
+          total_levels?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_leave_requests_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_leave_types: {
+        Row: {
+          active: boolean
+          advance_notice_days: number
+          cancel_cutoff_days: number
+          carry_forward_max: number
+          color: string
+          created_at: string
+          days_per_year: number
+          deduct_from: Database["public"]["Enums"]["eleave_deduct_from"]
+          doc_required: boolean
+          expiry_month: number | null
+          gender_restriction: Database["public"]["Enums"]["eleave_gender"]
+          half_day_allowed: boolean
+          id: string
+          is_replacement: boolean
+          max_days_per_request: number | null
+          monthly_accrual: boolean
+          name: string
+          paid: boolean
+          probation_required: boolean
+          seniority_based: boolean
+          skip_capacity_check: boolean
+        }
+        Insert: {
+          active?: boolean
+          advance_notice_days?: number
+          cancel_cutoff_days?: number
+          carry_forward_max?: number
+          color?: string
+          created_at?: string
+          days_per_year?: number
+          deduct_from?: Database["public"]["Enums"]["eleave_deduct_from"]
+          doc_required?: boolean
+          expiry_month?: number | null
+          gender_restriction?: Database["public"]["Enums"]["eleave_gender"]
+          half_day_allowed?: boolean
+          id?: string
+          is_replacement?: boolean
+          max_days_per_request?: number | null
+          monthly_accrual?: boolean
+          name: string
+          paid?: boolean
+          probation_required?: boolean
+          seniority_based?: boolean
+          skip_capacity_check?: boolean
+        }
+        Update: {
+          active?: boolean
+          advance_notice_days?: number
+          cancel_cutoff_days?: number
+          carry_forward_max?: number
+          color?: string
+          created_at?: string
+          days_per_year?: number
+          deduct_from?: Database["public"]["Enums"]["eleave_deduct_from"]
+          doc_required?: boolean
+          expiry_month?: number | null
+          gender_restriction?: Database["public"]["Enums"]["eleave_gender"]
+          half_day_allowed?: boolean
+          id?: string
+          is_replacement?: boolean
+          max_days_per_request?: number | null
+          monthly_accrual?: boolean
+          name?: string
+          paid?: boolean
+          probation_required?: boolean
+          seniority_based?: boolean
+          skip_capacity_check?: boolean
+        }
+        Relationships: []
+      }
+      eleave_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          read: boolean
+          request_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["eleave_notif_type"]
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          read?: boolean
+          request_id?: string | null
+          title: string
+          type: Database["public"]["Enums"]["eleave_notif_type"]
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          read?: boolean
+          request_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["eleave_notif_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_notifications_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_leave_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_public_holidays: {
+        Row: {
+          created_at: string
+          holiday_date: string
+          id: string
+          name: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          holiday_date: string
+          id?: string
+          name: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          holiday_date?: string
+          id?: string
+          name?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      eleave_replacement_credits: {
+        Row: {
+          admin_comment: string | null
+          admin_decided_at: string | null
+          admin_decision: string | null
+          admin_id: string | null
+          created_at: string
+          credited_at: string | null
+          current_level: number
+          days: number
+          id: string
+          period: Database["public"]["Enums"]["eleave_replacement_period"]
+          reason: string | null
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["eleave_status"]
+          supervisor_comment: string | null
+          supervisor_decided_at: string | null
+          supervisor_decision: string | null
+          supervisor_id: string | null
+          target_date: string | null
+          total_levels: number
+          user_id: string
+          worked_date: string
+        }
+        Insert: {
+          admin_comment?: string | null
+          admin_decided_at?: string | null
+          admin_decision?: string | null
+          admin_id?: string | null
+          created_at?: string
+          credited_at?: string | null
+          current_level?: number
+          days?: number
+          id?: string
+          period?: Database["public"]["Enums"]["eleave_replacement_period"]
+          reason?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["eleave_status"]
+          supervisor_comment?: string | null
+          supervisor_decided_at?: string | null
+          supervisor_decision?: string | null
+          supervisor_id?: string | null
+          target_date?: string | null
+          total_levels?: number
+          user_id: string
+          worked_date: string
+        }
+        Update: {
+          admin_comment?: string | null
+          admin_decided_at?: string | null
+          admin_decision?: string | null
+          admin_id?: string | null
+          created_at?: string
+          credited_at?: string | null
+          current_level?: number
+          days?: number
+          id?: string
+          period?: Database["public"]["Enums"]["eleave_replacement_period"]
+          reason?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["eleave_status"]
+          supervisor_comment?: string | null
+          supervisor_decided_at?: string | null
+          supervisor_decision?: string | null
+          supervisor_id?: string | null
+          target_date?: string | null
+          total_levels?: number
+          user_id?: string
+          worked_date?: string
+        }
+        Relationships: []
+      }
+      eleave_request_approvals: {
+        Row: {
+          approver_id: string
+          comment: string | null
+          created_at: string
+          decided_at: string | null
+          decision: string | null
+          id: string
+          level: number
+          request_id: string
+        }
+        Insert: {
+          approver_id: string
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: string | null
+          id?: string
+          level: number
+          request_id: string
+        }
+        Update: {
+          approver_id?: string
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision?: string | null
+          id?: string
+          level?: number
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_request_approvals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_leave_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_seniority_rules: {
+        Row: {
+          days: number
+          id: string
+          leave_type_id: string
+          min_years: number
+        }
+        Insert: {
+          days?: number
+          id?: string
+          leave_type_id: string
+          min_years?: number
+        }
+        Update: {
+          days?: number
+          id?: string
+          leave_type_id?: string
+          min_years?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_seniority_rules_leave_type_id_fkey"
+            columns: ["leave_type_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_leave_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eleave_team_capacity_rules: {
+        Row: {
+          department_id: string | null
+          id: string
+          max_percent: number
+        }
+        Insert: {
+          department_id?: string | null
+          id?: string
+          max_percent?: number
+        }
+        Update: {
+          department_id?: string | null
+          id?: string
+          max_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eleave_team_capacity_rules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "eleave_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipment_types: {
         Row: {
           category: string | null
@@ -4573,6 +5117,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           department: string | null
+          eleave_department_id: string | null
           email: string | null
           emergency_contact: string | null
           emergency_phone: string | null
@@ -4581,17 +5126,21 @@ export type Database = {
             | Database["public"]["Enums"]["employment_status"]
             | null
           full_name: string
+          gender: Database["public"]["Enums"]["eleave_gender"]
           hire_date: string | null
           id: string
           job_title: string | null
           level: string | null
           phone: string | null
+          probation_end_date: string | null
           report_to_employee_id: string | null
           reports_to: string | null
+          supervisor_id: string | null
           telegram_chat_id: number | null
           telegram_linked_at: string | null
           telegram_username: string | null
           updated_at: string
+          years_of_service: number
         }
         Insert: {
           avatar_url?: string | null
@@ -4600,6 +5149,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           department?: string | null
+          eleave_department_id?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null
@@ -4608,17 +5158,21 @@ export type Database = {
             | Database["public"]["Enums"]["employment_status"]
             | null
           full_name?: string
+          gender?: Database["public"]["Enums"]["eleave_gender"]
           hire_date?: string | null
           id: string
           job_title?: string | null
           level?: string | null
           phone?: string | null
+          probation_end_date?: string | null
           report_to_employee_id?: string | null
           reports_to?: string | null
+          supervisor_id?: string | null
           telegram_chat_id?: number | null
           telegram_linked_at?: string | null
           telegram_username?: string | null
           updated_at?: string
+          years_of_service?: number
         }
         Update: {
           avatar_url?: string | null
@@ -4627,6 +5181,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           department?: string | null
+          eleave_department_id?: string | null
           email?: string | null
           emergency_contact?: string | null
           emergency_phone?: string | null
@@ -4635,17 +5190,21 @@ export type Database = {
             | Database["public"]["Enums"]["employment_status"]
             | null
           full_name?: string
+          gender?: Database["public"]["Enums"]["eleave_gender"]
           hire_date?: string | null
           id?: string
           job_title?: string | null
           level?: string | null
           phone?: string | null
+          probation_end_date?: string | null
           report_to_employee_id?: string | null
           reports_to?: string | null
+          supervisor_id?: string | null
           telegram_chat_id?: number | null
           telegram_linked_at?: string | null
           telegram_username?: string | null
           updated_at?: string
+          years_of_service?: number
         }
         Relationships: [
           {
@@ -4665,6 +5224,20 @@ export type Database = {
           {
             foreignKeyName: "profiles_reports_to_fkey"
             columns: ["reports_to"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_supervisor_id_fkey"
+            columns: ["supervisor_id"]
             isOneToOne: false
             referencedRelation: "profiles_public"
             referencedColumns: ["id"]
@@ -9249,6 +9822,23 @@ export type Database = {
       dsr_severity: "low" | "med" | "high"
       dsr_site_status: "working" | "partial" | "closed"
       dsr_status: "draft" | "submitted" | "approved" | "rejected"
+      eleave_deduct_from: "balance" | "none"
+      eleave_gender: "male" | "female" | "any"
+      eleave_notif_type:
+        | "new_request"
+        | "approved"
+        | "rejected"
+        | "withdrawn"
+        | "cancellation_requested"
+        | "cancellation_approved"
+        | "cancellation_denied"
+      eleave_replacement_period: "full" | "am" | "pm"
+      eleave_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "withdrawn"
+        | "pending_cancellation"
       element_template_category: "Structure" | "Archiecture" | "MEP"
       employment_status:
         | "active"
@@ -9743,6 +10333,25 @@ export const Constants = {
       dsr_severity: ["low", "med", "high"],
       dsr_site_status: ["working", "partial", "closed"],
       dsr_status: ["draft", "submitted", "approved", "rejected"],
+      eleave_deduct_from: ["balance", "none"],
+      eleave_gender: ["male", "female", "any"],
+      eleave_notif_type: [
+        "new_request",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancellation_requested",
+        "cancellation_approved",
+        "cancellation_denied",
+      ],
+      eleave_replacement_period: ["full", "am", "pm"],
+      eleave_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "pending_cancellation",
+      ],
       element_template_category: ["Structure", "Archiecture", "MEP"],
       employment_status: [
         "active",
