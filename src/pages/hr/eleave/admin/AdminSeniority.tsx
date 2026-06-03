@@ -19,14 +19,14 @@ export default function AdminSeniority() {
   const [days, setDays] = useState("14");
 
   const load = useCallback(async () => {
-    const [r, t] = await Promise.all([supabase.from("seniority_rules").select("*, leave_types(name)").order("min_years"), supabase.from("leave_types").select("*").eq("seniority_based", true)]);
+    const [r, t] = await Promise.all([supabase.from("eleave_seniority_rules").select("*, leave_types(name)").order("min_years"), supabase.from("eleave_leave_types").select("*").eq("seniority_based", true)]);
     setRows(r.data ?? []); setTypes(t.data ?? []);
   }, []);
   useEffect(() => { load(); }, [load]);
 
   const add = async () => {
     if (!type) return toast.error("Pick a leave type.");
-    const { error } = await supabase.from("seniority_rules").insert({ leave_type_id: type, min_years: Number(years), days: Number(days) });
+    const { error } = await supabase.from("eleave_seniority_rules").insert({ leave_type_id: type, min_years: Number(years), days: Number(days) });
     if (error) return toast.error(error.message);
     load();
   };
@@ -47,7 +47,7 @@ export default function AdminSeniority() {
         <Table><TableHeader><TableRow><TableHead>Type</TableHead><TableHead>Min years</TableHead><TableHead>Days</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>{rows.map((r) => (
             <TableRow key={r.id}><TableCell>{r.leave_types?.name}</TableCell><TableCell>{r.min_years}</TableCell><TableCell>{r.days}</TableCell>
-              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("seniority_rules").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("eleave_seniority_rules").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
           ))}</TableBody>
         </Table>
       </Card>

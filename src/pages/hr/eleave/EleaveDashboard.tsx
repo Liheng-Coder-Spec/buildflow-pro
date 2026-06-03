@@ -65,15 +65,15 @@ export default function EleaveDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    sb.from("leave_balances").select("*, leave_types(name,color)").eq("user_id", user.id).eq("year", year).then(({ data }: any) => setBalances((data as any) ?? []));
-    sb.from("leave_requests").select("*, leave_types(name,color)").eq("user_id", user.id).eq("status", "approved").gte("end_date", new Date().toISOString().slice(0, 10)).order("start_date").then(({ data }: any) => setUpcoming(data ?? []));
+    sb.from("eleave_leave_balances").select("*, leave_types(name,color)").eq("user_id", user.id).eq("year", year).then(({ data }: any) => setBalances((data as any) ?? []));
+    sb.from("eleave_leave_requests").select("*, leave_types(name,color)").eq("user_id", user.id).eq("status", "approved").gte("end_date", new Date().toISOString().slice(0, 10)).order("start_date").then(({ data }: any) => setUpcoming(data ?? []));
     (async () => {
-      const { data: pendingRows } = await sb.from("leave_requests").select("*, leave_types(name,color)").eq("user_id", user.id).in("status", ["pending", "pending_cancellation"]).order("created_at", { ascending: false });
+      const { data: pendingRows } = await sb.from("eleave_leave_requests").select("*, leave_types(name,color)").eq("user_id", user.id).in("status", ["pending", "pending_cancellation"]).order("created_at", { ascending: false });
       const list = pendingRows ?? [];
       setPending(list);
       const ids = list.map((r: any) => r.id);
       if (!ids.length) { setPendingApprovals({}); return; }
-      const { data: appr } = await sb.from("request_approvals").select("request_id, level, decision, comment, decided_at, approver_id").in("request_id", ids).order("level", { ascending: true });
+      const { data: appr } = await sb.from("eleave_request_approvals").select("request_id, level, decision, comment, decided_at, approver_id").in("request_id", ids).order("level", { ascending: true });
       const approverIds = Array.from(new Set((appr ?? []).map((a: any) => a.approver_id)));
       const { data: profs } = approverIds.length ? await sb.from("profiles").select("id, full_name, email").in("id", approverIds) : { data: [] as any[] };
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
@@ -87,10 +87,10 @@ export default function EleaveDashboard() {
 
     if (role === "supervisor" || role === "admin") {
       (async () => {
-        const { data: appr } = await sb.from("request_approvals").select("request_id, level").eq("approver_id", user.id).is("decision", null);
+        const { data: appr } = await sb.from("eleave_request_approvals").select("request_id, level").eq("approver_id", user.id).is("decision", null);
         const ids = (appr ?? []).map((a: any) => a.request_id);
         if (!ids.length) { setToApprove([]); return; }
-        const { data: reqs } = await sb.from("leave_requests").select("*, leave_types(name,color)").in("id", ids).in("status", ["pending", "pending_cancellation"]).order("created_at", { ascending: false });
+        const { data: reqs } = await sb.from("eleave_leave_requests").select("*, leave_types(name,color)").in("id", ids).in("status", ["pending", "pending_cancellation"]).order("created_at", { ascending: false });
         const userIds = Array.from(new Set((reqs ?? []).map((r: any) => r.user_id)));
         const { data: profs } = userIds.length ? await sb.from("profiles").select("id, full_name, email").in("id", userIds) : { data: [] as any[] };
         const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));

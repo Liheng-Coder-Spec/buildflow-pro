@@ -36,21 +36,21 @@ export default function MyEleaveApprovalChain() {
     const { data: profile } = await sb.from("profiles").select("id, full_name, email, department_id, supervisor_id").eq("id", user.id).maybeSingle();
     setMe(profile ?? null);
     let deptName: string | null = null;
-    if (profile?.department_id) { const { data: d } = await sb.from("departments").select("name").eq("id", profile.department_id).maybeSingle(); deptName = d?.name ?? null; }
+    if (profile?.department_id) { const { data: d } = await sb.from("eleave_departments").select("name").eq("id", profile.department_id).maybeSingle(); deptName = d?.name ?? null; }
     setMyDeptName(deptName);
     if (profile?.supervisor_id) { const { data: s } = await sb.from("profiles").select("full_name, email").eq("id", profile.supervisor_id).maybeSingle(); setSupervisorName(s?.full_name || s?.email || null); } else setSupervisorName(null);
 
     let chainRows: { level: number; approver_id: string }[] = [];
     let resolvedSource: ChainSource = { type: "none" };
 
-    const { data: personal } = await sb.from("approval_chains").select("level, approver_id").eq("scope", "personal").eq("user_id", user.id).order("level");
+    const { data: personal } = await sb.from("eleave_approval_chains").select("level, approver_id").eq("scope", "personal").eq("user_id", user.id).order("level");
     if (personal && personal.length > 0) { chainRows = personal; resolvedSource = { type: "personal" }; }
     if (chainRows.length === 0 && profile?.department_id) {
-      const { data: dept } = await sb.from("approval_chains").select("level, approver_id").eq("scope", "department").eq("department_id", profile.department_id).order("level");
+      const { data: dept } = await sb.from("eleave_approval_chains").select("level, approver_id").eq("scope", "department").eq("department_id", profile.department_id).order("level");
       if (dept && dept.length > 0) { chainRows = dept; resolvedSource = { type: "department", name: deptName ?? "Department" }; }
     }
     if (chainRows.length === 0) {
-      const { data: company } = await sb.from("approval_chains").select("level, approver_id").eq("scope", "company").order("level");
+      const { data: company } = await sb.from("eleave_approval_chains").select("level, approver_id").eq("scope", "company").order("level");
       if (company && company.length > 0) { chainRows = company; resolvedSource = { type: "company" }; }
     }
     if (chainRows.length === 0 && profile?.supervisor_id) { chainRows = [{ level: 1, approver_id: profile.supervisor_id }]; resolvedSource = { type: "supervisor" }; }
@@ -68,7 +68,7 @@ export default function MyEleaveApprovalChain() {
       ]);
       const deptIds = Array.from(new Set((profs ?? []).map((p: any) => p.department_id).filter(Boolean) as string[]));
       let deptMap = new Map<string, string>();
-      if (deptIds.length > 0) { const { data: depts } = await sb.from("departments").select("id, name").in("id", deptIds); deptMap = new Map((depts ?? []).map((d: any) => [d.id, d.name])); }
+      if (deptIds.length > 0) { const { data: depts } = await sb.from("eleave_departments").select("id, name").in("id", deptIds); deptMap = new Map((depts ?? []).map((d: any) => [d.id, d.name])); }
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
       const rolesMap = new Map<string, string[]>();
       (roleRows ?? []).forEach((r: any) => { const arr = rolesMap.get(r.user_id) ?? []; arr.push(r.role); rolesMap.set(r.user_id, arr); });

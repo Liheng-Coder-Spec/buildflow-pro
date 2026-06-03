@@ -17,7 +17,7 @@ export default function AdminUsers() {
   const load = useCallback(async () => {
     const [p, d, r] = await Promise.all([
       supabase.from("profiles").select("*").order("full_name"),
-      supabase.from("departments").select("*"),
+      supabase.from("eleave_departments").select("*"),
       supabase.from("user_roles").select("user_id,role"),
     ]);
     setRows(p.data ?? []); setDepts(d.data ?? []);

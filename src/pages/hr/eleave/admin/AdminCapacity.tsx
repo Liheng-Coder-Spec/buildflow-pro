@@ -22,9 +22,9 @@ export default function AdminCapacity() {
 
   const load = useCallback(async () => {
     const [r, o, d] = await Promise.all([
-      supabase.from("team_capacity_rules").select("*"),
-      supabase.from("capacity_overrides").select("*").order("date"),
-      supabase.from("departments").select("*"),
+      supabase.from("eleave_team_capacity_rules").select("*"),
+      supabase.from("eleave_capacity_overrides").select("*").order("date"),
+      supabase.from("eleave_departments").select("*"),
     ]);
     setRules(r.data ?? []); setOverrides(o.data ?? []); setDepts(d.data ?? []);
   }, []);
@@ -32,13 +32,13 @@ export default function AdminCapacity() {
 
   const addRule = async () => {
     const department_id = dept === "__all__" ? null : dept;
-    const { error } = await supabase.from("team_capacity_rules").insert({ department_id, max_percent: Number(pct) });
+    const { error } = await supabase.from("eleave_team_capacity_rules").insert({ department_id, max_percent: Number(pct) });
     if (error) return toast.error(error.message);
     load();
   };
   const addOverride = async () => {
     const department_id = dept === "__all__" ? null : dept;
-    const { error } = await supabase.from("capacity_overrides").insert({ department_id, date: oDate, max_percent: Number(oPct) });
+    const { error } = await supabase.from("eleave_capacity_overrides").insert({ department_id, date: oDate, max_percent: Number(oPct) });
     if (error) return toast.error(error.message);
     load();
   };
@@ -61,7 +61,7 @@ export default function AdminCapacity() {
         <Table><TableHeader><TableRow><TableHead>Department</TableHead><TableHead>Max %</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>{rules.map((r) => (
             <TableRow key={r.id}><TableCell>{deptName(r.department_id)}</TableCell><TableCell>{r.max_percent}%</TableCell>
-              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("team_capacity_rules").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("eleave_team_capacity_rules").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
           ))}</TableBody>
         </Table>
       </Card>
@@ -76,7 +76,7 @@ export default function AdminCapacity() {
         <Table><TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Department</TableHead><TableHead>Max %</TableHead><TableHead></TableHead></TableRow></TableHeader>
           <TableBody>{overrides.map((r) => (
             <TableRow key={r.id}><TableCell>{r.date}</TableCell><TableCell>{deptName(r.department_id)}</TableCell><TableCell>{r.max_percent}%</TableCell>
-              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("capacity_overrides").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+              <TableCell className="text-right"><Button size="icon" variant="ghost" onClick={async () => { await supabase.from("eleave_capacity_overrides").delete().eq("id", r.id); load(); }}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
           ))}</TableBody>
         </Table>
       </Card>

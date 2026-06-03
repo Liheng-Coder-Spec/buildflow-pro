@@ -35,7 +35,7 @@ export default function EleavePublicHolidays() {
 
   useEffect(() => {
     setLoading(true);
-    sb.from("public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date", { ascending: true }).then(({ data }: any) => { setHolidays((data ?? []) as Holiday[]); setLoading(false); });
+    sb.from("eleave_public_holidays").select("*").gte("holiday_date", `${year}-01-01`).lte("holiday_date", `${year}-12-31`).order("holiday_date", { ascending: true }).then(({ data }: any) => { setHolidays((data ?? []) as Holiday[]); setLoading(false); });
   }, [year]);
 
   const filtered = useMemo(() => { const q = search.trim().toLowerCase(); if (!q) return holidays; return holidays.filter((h) => h.name.toLowerCase().includes(q)); }, [holidays, search]);

@@ -24,10 +24,10 @@ export default function EleaveTeamCalendar() {
       if (!prof?.department_id) { setDeptSize(1); return; }
       const { data: peers } = await sb.from("profiles").select("id").eq("department_id", prof.department_id);
       setDeptSize(peers?.length || 1);
-      const { data: cap } = await sb.from("team_capacity_rules").select("max_percent").or(`department_id.eq.${prof.department_id},department_id.is.null`).order("department_id", { ascending: false }).limit(1).maybeSingle();
+      const { data: cap } = await sb.from("eleave_team_capacity_rules").select("max_percent").or(`department_id.eq.${prof.department_id},department_id.is.null`).order("department_id", { ascending: false }).limit(1).maybeSingle();
       if (cap) setMaxPct(Number(cap.max_percent));
       const peerIds = (peers ?? []).map((p: any) => p.id);
-      const { data: reqs } = await sb.from("leave_requests").select("user_id,start_date,end_date,status,leave_types(name,color)").in("user_id", peerIds).eq("status", "approved");
+      const { data: reqs } = await sb.from("eleave_leave_requests").select("user_id,start_date,end_date,status,leave_types(name,color)").in("user_id", peerIds).eq("status", "approved");
       setRequests(reqs ?? []);
     })();
   }, [user]);

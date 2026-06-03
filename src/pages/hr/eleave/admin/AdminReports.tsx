@@ -90,11 +90,11 @@ export default function AdminReports() {
       setLoading(true);
       const [reqsRes, lt, depts] = await Promise.all([
         supabase
-          .from("leave_requests")
+          .from("eleave_leave_requests")
           .select("id, start_date, end_date, days, status, reason, cancellation_reason, created_at, updated_at, attachment_urls, user_id, leave_type_id")
           .order("created_at", { ascending: false }),
-        supabase.from("leave_types").select("id, name, color").order("name"),
-        supabase.from("departments").select("id, name").order("name"),
+        supabase.from("eleave_leave_types").select("id, name, color").order("name"),
+        supabase.from("eleave_departments").select("id, name").order("name"),
       ]);
 
       if (reqsRes.error) {
@@ -148,7 +148,7 @@ export default function AdminReports() {
       let approvals: { request_id: string; level: number; approver_id: string }[] = [];
       if (ids.length) {
         const { data: aData } = await supabase
-          .from("request_approvals")
+          .from("eleave_request_approvals")
           .select("request_id, level, approver_id")
           .in("request_id", ids)
           .order("level");

@@ -23,9 +23,9 @@ export default function AdminApprovalChains() {
 
   const load = useCallback(async () => {
     const [a, p, d] = await Promise.all([
-      supabase.from("approval_chains").select("*").order("scope").order("level"),
+      supabase.from("eleave_approval_chains").select("*").order("scope").order("level"),
       supabase.from("profiles").select("id,full_name,email"),
-      supabase.from("departments").select("*"),
+      supabase.from("eleave_departments").select("*"),
     ]);
     setRows(a.data ?? []); setProfiles(p.data ?? []); setDepts(d.data ?? []);
   }, []);
@@ -33,7 +33,7 @@ export default function AdminApprovalChains() {
 
   const add = async () => {
     if (!approver_id) return toast.error("Pick an approver.");
-    const { error } = await supabase.from("approval_chains").insert({
+    const { error } = await supabase.from("eleave_approval_chains").insert({
       scope, approver_id, level: Number(level),
       user_id: scope === "personal" ? user_id : null,
       department_id: scope === "department" ? department_id : null,
@@ -41,7 +41,7 @@ export default function AdminApprovalChains() {
     if (error) return toast.error(error.message);
     toast.success("Added"); load();
   };
-  const del = async (id: string) => { await supabase.from("approval_chains").delete().eq("id", id); load(); };
+  const del = async (id: string) => { await supabase.from("eleave_approval_chains").delete().eq("id", id); load(); };
 
   const nameOf = (id: string) => profiles.find((p) => p.id === id)?.full_name ?? id;
   const deptOf = (id: string | null) => depts.find((d) => d.id === id)?.name ?? "—";

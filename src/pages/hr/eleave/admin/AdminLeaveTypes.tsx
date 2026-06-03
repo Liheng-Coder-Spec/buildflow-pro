@@ -25,16 +25,16 @@ export default function AdminLeaveTypes() {
   const [rows, setRows] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
 
-  const load = useCallback(() => { supabase.from("leave_types").select("*").order("name").then(({ data }) => setRows(data ?? [])); }, []);
+  const load = useCallback(() => { supabase.from("eleave_leave_types").select("*").order("name").then(({ data }) => setRows(data ?? [])); }, []);
   useEffect(() => { load(); }, [load]);
 
   const save = async () => {
     const { id, ...payload } = editing;
-    const fn = id ? supabase.from("leave_types").update(payload).eq("id", id) : supabase.from("leave_types").insert(payload);
+    const fn = id ? supabase.from("eleave_leave_types").update(payload).eq("id", id) : supabase.from("eleave_leave_types").insert(payload);
     const { error } = await fn; if (error) return toast.error(error.message);
     toast.success("Saved"); setEditing(null); load();
   };
-  const del = async (id: string) => { if (!confirm("Delete this leave type?")) return; const { error } = await supabase.from("leave_types").delete().eq("id", id); if (error) toast.error(error.message); else load(); };
+  const del = async (id: string) => { if (!confirm("Delete this leave type?")) return; const { error } = await supabase.from("eleave_leave_types").delete().eq("id", id); if (error) toast.error(error.message); else load(); };
 
   return (
     <div className="space-y-4">

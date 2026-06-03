@@ -31,11 +31,11 @@ export default function EleaveApprovals() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    const { data: appr } = await sb.from("request_approvals").select("request_id, level").eq("approver_id", user.id).is("decision", null);
+    const { data: appr } = await sb.from("eleave_request_approvals").select("request_id, level").eq("approver_id", user.id).is("decision", null);
     const ids = (appr ?? []).map((a: any) => a.request_id);
     let leaveRows: any[] = [];
     if (ids.length) {
-      const { data: reqs } = await sb.from("leave_requests").select("*, leave_types(name,color)").in("id", ids).in("status", ["pending", "pending_cancellation"]);
+      const { data: reqs } = await sb.from("eleave_leave_requests").select("*, leave_types(name,color)").in("id", ids).in("status", ["pending", "pending_cancellation"]);
       const userIds = Array.from(new Set((reqs ?? []).map((r: any) => r.user_id)));
       const { data: profs } = userIds.length ? await sb.from("profiles").select("id, full_name, email").in("id", userIds) : { data: [] as any[] };
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
@@ -47,7 +47,7 @@ export default function EleaveApprovals() {
     const { data: roleRow } = await sb.from("user_roles").select("role").eq("user_id", user.id);
     const isAdmin = (roleRow ?? []).some((r: any) => r.role === "admin");
 
-    let q = sb.from("replacement_credits").select("*").eq("status", "pending");
+    let q = sb.from("eleave_replacement_credits").select("*").eq("status", "pending");
     if (isAdmin) q = q.eq("current_level", 2);
     else q = q.eq("current_level", 1).eq("supervisor_id", user.id);
     const { data: claims } = await q.order("created_at", { ascending: false });

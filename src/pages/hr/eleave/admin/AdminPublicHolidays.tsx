@@ -99,7 +99,7 @@ export default function AdminPublicHolidays() {
   async function load() {
     setLoading(true);
     const { data } = await supabase
-      .from("public_holidays")
+      .from("eleave_public_holidays")
       .select("*")
       .gte("holiday_date", `${year}-01-01`)
       .lte("holiday_date", `${year}-12-31`)
@@ -132,7 +132,7 @@ export default function AdminPublicHolidays() {
     }
     if (editing) {
       const { error } = await supabase
-        .from("public_holidays")
+        .from("eleave_public_holidays")
         .update({
           name: form.name.trim(),
           holiday_date: form.holiday_date,
@@ -142,7 +142,7 @@ export default function AdminPublicHolidays() {
       if (error) return toast.error(error.message);
       toast.success("Holiday updated");
     } else {
-      const { error } = await supabase.from("public_holidays").insert({
+      const { error } = await supabase.from("eleave_public_holidays").insert({
         name: form.name.trim(),
         holiday_date: form.holiday_date,
         note: form.note.trim() || null,
@@ -156,7 +156,7 @@ export default function AdminPublicHolidays() {
 
   async function confirmDelete() {
     if (!deleteId) return;
-    const { error } = await supabase.from("public_holidays").delete().eq("id", deleteId);
+    const { error } = await supabase.from("eleave_public_holidays").delete().eq("id", deleteId);
     if (error) toast.error(error.message);
     else toast.success("Holiday deleted");
     setDeleteId(null);
@@ -169,7 +169,7 @@ export default function AdminPublicHolidays() {
       name: h.name,
     }));
     const { error } = await supabase
-      .from("public_holidays")
+      .from("eleave_public_holidays")
       .upsert(rows, { onConflict: "holiday_date", ignoreDuplicates: true });
     if (error) return toast.error(error.message);
     toast.success(`Seeded ${rows.length} Cambodia holidays for ${year}`);

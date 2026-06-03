@@ -42,8 +42,8 @@ export function ReportDetailDialog({ open, onOpenChange, request, profileMap }: 
     if (!open || !request) return;
     setLoading(true);
     Promise.all([
-      supabase.from("request_approvals").select("level, approver_id, decision, comment, decided_at, created_at").eq("request_id", request.id).order("level"),
-      supabase.from("audit_log").select("id, action, actor_id, details, created_at").eq("entity", "leave_request").eq("entity_id", request.id).order("created_at"),
+      supabase.from("eleave_request_approvals").select("level, approver_id, decision, comment, decided_at, created_at").eq("request_id", request.id).order("level"),
+      supabase.from("eleave_audit_log").select("id, action, actor_id, details, created_at").eq("entity", "leave_request").eq("entity_id", request.id).order("created_at"),
     ]).then(([a, b]) => {
       setApprovals((a.data as any) ?? []);
       setAudits((b.data as any) ?? []);

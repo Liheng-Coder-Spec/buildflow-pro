@@ -17,9 +17,9 @@ export default function AdminAllowances() {
 
   const load = useCallback(async () => {
     const [b, p, t] = await Promise.all([
-      supabase.from("leave_balances").select("*, profiles!leave_balances_user_id_fkey(full_name,email,years_of_service), leave_types(name,seniority_based,id)").eq("year", year),
+      supabase.from("eleave_leave_balances").select("*, profiles!leave_balances_user_id_fkey(full_name,email,years_of_service), leave_types(name,seniority_based,id)").eq("year", year),
       supabase.from("profiles").select("id,full_name,email,years_of_service"),
-      supabase.from("leave_types").select("*"),
+      supabase.from("eleave_leave_types").select("*"),
     ]);
     setRows(b.data ?? []); setProfiles(p.data ?? []); setTypes(t.data ?? []);
   }, [year]);
@@ -27,19 +27,19 @@ export default function AdminAllowances() {
 
   const update = async (id: string, field: string, value: number) => {
     const patch: any = { [field]: value };
-    const { error } = await supabase.from("leave_balances").update(patch).eq("id", id);
+    const { error } = await supabase.from("eleave_leave_balances").update(patch).eq("id", id);
     if (error) toast.error(error.message); else load();
   };
 
   const autoBySeniority = async () => {
-    const { data: rules } = await supabase.from("seniority_rules").select("*").order("min_years", { ascending: false });
+    const { data: rules } = await supabase.from("eleave_seniority_rules").select("*").order("min_years", { ascending: false });
     let n = 0;
     for (const p of profiles) {
       const ys = Number(p.years_of_service ?? 0);
       for (const t of types.filter((x) => x.seniority_based)) {
         const tier = (rules ?? []).find((r) => r.leave_type_id === t.id && Number(r.min_years) <= ys);
         if (!tier) continue;
-        await supabase.from("leave_balances").upsert({ user_id: p.id, leave_type_id: t.id, year, yearly_allowance: Number(tier.days) }, { onConflict: "user_id,leave_type_id,year" });
+        await supabase.from("eleave_leave_balances").upsert({ user_id: p.id, leave_type_id: t.id, year, yearly_allowance: Number(tier.days) }, { onConflict: "user_id,leave_type_id,year" });
         n++;
       }
     }
