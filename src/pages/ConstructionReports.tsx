@@ -23,6 +23,7 @@ import {
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { toast } from "sonner";
 
 // Report types per Module 14.5
 type ReportType = 
@@ -166,7 +167,7 @@ export default function ConstructionReports() {
             <BarChart3 className="h-6 w-6" /> Construction Reports
           </h1>
           <p className="text-sm text-muted-foreground">
-            Module 14.5 Key Reports for {activeProject.project_name}
+            Module 14.5 Key Reports for {activeProject.name}
           </p>
         </div>
         {canExport && (

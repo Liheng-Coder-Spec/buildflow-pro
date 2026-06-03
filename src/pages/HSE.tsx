@@ -90,7 +90,7 @@ export default function HSE() {
   // Calculate KPIs
   const lastIncident = incidents.length > 0 
     ? new Date(incidents.sort((a,b) => new Date(b.incident_date).getTime() - new Date(a.incident_date).getTime())[0].incident_date) 
-    : new Date(activeProject.created_at);
+    : new Date((activeProject as any).created_at ?? Date.now());
   const safeDays = Math.max(0, differenceInDays(new Date(), lastIncident));
   const openPermits = permits.filter(p => p.status === 'pending' || p.status === 'approved').length;
   const criticalIncidents = incidents.filter(i => i.severity === 'critical' || i.severity === 'high').length;
@@ -360,7 +360,7 @@ function HsePermitForm({ projectId, onSuccess }: any) {
         project_id: projectId,
         permit_number: pNum,
         ...formData
-      });
+      } as any);
 
       if (error) throw error;
       toast.success(`Permit ${pNum} submitted for approval`);
@@ -404,7 +404,7 @@ function HsePermitForm({ projectId, onSuccess }: any) {
           <Select value={formData.wbs_node_id} onValueChange={v => setFormData(p => ({...p, wbs_node_id: v}))}>
             <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
             <SelectContent>
-              {wbsNodes.filter(n => n.type === 'location' || n.type === 'building').map(n => (
+              {wbsNodes.filter((n: any) => n.type === 'location' || n.type === 'building').map(n => (
                 <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
               ))}
             </SelectContent>
@@ -464,7 +464,7 @@ function HseIncidentForm({ projectId, onSuccess }: any) {
         project_id: projectId,
         incident_number: incNum,
         ...formData
-      });
+      } as any);
 
       if (error) throw error;
       toast.success(`Incident ${incNum} reported successfully`);
@@ -524,7 +524,7 @@ function HseIncidentForm({ projectId, onSuccess }: any) {
           <Select value={formData.wbs_node_id} onValueChange={v => setFormData(p => ({...p, wbs_node_id: v}))}>
             <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
             <SelectContent>
-              {wbsNodes.filter(n => n.type === 'location' || n.type === 'building').map(n => (
+              {wbsNodes.filter((n: any) => n.type === 'location' || n.type === 'building').map(n => (
                 <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>
               ))}
             </SelectContent>

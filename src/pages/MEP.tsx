@@ -135,7 +135,7 @@ export default function MEP() {
                     ...newSchematic, 
                     project_id: activeProject.id,
                     file_url: fileUrl || null
-                  });
+                  } as any);
                   if (error) throw error;
                   toast.success("Schematic saved"); setSchematicOpen(false); setFile(null); loadData();
                 } catch (e: any) { toast.error(e.message); } finally { setSubmitting(false); }
@@ -152,7 +152,7 @@ export default function MEP() {
                 <div className="grid gap-2"><Label>Manufacturer</Label><Input value={newSubmittal.manufacturer} onChange={e => setNewSubmittal({...newSubmittal, manufacturer: e.target.value})} /></div>
               </div>
               <DialogFooter><Button onClick={async () => {
-                const { error } = await supabase.from("mep_material_submittals").insert({...newSubmittal, project_id: activeProject.id});
+                const { error } = await supabase.from("mep_material_submittals").insert({...newSubmittal, project_id: activeProject.id} as any);
                 if (!error) { toast.success("Submittal logged"); setSubmittalOpen(false); loadData(); }
               }}>Save</Button></DialogFooter>
             </DialogContent>

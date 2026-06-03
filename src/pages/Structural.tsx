@@ -114,7 +114,7 @@ export default function Structural() {
     if (!newDrawing.drawing_number || !newDrawing.title) return toast.error("Please fill required fields");
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("structural_drawings").insert({ project_id: activeProject!.id, ...newDrawing, wbs_node_id: newDrawing.wbs_node_id || null });
+      const { error } = await supabase.from("structural_drawings").insert({ project_id: activeProject!.id, ...newDrawing, wbs_node_id: newDrawing.wbs_node_id || null } as any);
       if (error) throw error;
       toast.success("Drawing added"); setIsDrawingOpen(false); loadData();
     } catch (e: any) { toast.error(e.message); } finally { setSubmitting(false); }
@@ -124,7 +124,7 @@ export default function Structural() {
     if (!newBbs.wbs_node_id || !newBbs.member_mark || !newBbs.bar_mark) return toast.error("Fill required fields");
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("structural_rebar_schedules").insert({ project_id: activeProject!.id, ...newBbs });
+      const { error } = await supabase.from("structural_rebar_schedules").insert({ project_id: activeProject!.id, ...newBbs } as any);
       if (error) throw error;
       toast.success("BBS Entry added"); setIsBbsOpen(false); loadData();
     } catch (e: any) { toast.error(e.message); } finally { setSubmitting(false); }
