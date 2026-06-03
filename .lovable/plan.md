@@ -1,47 +1,137 @@
-# Plan: Import Tasks from Master Task Template
 
-Add a second action button on **Work / Tasks** (next to the existing "New Task") that lets users instantiate a saved template from **Master Libraries / Task Template** into the active project.
+## Goal
 
-## UI
+Clone the full `leave-management-system` project (UI + DB schema + business logic) from your workspace into this DCOS app, mounted under the **HR Management → E-Leave** group, replacing the existing minimal Leave pages. All user-visible wording "Leave" becomes **"E-Leave"** (page titles, sidebar, breadcrumbs).
 
-**Tasks page header** — add `<ImportFromTemplateDialog />` button beside `<CreateTaskDialog />`. Label: "From Template", icon `FolderInput`, variant `outline`.
+## Source vs. target
 
-**New dialog** `src/components/tasks/ImportFromTemplateDialog.tsx`:
+Source project: `leave-management-system` (ID `7668dacf-5151-41e7-9704-4c87e47b3c2b`) — same workspace, readable.
 
-1. **Template picker** — Select dropdown loading active rows from `master_task_templates` (code · name · discipline · phase). Shows description + grouping method preview when selected.
-2. **WBS location** — required, reuse `<WbsNodePicker />`.
-3. **Grouping inputs** — driven by template's `grouping_method`:
-   - *Generate by Quantity* → number input "Quantity" + unit (read-only, from template) → creates N task-groups
-   - *Generate by Location* → free-text list (one location per line) → one task-group per location
-   - *Generate by Floor / Level* → free-text list (e.g. "L1, L2, L3") → one task-group per floor
-   - *Single Task Package* → no extra input, one task-group
-4. **Planned start date** — optional date input; used to compute each step's `planned_start`/`planned_end` from `duration`.
-5. Footer: Cancel / Import.
+Source includes:
+- 12 user pages: Dashboard, ApplyLeave, MyRequests, TeamCalendar, WhosOnLeave, Replacement, Approvals, Notifications, PublicHolidays, MyApprovalChain + Auth, NotFound
+- 9 admin pages: AdminLeaveTypes, AdminApprovalChains, AdminCapacity, AdminSeniority, AdminAllowances, AdminYearEnd, AdminUsers, AdminReports, AdminPublicHolidays
+- Components: ApprovalChainTimeline, StatusPill, NavLink, reports/
+- Libs: leave.ts, replacement.ts, exportReport.ts
+- 8 SQL migrations defining: `leave_types`, `leave_balances`, `leave_requests`, `approval_chains`, `request_approvals`, `seniority_rules`, `team_capacity_rules`, `capacity_overrides`, `replacement_credits`, `notifications`, `audit_log`, plus enums (`leave_status`, `gender`, `deduct_from`, `notification_type`) and RPCs (`has_role`, `current_user_role`, balance/expiry helpers).
 
-## Import logic
+## Plan
 
-For each generated **group** (qty index, location, floor, or just 1):
+### 1. Database migration (single migration file)
+- Add new enums: `leave_status`, `gender`, `deduct_from`, `notification_type` (skip `app_role` — this app already has its own roles system; map `supervisor`/`admin` to existing roles).
+- Drop legacy tables that the new system replaces and that aren't used elsewhere: `leave_balances`, `leave_requests`, `leave_types` (current schema is incompatible).
+- Create the new tables: `leave_types`, `seniority_rules`, `leave_balances`, `leave_requests` (with `current_level`, `total_levels`, half-day, attachment, cancellation_reason…), `approval_chains`, `request_approvals`, `team_capacity_rules`, `capacity_overrides`, `replacement_credits`, plus an `e_leave_notifications` table (suffixed to avoid colliding with the existing global `notifications` table).
+- Reuse this app's existing `profiles` and `departments`, adding columns the source expects (`gender`, `hire_date`, `probation_end_date`, `years_of_service`, `supervisor_id`) if missing.
+- GRANTs to `authenticated` + `service_role` for every new table, RLS enabled, policies ported (self-read, supervisor/admin read-all, admin manage). Role checks use the existing `has_role(uuid, app_role)` already in this project (mapping `supervisor` → `project_manager`/`supervisor`).
+- Port supporting SQL from the other 7 migrations (capacity functions, seniority resolver, year-end carry-over, balance ledger triggers, notification creators).
 
-1. Load template steps from `master_task_template_steps` (ordered by `sort_order`).
-2. For each step, insert one row into `tasks` with:
-   - `project_id` = active project, `wbs_node_id` = picked node, `location_zone` = wbs path (+ suffix like ` · Loc: A` or ` · Qty 3 of 10` when grouping applies)
-   - `title` = `${step.step_name}` (prefixed with template name when single-step or suffixed with group label)
-   - `description` = template description + step code
-   - `task_type` = `"other"`, `priority` = `"medium"`, `status` = template `default_task_status` mapped to TaskStatus (`Open`→`open`, `Assigned`→`assigned`, `On Hold`→`on_hold`)
-   - `department` = derived from template `discipline` prefix (STR→structural, ARC→architecture, MEP→mep), with sensible `dept_status`
-   - `workflow_type` / `category` = best-effort default (`construction` / first category) — user can refine later
-   - `estimated_hours` = parsed from `step.duration` (e.g. "1 day" → 8h, "2 days" → 16h)
-   - `planned_start`, `planned_end` rolling forward from the optional start date using the parsed duration
-   - `created_by` = current user
-3. Show progress toast; on success: close dialog, refresh task list, audit-log a `TASK_TEMPLATE_IMPORT` event.
+### 2. Code port
 
-## Files
+Copy source files into a new namespace so nothing clashes:
 
-- **New** `src/components/tasks/ImportFromTemplateDialog.tsx`
-- **Edit** `src/pages/Tasks.tsx` — render the new dialog button beside `CreateTaskDialog` and pass `onCreated` to refetch.
+```text
+src/pages/hr/eleave/
+  EleaveDashboard.tsx         (← Dashboard.tsx)
+  ApplyEleave.tsx             (← ApplyLeave.tsx)
+  MyEleaveRequests.tsx        (← MyRequests.tsx)
+  EleaveTeamCalendar.tsx
+  WhosOnEleave.tsx
+  EleaveReplacement.tsx
+  EleaveApprovals.tsx
+  EleaveNotifications.tsx
+  EleavePublicHolidays.tsx
+  MyEleaveApprovalChain.tsx
+  admin/
+    AdminEleaveTypes.tsx
+    AdminEleaveApprovalChains.tsx
+    AdminEleaveCapacity.tsx
+    AdminEleaveSeniority.tsx
+    AdminEleaveAllowances.tsx
+    AdminEleaveYearEnd.tsx
+    AdminEleaveUsers.tsx
+    AdminEleaveReports.tsx
+    AdminEleavePublicHolidays.tsx
+src/components/eleave/
+  ApprovalChainTimeline.tsx
+  StatusPill.tsx
+  reports/...
+src/lib/eleave/
+  leave.ts
+  replacement.ts
+  exportReport.ts
+```
 
-## Out of scope
+All "Leave" wording in headings, buttons, toasts, page titles → **"E-Leave"** (keep DB table names as `leave_*` to match the ported SQL — these are not user-visible).
 
-- Template **dependencies** between steps (would need new task_dependencies inserts) — defer to v2; show a one-line note in the dialog.
-- Template **checklist/documents** — not copied in v1 (no per-task tables exist for these yet).
-- Editing templates from this dialog — users go to Master Libraries as before.
+Replace source-specific shells with this app's shared infra:
+- Drop the source `AppLayout`, `ProtectedRoute`, `AuthContext`, `NavLink`, `use-toast`, `useSEO` — reuse the existing ones already in this project.
+- Source uses `supabase/client` import — already compatible.
+- Source uses roles `admin`/`supervisor`/`employee` — remap to this app's `AppRole` (`admin`, `project_manager`/`supervisor`, default).
+- Replace any `useNavigate("/apply")` etc. with the new routes below.
+
+### 3. Routing (src/App.tsx)
+
+Replace existing HR Leave routes with the new E-Leave routes:
+
+```text
+/hr/eleave                        EleaveDashboard
+/hr/eleave/apply                  ApplyEleave
+/hr/eleave/requests               MyEleaveRequests
+/hr/eleave/calendar               EleaveTeamCalendar
+/hr/eleave/whos-on-leave          WhosOnEleave
+/hr/eleave/replacement            EleaveReplacement
+/hr/eleave/approvals              EleaveApprovals          (project_manager / supervisor / admin)
+/hr/eleave/notifications          EleaveNotifications
+/hr/eleave/holidays               EleavePublicHolidays
+/hr/eleave/my-approval-chain      MyEleaveApprovalChain
+/hr/eleave/admin/leave-types      AdminEleaveTypes         (admin)
+/hr/eleave/admin/approval-chains  AdminEleaveApprovalChains (admin)
+/hr/eleave/admin/capacity         AdminEleaveCapacity      (admin)
+/hr/eleave/admin/seniority        AdminEleaveSeniority     (admin)
+/hr/eleave/admin/allowances       AdminEleaveAllowances    (admin)
+/hr/eleave/admin/year-end         AdminEleaveYearEnd       (admin)
+/hr/eleave/admin/users            AdminEleaveUsers         (admin)
+/hr/eleave/admin/reports          AdminEleaveReports       (admin)
+/hr/eleave/admin/holidays         AdminEleavePublicHolidays (admin)
+```
+
+Delete the routes `/hr/leave`, `/hr/leave/new`, `/hr/leave/types` and remove the now-unused `LeaveList.tsx`, `LeaveRequestForm.tsx`, `LeaveTypesAdmin.tsx`, plus `services/leaveService.ts` and any consumers (will refactor or delete; `lib/hrMeta.ts` leave-related types removed).
+
+### 4. Sidebar (src/components/AppLayout.tsx — HR Management group)
+
+Replace the single "Leave" item with E-Leave entries:
+
+```text
+HR Management
+  HR Dashboard
+  E-Leave                  → /hr/eleave
+  Apply E-Leave            → /hr/eleave/apply
+  My E-Leave Requests      → /hr/eleave/requests
+  Team Calendar            → /hr/eleave/calendar
+  Who's on E-Leave         → /hr/eleave/whos-on-leave
+  E-Leave Approvals        → /hr/eleave/approvals     (supervisor/admin only)
+  E-Leave Admin            → /hr/eleave/admin/leave-types (admin only, expands to admin sub-pages)
+  Attendance
+  People
+```
+
+(Exact sidebar grouping kept flat to match existing pattern; admin sub-pages reached from the E-Leave Admin landing page rather than each in the sidebar to avoid clutter.)
+
+### 5. Cleanup
+- Delete legacy `LeaveList.tsx`, `LeaveRequestForm.tsx`, `LeaveTypesAdmin.tsx`, `services/leaveService.ts`.
+- Strip leave-related types/labels from `src/lib/hrMeta.ts`.
+- Keep `HRDashboard`, `Attendance`, `People` untouched.
+
+## Open trade-offs to flag
+
+- **Roles**: source uses `employee/supervisor/admin`; this app uses a richer role set. I'll map `supervisor` → this app's `supervisor`+`project_manager`, `admin` → `admin`. Any non-mapped user becomes a regular employee.
+- **Profiles columns**: the source expects `hire_date`, `gender`, `years_of_service`, `supervisor_id` on `profiles`. I'll add them as nullable to avoid disturbing existing data.
+- **Notifications**: source has its own `notifications` table. This app already has a global notifications table, so the ported one will be renamed to `eleave_notifications` and a small adapter rewrites the source's queries.
+- **Data loss**: existing rows in current `leave_requests` / `leave_balances` / `leave_types` will be **dropped** (per "Replace with E-Leave"). If you want me to migrate any current data first, say so before approving.
+
+## Deliverables order
+
+1. Run the database migration (requires your approval).
+2. Port code files + adapters in one pass.
+3. Update `App.tsx` routes + sidebar.
+4. Remove legacy leave files.
+5. Smoke-check build, fix any type/import errors surfaced by the new schema.
