@@ -30,6 +30,58 @@ import { Download, FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useSEO } from "@/hooks/useSEO";
+import { PayrollLifecycleStepper } from "@/components/payroll/PayrollLifecycleStepper";
+import {
+  PAYROLL_LIFECYCLE_ORDER,
+  PAYROLL_LIFECYCLE_LABELS,
+  PayrollLifecycleStatus,
+} from "@/lib/payrollMeta";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+function CompactLifecycle({ status }: { status: string }) {
+  const normalized: PayrollLifecycleStatus =
+    (status as PayrollLifecycleStatus) === "open"
+      ? "draft"
+      : (status as PayrollLifecycleStatus);
+  const idx = PAYROLL_LIFECYCLE_ORDER.indexOf(normalized);
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="flex items-center gap-1">
+        {PAYROLL_LIFECYCLE_ORDER.map((s, i) => {
+          const done = i < idx;
+          const active = i === idx;
+          return (
+            <Tooltip key={s}>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    done && "bg-success",
+                    active && "bg-primary ring-2 ring-primary/30 animate-pulse",
+                    !done && !active && "bg-muted-foreground/30",
+                  )}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {i + 1}. {PAYROLL_LIFECYCLE_LABELS[s]}
+                {active ? " · current" : done ? " · done" : ""}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+        <span className="ml-2 text-xs text-muted-foreground">
+          {PAYROLL_LIFECYCLE_LABELS[normalized] ?? status}
+        </span>
+      </div>
+    </TooltipProvider>
+  );
+}
 
 interface MyPayslipRow {
   id: string;
@@ -257,9 +309,11 @@ export default function MyPayslips() {
                         {money(r.line?.net_salary, ccy)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
-                          {r.period?.status ?? "—"}
-                        </Badge>
+                        {r.period?.status ? (
+                          <CompactLifecycle status={r.period.status} />
+                        ) : (
+                          <Badge variant="secondary">—</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -342,6 +396,17 @@ function PayslipDetail({
           <div className="font-medium">{l?.overtime_hours ?? 0}</div>
         </div>
       </div>
+
+      {row.period?.status && (
+        <div className="rounded-md border p-3 bg-muted/30">
+          <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Period lifecycle
+          </div>
+          <PayrollLifecycleStepper
+            current={row.period.status as PayrollLifecycleStatus}
+          />
+        </div>
+      )}
 
       <div>
         <h4 className="text-sm font-semibold mb-2">Earnings</h4>
