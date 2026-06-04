@@ -309,9 +309,11 @@ export default function MyPayslips() {
                         {money(r.line?.net_salary, ccy)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary">
-                          {r.period?.status ?? "—"}
-                        </Badge>
+                        {r.period?.status ? (
+                          <CompactLifecycle status={r.period.status} />
+                        ) : (
+                          <Badge variant="secondary">—</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
