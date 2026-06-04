@@ -9,18 +9,15 @@ export interface TelegramStatus {
 
 export const TELEGRAM_BOT_USERNAME = "dcos_alerts_bot";
 
-export async function getTelegramStatus(userId: string): Promise<TelegramStatus> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("telegram_chat_id, telegram_username, telegram_linked_at")
-    .eq("id", userId)
-    .maybeSingle();
+export async function getTelegramStatus(_userId: string): Promise<TelegramStatus> {
+  const { data, error } = await (supabase as any).rpc("get_my_profile");
   if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
   return {
-    linked: !!data?.telegram_chat_id,
-    chat_id: (data?.telegram_chat_id as number | null) ?? null,
-    username: (data?.telegram_username as string | null) ?? null,
-    linked_at: (data?.telegram_linked_at as string | null) ?? null,
+    linked: !!row?.telegram_chat_id,
+    chat_id: (row?.telegram_chat_id as number | null) ?? null,
+    username: (row?.telegram_username as string | null) ?? null,
+    linked_at: (row?.telegram_linked_at as string | null) ?? null,
   };
 }
 
