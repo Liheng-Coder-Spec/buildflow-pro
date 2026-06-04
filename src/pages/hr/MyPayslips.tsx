@@ -178,6 +178,10 @@ export default function MyPayslips() {
 
   const filtered = React.useMemo(() => {
     return rows.filter((r) => {
+      const periodStatus = r.period?.status ?? "";
+      const normalizedStatus: PayrollLifecycleStatus =
+        periodStatus === "open" ? "draft" : (periodStatus as PayrollLifecycleStatus);
+      if (stageFilter !== "all" && normalizedStatus !== stageFilter) return false;
       if (yearFilter !== "all") {
         const y = String(
           new Date(r.period?.period_start ?? r.generated_at).getFullYear(),
@@ -190,7 +194,7 @@ export default function MyPayslips() {
       }
       return true;
     });
-  }, [rows, search, yearFilter]);
+  }, [rows, search, yearFilter, stageFilter]);
 
   async function downloadPayslip(row: MyPayslipRow) {
     if (!row.storage_path) {
