@@ -132,6 +132,7 @@ export default function MyPayslips() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [yearFilter, setYearFilter] = React.useState<string>("all");
+  const [stageFilter, setStageFilter] = React.useState<string>("all");
   const [selected, setSelected] = React.useState<MyPayslipRow | null>(null);
 
   React.useEffect(() => {
