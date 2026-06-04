@@ -30,6 +30,58 @@ import { Download, FileText, Search } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useSEO } from "@/hooks/useSEO";
+import { PayrollLifecycleStepper } from "@/components/payroll/PayrollLifecycleStepper";
+import {
+  PAYROLL_LIFECYCLE_ORDER,
+  PAYROLL_LIFECYCLE_LABELS,
+  PayrollLifecycleStatus,
+} from "@/lib/payrollMeta";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+function CompactLifecycle({ status }: { status: string }) {
+  const normalized: PayrollLifecycleStatus =
+    (status as PayrollLifecycleStatus) === "open"
+      ? "draft"
+      : (status as PayrollLifecycleStatus);
+  const idx = PAYROLL_LIFECYCLE_ORDER.indexOf(normalized);
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="flex items-center gap-1">
+        {PAYROLL_LIFECYCLE_ORDER.map((s, i) => {
+          const done = i < idx;
+          const active = i === idx;
+          return (
+            <Tooltip key={s}>
+              <TooltipTrigger asChild>
+                <span
+                  className={cn(
+                    "h-2 w-2 rounded-full",
+                    done && "bg-success",
+                    active && "bg-primary ring-2 ring-primary/30 animate-pulse",
+                    !done && !active && "bg-muted-foreground/30",
+                  )}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {i + 1}. {PAYROLL_LIFECYCLE_LABELS[s]}
+                {active ? " · current" : done ? " · done" : ""}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+        <span className="ml-2 text-xs text-muted-foreground">
+          {PAYROLL_LIFECYCLE_LABELS[normalized] ?? status}
+        </span>
+      </div>
+    </TooltipProvider>
+  );
+}
 
 interface MyPayslipRow {
   id: string;
