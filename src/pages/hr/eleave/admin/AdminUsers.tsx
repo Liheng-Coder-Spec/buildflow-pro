@@ -16,7 +16,7 @@ export default function AdminUsers() {
 
   const load = useCallback(async () => {
     const [p, d, r] = await Promise.all([
-      supabase.from("profiles").select("*").order("full_name"),
+      (supabase as any).rpc("list_profiles_full"),
       supabase.from("eleave_departments").select("*"),
       supabase.from("user_roles").select("user_id,role"),
     ]);
