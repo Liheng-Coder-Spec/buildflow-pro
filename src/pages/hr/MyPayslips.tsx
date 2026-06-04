@@ -255,6 +255,21 @@ export default function MyPayslips() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-48">
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All stages</SelectItem>
+                  {PAYROLL_LIFECYCLE_ORDER.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {PAYROLL_LIFECYCLE_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
