@@ -53,10 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     inFlightRef.current = userId;
     try {
       const [profileRes, rolesRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+        (supabase as any).rpc("get_my_profile"),
         supabase.from("user_roles").select("role").eq("user_id", userId),
       ]);
-      setProfile((profileRes.data as Profile) ?? null);
+      const profileRow = Array.isArray(profileRes.data) ? profileRes.data[0] : profileRes.data;
+      setProfile((profileRow as Profile) ?? null);
       setRoles(((rolesRes.data ?? []) as { role: AppRole }[]).map((r) => r.role));
       loadedUserIdRef.current = userId;
     } finally {
