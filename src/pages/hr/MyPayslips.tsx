@@ -397,6 +397,17 @@ function PayslipDetail({
         </div>
       </div>
 
+      {row.period?.status && (
+        <div className="rounded-md border p-3 bg-muted/30">
+          <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+            Period lifecycle
+          </div>
+          <PayrollLifecycleStepper
+            current={row.period.status as PayrollLifecycleStatus}
+          />
+        </div>
+      )}
+
       <div>
         <h4 className="text-sm font-semibold mb-2">Earnings</h4>
         <Row label="Base salary" value={money(l?.base_salary, ccy)} />
