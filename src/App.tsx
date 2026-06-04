@@ -37,6 +37,7 @@ const Workload = React.lazy(() => import("./pages/Workload"));
 const Organization = React.lazy(() => import("./pages/Organization"));
 const Timesheets = React.lazy(() => import("./pages/Timesheets"));
 const Payroll = React.lazy(() => import("./pages/Payroll"));
+const MyPayslips = React.lazy(() => import("./pages/hr/MyPayslips"));
 const Documents = React.lazy(() => import("./pages/Documents"));
 const Reports = React.lazy(() => import("./pages/Reports"));
 const AuditLog = React.lazy(() => import("./pages/AuditLog"));
@@ -185,6 +186,7 @@ const App = () => (
                   <Route path="/hse" element={<HSE />} />
                   <Route path="/timesheets" element={<Timesheets />} />
                   <Route path="/payroll" element={<Payroll />} />
+                  <Route path="/hr/my-payslips" element={<MyPayslips />} />
                   <Route path="/documents" element={<Documents />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/organization" element={<Organization />} />
