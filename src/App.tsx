@@ -186,6 +186,7 @@ const App = () => (
                   <Route path="/hse" element={<HSE />} />
                   <Route path="/timesheets" element={<Timesheets />} />
                   <Route path="/payroll" element={<Payroll />} />
+                  <Route path="/hr/my-payslips" element={<MyPayslips />} />
                   <Route path="/documents" element={<Documents />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/organization" element={<Organization />} />
