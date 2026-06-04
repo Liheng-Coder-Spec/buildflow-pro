@@ -132,6 +132,7 @@ export default function MyPayslips() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [yearFilter, setYearFilter] = React.useState<string>("all");
+  const [stageFilter, setStageFilter] = React.useState<string>("all");
   const [selected, setSelected] = React.useState<MyPayslipRow | null>(null);
 
   React.useEffect(() => {
@@ -177,6 +178,10 @@ export default function MyPayslips() {
 
   const filtered = React.useMemo(() => {
     return rows.filter((r) => {
+      const periodStatus = r.period?.status ?? "";
+      const normalizedStatus: PayrollLifecycleStatus =
+        periodStatus === "open" ? "draft" : (periodStatus as PayrollLifecycleStatus);
+      if (stageFilter !== "all" && normalizedStatus !== stageFilter) return false;
       if (yearFilter !== "all") {
         const y = String(
           new Date(r.period?.period_start ?? r.generated_at).getFullYear(),
@@ -189,7 +194,7 @@ export default function MyPayslips() {
       }
       return true;
     });
-  }, [rows, search, yearFilter]);
+  }, [rows, search, yearFilter, stageFilter]);
 
   async function downloadPayslip(row: MyPayslipRow) {
     if (!row.storage_path) {
@@ -245,6 +250,21 @@ export default function MyPayslips() {
                   {years.map((y) => (
                     <SelectItem key={y} value={y}>
                       {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-48">
+              <Select value={stageFilter} onValueChange={setStageFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All stages</SelectItem>
+                  {PAYROLL_LIFECYCLE_ORDER.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {PAYROLL_LIFECYCLE_LABELS[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>
