@@ -38,7 +38,7 @@ export default function People() {
   const load = async () => {
     setLoading(true);
     const [profilesRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("*").order("full_name"),
+      (supabase as any).rpc("list_profiles_full"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
     const rolesByUser: Record<string, string[]> = {};

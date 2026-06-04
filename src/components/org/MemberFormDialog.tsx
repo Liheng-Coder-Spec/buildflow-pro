@@ -61,14 +61,12 @@ export function MemberFormDialog({ open, onOpenChange, member, departments, memb
     if (member) {
       setForm({ ...member });
       setIsAutoId(false);
-      // Load Telegram chat_id from profile (not in OrgMemberRow)
-      supabase
-        .from("profiles")
-        .select("telegram_chat_id")
-        .eq("id", member.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setForm((f) => ({ ...f, telegram_chat_id: (data as any).telegram_chat_id ?? "" } as any));
+      // Load Telegram chat_id from profile via admin-scoped RPC (not in OrgMemberRow)
+      (supabase as any)
+        .rpc("get_profile_full", { target: member.id })
+        .then(({ data }: any) => {
+          const row = Array.isArray(data) ? data[0] : data;
+          if (row) setForm((f) => ({ ...f, telegram_chat_id: row.telegram_chat_id ?? "" } as any));
         });
     } else {
       setForm({ 

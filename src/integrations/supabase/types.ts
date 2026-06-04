@@ -9469,6 +9469,88 @@ export type Database = {
         Args: { _project_id: string; _roles: string[] }
         Returns: string[]
       }
+      get_my_profile: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          bank_account: string | null
+          bank_name: string | null
+          company_id: string | null
+          created_at: string
+          department: string | null
+          eleave_department_id: string | null
+          email: string | null
+          emergency_contact: string | null
+          emergency_phone: string | null
+          employee_id: string | null
+          employment_status:
+            | Database["public"]["Enums"]["employment_status"]
+            | null
+          full_name: string
+          gender: Database["public"]["Enums"]["eleave_gender"]
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          level: string | null
+          phone: string | null
+          probation_end_date: string | null
+          report_to_employee_id: string | null
+          reports_to: string | null
+          supervisor_id: string | null
+          telegram_chat_id: number | null
+          telegram_linked_at: string | null
+          telegram_username: string | null
+          updated_at: string
+          years_of_service: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_profile_full: {
+        Args: { target: string }
+        Returns: {
+          avatar_url: string | null
+          bank_account: string | null
+          bank_name: string | null
+          company_id: string | null
+          created_at: string
+          department: string | null
+          eleave_department_id: string | null
+          email: string | null
+          emergency_contact: string | null
+          emergency_phone: string | null
+          employee_id: string | null
+          employment_status:
+            | Database["public"]["Enums"]["employment_status"]
+            | null
+          full_name: string
+          gender: Database["public"]["Enums"]["eleave_gender"]
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          level: string | null
+          phone: string | null
+          probation_end_date: string | null
+          report_to_employee_id: string | null
+          reports_to: string | null
+          supervisor_id: string | null
+          telegram_chat_id: number | null
+          telegram_linked_at: string | null
+          telegram_username: string | null
+          updated_at: string
+          years_of_service: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_project_planners: { Args: { _project_id: string }; Returns: string[] }
       has_role: {
         Args: {
@@ -9477,6 +9559,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_or_accountant: { Args: { _uid: string }; Returns: boolean }
       is_dept_member: {
         Args: {
           _dept: Database["public"]["Enums"]["department"]
@@ -9490,6 +9573,47 @@ export type Database = {
       is_working_day: {
         Args: { _calendar_id: string; _d: string }
         Returns: boolean
+      }
+      list_profiles_full: {
+        Args: never
+        Returns: {
+          avatar_url: string | null
+          bank_account: string | null
+          bank_name: string | null
+          company_id: string | null
+          created_at: string
+          department: string | null
+          eleave_department_id: string | null
+          email: string | null
+          emergency_contact: string | null
+          emergency_phone: string | null
+          employee_id: string | null
+          employment_status:
+            | Database["public"]["Enums"]["employment_status"]
+            | null
+          full_name: string
+          gender: Database["public"]["Enums"]["eleave_gender"]
+          hire_date: string | null
+          id: string
+          job_title: string | null
+          level: string | null
+          phone: string | null
+          probation_end_date: string | null
+          report_to_employee_id: string | null
+          reports_to: string | null
+          supervisor_id: string | null
+          telegram_chat_id: number | null
+          telegram_linked_at: string | null
+          telegram_username: string | null
+          updated_at: string
+          years_of_service: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       post_task_progress_update: {
         Args: {

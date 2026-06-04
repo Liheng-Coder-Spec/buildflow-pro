@@ -56,7 +56,7 @@ export const deleteDepartment = async (id: string) => {
 
 export const fetchOrgMembers = async (): Promise<OrgMemberRow[]> => {
   const [profilesRes, rolesRes] = await Promise.all([
-    (supabase as any).from("profiles").select("*").order("employee_id"),
+    (supabase as any).rpc("list_profiles_full"),
     supabase.from("user_roles").select("user_id, role"),
   ]);
   if (profilesRes.error) throw profilesRes.error;

@@ -18,7 +18,7 @@ export interface Employee {
 
 export const fetchEmployees = async (): Promise<Employee[]> => {
   const [profilesRes, rolesRes] = await Promise.all([
-    supabase.from("profiles").select("*").order("full_name"),
+    (supabase as any).rpc("list_profiles_full"),
     supabase.from("user_roles").select("user_id, role"),
   ]);
   const rolesByUser: Record<string, string[]> = {};
