@@ -37,6 +37,7 @@ const Workload = React.lazy(() => import("./pages/Workload"));
 const Organization = React.lazy(() => import("./pages/Organization"));
 const Timesheets = React.lazy(() => import("./pages/Timesheets"));
 const Payroll = React.lazy(() => import("./pages/Payroll"));
+const MyPayslips = React.lazy(() => import("./pages/hr/MyPayslips"));
 const Documents = React.lazy(() => import("./pages/Documents"));
 const Reports = React.lazy(() => import("./pages/Reports"));
 const AuditLog = React.lazy(() => import("./pages/AuditLog"));
