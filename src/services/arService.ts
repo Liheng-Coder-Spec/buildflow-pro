@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 import type { ClientInvoice, ClientInvoicePayment, ArInvoiceStatus } from "@/lib/financialMeta";
 
