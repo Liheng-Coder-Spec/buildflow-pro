@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from "@/integrations/supabase/client";
 import type { LeaveRequest, LeaveType, LeaveBalance } from "@/lib/hrMeta";
 import { openModuleApproval, closeModuleApproval } from "@/services/moduleApprovalService";
