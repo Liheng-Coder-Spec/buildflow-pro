@@ -1,137 +1,126 @@
+## Payroll Module Redesign — Plan
 
-## Goal
+Upgrade the existing single-page Payroll into a full lifecycle module aligned with DCOS-HR-PAY-R3 (Cambodia). Scope: **Core lifecycle + Cambodia tax/NSSF + Medium-company approvals + full project/WBS cost allocation**.
 
-Clone the full `leave-management-system` project (UI + DB schema + business logic) from your workspace into this DCOS app, mounted under the **HR Management → E-Leave** group, replacing the existing minimal Leave pages. All user-visible wording "Leave" becomes **"E-Leave"** (page titles, sidebar, breadcrumbs).
+---
 
-## Source vs. target
+### 1. Status lifecycle
 
-Source project: `leave-management-system` (ID `7668dacf-5151-41e7-9704-4c87e47b3c2b`) — same workspace, readable.
-
-Source includes:
-- 12 user pages: Dashboard, ApplyLeave, MyRequests, TeamCalendar, WhosOnLeave, Replacement, Approvals, Notifications, PublicHolidays, MyApprovalChain + Auth, NotFound
-- 9 admin pages: AdminLeaveTypes, AdminApprovalChains, AdminCapacity, AdminSeniority, AdminAllowances, AdminYearEnd, AdminUsers, AdminReports, AdminPublicHolidays
-- Components: ApprovalChainTimeline, StatusPill, NavLink, reports/
-- Libs: leave.ts, replacement.ts, exportReport.ts
-- 8 SQL migrations defining: `leave_types`, `leave_balances`, `leave_requests`, `approval_chains`, `request_approvals`, `seniority_rules`, `team_capacity_rules`, `capacity_overrides`, `replacement_credits`, `notifications`, `audit_log`, plus enums (`leave_status`, `gender`, `deduct_from`, `notification_type`) and RPCs (`has_role`, `current_user_role`, balance/expiry helpers).
-
-## Plan
-
-### 1. Database migration (single migration file)
-- Add new enums: `leave_status`, `gender`, `deduct_from`, `notification_type` (skip `app_role` — this app already has its own roles system; map `supervisor`/`admin` to existing roles).
-- Drop legacy tables that the new system replaces and that aren't used elsewhere: `leave_balances`, `leave_requests`, `leave_types` (current schema is incompatible).
-- Create the new tables: `leave_types`, `seniority_rules`, `leave_balances`, `leave_requests` (with `current_level`, `total_levels`, half-day, attachment, cancellation_reason…), `approval_chains`, `request_approvals`, `team_capacity_rules`, `capacity_overrides`, `replacement_credits`, plus an `e_leave_notifications` table (suffixed to avoid colliding with the existing global `notifications` table).
-- Reuse this app's existing `profiles` and `departments`, adding columns the source expects (`gender`, `hire_date`, `probation_end_date`, `years_of_service`, `supervisor_id`) if missing.
-- GRANTs to `authenticated` + `service_role` for every new table, RLS enabled, policies ported (self-read, supervisor/admin read-all, admin manage). Role checks use the existing `has_role(uuid, app_role)` already in this project (mapping `supervisor` → `project_manager`/`supervisor`).
-- Port supporting SQL from the other 7 migrations (capacity functions, seniority resolver, year-end carry-over, balance ledger triggers, notification creators).
-
-### 2. Code port
-
-Copy source files into a new namespace so nothing clashes:
+Replace the current 3-state (`open` / `locked` / `paid`) with the full 11-state machine:
 
 ```text
-src/pages/hr/eleave/
-  EleaveDashboard.tsx         (← Dashboard.tsx)
-  ApplyEleave.tsx             (← ApplyLeave.tsx)
-  MyEleaveRequests.tsx        (← MyRequests.tsx)
-  EleaveTeamCalendar.tsx
-  WhosOnEleave.tsx
-  EleaveReplacement.tsx
-  EleaveApprovals.tsx
-  EleaveNotifications.tsx
-  EleavePublicHolidays.tsx
-  MyEleaveApprovalChain.tsx
-  admin/
-    AdminEleaveTypes.tsx
-    AdminEleaveApprovalChains.tsx
-    AdminEleaveCapacity.tsx
-    AdminEleaveSeniority.tsx
-    AdminEleaveAllowances.tsx
-    AdminEleaveYearEnd.tsx
-    AdminEleaveUsers.tsx
-    AdminEleaveReports.tsx
-    AdminEleavePublicHolidays.tsx
-src/components/eleave/
-  ApprovalChainTimeline.tsx
-  StatusPill.tsx
-  reports/...
-src/lib/eleave/
-  leave.ts
-  replacement.ts
-  exportReport.ts
+draft → collecting → calculated → under_review → finance_verification
+     → pending_approval → approved → locked → exported → paid → closed
 ```
 
-All "Leave" wording in headings, buttons, toasts, page titles → **"E-Leave"** (keep DB table names as `leave_*` to match the ported SQL — these are not user-visible).
+A Postgres trigger validates transitions; rejections route back to `under_review`. Only `super_admin` may unlock from `locked`.
 
-Replace source-specific shells with this app's shared infra:
-- Drop the source `AppLayout`, `ProtectedRoute`, `AuthContext`, `NavLink`, `use-toast`, `useSEO` — reuse the existing ones already in this project.
-- Source uses `supabase/client` import — already compatible.
-- Source uses roles `admin`/`supervisor`/`employee` — remap to this app's `AppRole` (`admin`, `project_manager`/`supervisor`, default).
-- Replace any `useNavigate("/apply")` etc. with the new routes below.
+---
 
-### 3. Routing (src/App.tsx)
+### 2. Database schema (one migration)
 
-Replace existing HR Leave routes with the new E-Leave routes:
+New tables (all under `public`, with `GRANT`s + RLS):
 
-```text
-/hr/eleave                        EleaveDashboard
-/hr/eleave/apply                  ApplyEleave
-/hr/eleave/requests               MyEleaveRequests
-/hr/eleave/calendar               EleaveTeamCalendar
-/hr/eleave/whos-on-leave          WhosOnEleave
-/hr/eleave/replacement            EleaveReplacement
-/hr/eleave/approvals              EleaveApprovals          (project_manager / supervisor / admin)
-/hr/eleave/notifications          EleaveNotifications
-/hr/eleave/holidays               EleavePublicHolidays
-/hr/eleave/my-approval-chain      MyEleaveApprovalChain
-/hr/eleave/admin/leave-types      AdminEleaveTypes         (admin)
-/hr/eleave/admin/approval-chains  AdminEleaveApprovalChains (admin)
-/hr/eleave/admin/capacity         AdminEleaveCapacity      (admin)
-/hr/eleave/admin/seniority        AdminEleaveSeniority     (admin)
-/hr/eleave/admin/allowances       AdminEleaveAllowances    (admin)
-/hr/eleave/admin/year-end         AdminEleaveYearEnd       (admin)
-/hr/eleave/admin/users            AdminEleaveUsers         (admin)
-/hr/eleave/admin/reports          AdminEleaveReports       (admin)
-/hr/eleave/admin/holidays         AdminEleavePublicHolidays (admin)
-```
+- `payroll_tax_brackets` — admin-editable TOS brackets (`min_amount`, `max_amount`, `rate`, `currency`, `effective_from/to`)
+- `payroll_tax_relief_rules` — dependent allowance, spouse allowance, threshold (`amount`, `condition_key`, `effective_from/to`)
+- `payroll_nssf_rules` — NSSF/Pension contribution rates, salary caps, employer/employee split
+- `payroll_employee_tax_profile` — per-employee: `tin`, `nssf_no`, `dependents`, `marital_status`, `is_resident`
+- `payroll_employee_salary` — base salary, allowances JSON, deductions JSON, `effective_from/to` (immutable history)
+- `payroll_approval_chains` — fixed Medium-company chain seeded: `hr_officer → hr_manager → finance_manager → director`
+- `payroll_approval_steps` — per-period approval audit (`step_no`, `approver_id`, `decision`, `decided_at`, `comment`)
+- `payroll_cost_allocations` — per payroll-line × project × WBS: `hours`, `pct`, `allocated_amount`
+- `payroll_audit_log` — high-severity audit trail (salary change, tax change, approval, unlock, payslip download)
+- `payroll_payslips` — generated PDF metadata + storage path
 
-Delete the routes `/hr/leave`, `/hr/leave/new`, `/hr/leave/types` and remove the now-unused `LeaveList.tsx`, `LeaveRequestForm.tsx`, `LeaveTypesAdmin.tsx`, plus `services/leaveService.ts` and any consumers (will refactor or delete; `lib/hrMeta.ts` leave-related types removed).
+Extend existing tables:
 
-### 4. Sidebar (src/components/AppLayout.tsx — HR Management group)
+- `payroll_periods`: add `status` (new enum), `collection_completed_at`, `calculated_at`, `verified_by/at`, `approved_by/at`, `exported_at`, `locked_by`, `paid_method`, `current_approval_step`, `rejection_reason`
+- `payroll_lines`: add `gross_salary`, `taxable_salary`, `tax_relief`, `tos_amount`, `nssf_employee`, `nssf_employer`, `pension_employee`, `pension_employer`, `allowances_total`, `deductions_total`, `net_salary`, `currency`
 
-Replace the single "Leave" item with E-Leave entries:
+New Postgres functions:
 
-```text
-HR Management
-  HR Dashboard
-  E-Leave                  → /hr/eleave
-  Apply E-Leave            → /hr/eleave/apply
-  My E-Leave Requests      → /hr/eleave/requests
-  Team Calendar            → /hr/eleave/calendar
-  Who's on E-Leave         → /hr/eleave/whos-on-leave
-  E-Leave Approvals        → /hr/eleave/approvals     (supervisor/admin only)
-  E-Leave Admin            → /hr/eleave/admin/leave-types (admin only, expands to admin sub-pages)
-  Attendance
-  People
-```
+- `compute_payroll_v2(period_id)` — gathers attendance + approved timesheets + approved OT, computes gross → applies relief → applies brackets → NSSF → net, writes `payroll_lines` and `payroll_cost_allocations` from timesheet `project_id`/`wbs_node_id` hours weighting
+- `payroll_period_transition(period_id, to_status, comment?)` — guards transitions, writes `payroll_approval_steps` + audit log, sends notifications via existing `create_notification`
+- `payroll_block_checks(period_id)` returns blockers (missing tax profile, missing NSSF, negative salary, >20% delta, >30% MoM delta, missing attendance)
+- `post_payroll_to_cost_ledger(period_id)` — on `exported`, posts cost allocations into project labor cost (uses existing financial ledger pattern)
 
-(Exact sidebar grouping kept flat to match existing pattern; admin sub-pages reached from the E-Leave Admin landing page rather than each in the sidebar to avoid clutter.)
+RLS roles (uses existing `app_role` + a new `hr_manager`, `hr_officer`, `finance_manager`, `director` if not present — otherwise reuses `admin`/`accountant`/`project_manager` mapped via `payroll_approval_chains`).
 
-### 5. Cleanup
-- Delete legacy `LeaveList.tsx`, `LeaveRequestForm.tsx`, `LeaveTypesAdmin.tsx`, `services/leaveService.ts`.
-- Strip leave-related types/labels from `src/lib/hrMeta.ts`.
-- Keep `HRDashboard`, `Attendance`, `People` untouched.
+---
 
-## Open trade-offs to flag
+### 3. Frontend pages
 
-- **Roles**: source uses `employee/supervisor/admin`; this app uses a richer role set. I'll map `supervisor` → this app's `supervisor`+`project_manager`, `admin` → `admin`. Any non-mapped user becomes a regular employee.
-- **Profiles columns**: the source expects `hire_date`, `gender`, `years_of_service`, `supervisor_id` on `profiles`. I'll add them as nullable to avoid disturbing existing data.
-- **Notifications**: source has its own `notifications` table. This app already has a global notifications table, so the ported one will be renamed to `eleave_notifications` and a small adapter rewrites the source's queries.
-- **Data loss**: existing rows in current `leave_requests` / `leave_balances` / `leave_types` will be **dropped** (per "Replace with E-Leave"). If you want me to migrate any current data first, say so before approving.
+New route set under `/hr/payroll`:
 
-## Deliverables order
+- `Payroll.tsx` (redesigned) — period selector, lifecycle stepper, KPI cards, blocker panel, action buttons gated by current step + role
+- `PayrollPeriodDetail.tsx` — tabs: **Lines**, **Cost Allocation**, **Blockers**, **Approval Trail**, **Audit Log**
+- `PayrollEmployeeProfile.tsx` — salary history, tax profile, NSSF, allowances/deductions editor (admin only, salary changes write audit)
+- `PayrollApprovalInbox.tsx` — pending approvals for the current user across periods
+- `MyPayslips.tsx` — employee self-service: list + download PDF payslip
+- `admin/PayrollTaxBrackets.tsx` — CRUD TOS brackets
+- `admin/PayrollTaxRelief.tsx` — CRUD relief rules
+- `admin/PayrollNssfRules.tsx` — CRUD NSSF rules
+- `admin/PayrollApprovalChain.tsx` — view + edit Medium-tier chain
+- `admin/PayrollAudit.tsx` — searchable audit log
 
-1. Run the database migration (requires your approval).
-2. Port code files + adapters in one pass.
-3. Update `App.tsx` routes + sidebar.
-4. Remove legacy leave files.
-5. Smoke-check build, fix any type/import errors surfaced by the new schema.
+Sidebar: extend HR group with **Payroll Dashboard**, **Payroll Approvals**, **My Payslips**, and **Payroll Admin** (admin-only).
+
+Shared UI:
+
+- `PayrollLifecycleStepper` — visual 11-step progress
+- `PayrollBlockerList` — red/amber/green blocker badges
+- `PayrollApprovalTrail` — reuses `ApprovalChainTimeline` pattern from E-Leave
+- `PayslipPdf` — react-pdf template with company branding
+
+---
+
+### 4. Edge functions
+
+- `export-payroll-xlsx` (existing) — extend with new columns (TOS, NSSF, net salary, cost allocation sheet)
+- `generate-payslip-pdf` (new) — renders PDF, uploads to `payslips/` storage bucket, returns signed URL
+- `payroll-notify` (new) — dispatches in-app + Telegram notifications for each lifecycle transition per Section 28 matrix
+
+---
+
+### 5. Notifications & alerts
+
+Use existing `create_notification` + Telegram bridge. Per Section 28/29 matrix:
+
+| Event | Recipient | Priority |
+|---|---|---|
+| Period created | HR team | Normal |
+| Attendance missing | Employee | High |
+| Calculated | HR Manager | Normal |
+| Verification required | Finance Manager | High |
+| Approval required | Director | High |
+| Paid | Employee | Normal |
+| Critical blocker (negative pay, >20% delta) | HR + Finance | Critical |
+
+---
+
+### 6. Cost allocation (Section 34)
+
+`compute_payroll_v2` joins each employee's approved `timesheet_entries` within the period by `project_id` + `wbs_node_id`, computes hour-weighted percentages, and writes one `payroll_cost_allocations` row per (line, project, wbs). On `exported`, `post_payroll_to_cost_ledger` inserts the allocated amounts into the existing project cost ledger so labor cost shows up in **Financial Control** / **Budgets** without manual entry.
+
+---
+
+### 7. Out of scope (deferred)
+
+- Small/Enterprise approval tiers (Medium only for now)
+- Biometric / QR check-in ingestion (attendance module unchanged)
+- Mobile push notifications
+- Bank-file (ABA/ACLEDA/Wing) export formats — `exported` status set manually for now
+- Year-end / annual tax reconciliation reports
+
+---
+
+### 8. Rollout order
+
+1. Migration: schema + enum + RLS + seed tax/NSSF defaults + seed approval chain
+2. `compute_payroll_v2` + `payroll_period_transition` + block checks
+3. Redesigned `Payroll.tsx` + `PayrollPeriodDetail` + lifecycle stepper
+4. Tax/NSSF/Relief admin pages
+5. Approval inbox + notifications
+6. Payslip PDF + employee self-service
+7. Cost-allocation posting + xlsx export extension
+8. Audit log page + integration tests
