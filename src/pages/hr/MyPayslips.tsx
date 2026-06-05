@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Search } from "lucide-react";
+import { Download, FileText, Search, X, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useSEO } from "@/hooks/useSEO";
@@ -132,7 +138,7 @@ export default function MyPayslips() {
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState("");
   const [yearFilter, setYearFilter] = React.useState<string>("all");
-  const [stageFilter, setStageFilter] = React.useState<string>("all");
+  const [stageFilter, setStageFilter] = React.useState<string[]>([]);
   const [selected, setSelected] = React.useState<MyPayslipRow | null>(null);
 
   React.useEffect(() => {
@@ -181,7 +187,7 @@ export default function MyPayslips() {
       const periodStatus = r.period?.status ?? "";
       const normalizedStatus: PayrollLifecycleStatus =
         periodStatus === "open" ? "draft" : (periodStatus as PayrollLifecycleStatus);
-      if (stageFilter !== "all" && normalizedStatus !== stageFilter) return false;
+      if (stageFilter.length > 0 && !stageFilter.includes(normalizedStatus)) return false;
       if (yearFilter !== "all") {
         const y = String(
           new Date(r.period?.period_start ?? r.generated_at).getFullYear(),
@@ -255,20 +261,53 @@ export default function MyPayslips() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="w-48">
-              <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Stage" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All stages</SelectItem>
-                  {PAYROLL_LIFECYCLE_ORDER.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {PAYROLL_LIFECYCLE_LABELS[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="w-56">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="flex items-center gap-2">
+                      <Filter className="h-4 w-4" />
+                      {stageFilter.length === 0
+                        ? "All stages"
+                        : `${stageFilter.length} selected`}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {PAYROLL_LIFECYCLE_ORDER.map((s) => (
+                      <label
+                        key={s}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={stageFilter.includes(s)}
+                          onCheckedChange={(checked) => {
+                            setStageFilter((prev) =>
+                              checked
+                                ? [...prev, s]
+                                : prev.filter((x) => x !== s),
+                            );
+                          }}
+                        />
+                        <span className="text-sm">
+                          {PAYROLL_LIFECYCLE_LABELS[s]}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {stageFilter.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full mt-2 text-muted-foreground"
+                      onClick={() => setStageFilter([])}
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardContent>
