@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Table,
   TableBody,
   TableCell,
@@ -26,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileText, Search } from "lucide-react";
+import { Download, FileText, Search, X, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useSEO } from "@/hooks/useSEO";
