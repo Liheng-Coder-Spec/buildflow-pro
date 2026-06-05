@@ -187,7 +187,7 @@ export default function MyPayslips() {
       const periodStatus = r.period?.status ?? "";
       const normalizedStatus: PayrollLifecycleStatus =
         periodStatus === "open" ? "draft" : (periodStatus as PayrollLifecycleStatus);
-      if (stageFilter !== "all" && normalizedStatus !== stageFilter) return false;
+      if (stageFilter.length > 0 && !stageFilter.includes(normalizedStatus)) return false;
       if (yearFilter !== "all") {
         const y = String(
           new Date(r.period?.period_start ?? r.generated_at).getFullYear(),
