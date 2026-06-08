@@ -173,6 +173,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: "/hr/eleave/notifications", label: "E-Leave Notifications", icon: Activity, module: "hr" },
       { to: "/hr/eleave/admin", label: "E-Leave Admin", icon: Settings, module: "hr", roles: ["admin"] },
       { to: "/hr/attendance", label: "Attendance", icon: Clock, module: "hr" },
+      { to: "/hr/my-payslips", label: "My Payslips", icon: Receipt, module: "hr" },
+      { to: "/payroll", label: "Payroll", icon: DollarSign, roles: ["admin", "accountant"] },
       { to: "/hr/people", label: "People", icon: Users, module: "hr" },
     ],
   },
