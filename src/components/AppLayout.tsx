@@ -214,9 +214,31 @@ const AppSidebar = React.memo(function AppSidebar() {
   const { can } = usePermissions();
   const { totalTaskUnread } = useTaskUnread();
   const { totalApprovalUnread } = useApprovalUnread();
-  const [openGroups, setOpenGroups] = React.useState<Set<string>>(
-    () => new Set(NAV_GROUPS.length > 0 ? [NAV_GROUPS[0].label] : [])
-  );
+  const { pathname } = useLocation();
+  const activeGroupLabel = React.useMemo(() => {
+    const match = NAV_GROUPS.find((g) =>
+      g.items.some((it) =>
+        it.to === "/" ? pathname === "/" : pathname === it.to || pathname.startsWith(it.to + "/"),
+      ),
+    );
+    return match?.label;
+  }, [pathname]);
+  const [openGroups, setOpenGroups] = React.useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    if (NAV_GROUPS.length > 0) initial.add(NAV_GROUPS[0].label);
+    if (activeGroupLabel) initial.add(activeGroupLabel);
+    return initial;
+  });
+  React.useEffect(() => {
+    if (activeGroupLabel) {
+      setOpenGroups((prev) => {
+        if (prev.has(activeGroupLabel)) return prev;
+        const next = new Set(prev);
+        next.add(activeGroupLabel);
+        return next;
+      });
+    }
+  }, [activeGroupLabel]);
   const toggleGroup = (label: string) => {
     setOpenGroups(prev => {
       const next = new Set(prev);
