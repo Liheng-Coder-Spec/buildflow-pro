@@ -69,6 +69,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
 import { useApprovalUnread } from "@/hooks/useApprovalUnread";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   to: string;
@@ -271,6 +272,14 @@ const AppSidebar = React.memo(function AppSidebar() {
     return 0;
   };
 
+  const isItemActive = React.useCallback(
+    (to: string) => {
+      if (to === "/") return pathname === "/";
+      return pathname === to || pathname.startsWith(to + "/");
+    },
+    [pathname],
+  );
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -289,61 +298,72 @@ const AppSidebar = React.memo(function AppSidebar() {
         {visibleGroups.map((group) => {
           const items = group.items;
           const isOpen = openGroups.has(group.label);
+          const groupHasActive = items.some((it) => isItemActive(it.to));
           return (
             <SidebarGroup key={group.label}>
               <button
                 onClick={() => toggleGroup(group.label)}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-xs font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
+                className={cn(
+                  "flex w-full items-center justify-between px-2 py-1.5 text-xs font-semibold transition-colors rounded-md",
+                  groupHasActive
+                    ? "text-sidebar-primary"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground",
+                )}
               >
                 {group.label}
                 <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                    isOpen ? "" : "-rotate-90"
-                  }`}
+                  className={cn(
+                    "h-3.5 w-3.5 transition-transform duration-200",
+                    isOpen ? "" : "-rotate-90",
+                    groupHasActive && "text-sidebar-primary",
+                  )}
                 />
               </button>
               <SidebarGroupContent
-                className={`overflow-hidden transition-all duration-200 ${
-                  isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
-                }`}
+                className={cn(
+                  "overflow-hidden transition-all duration-200",
+                  isOpen ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0",
+                )}
               >
                 <SidebarMenu>
                   {items.map((item) => {
                     const count = badgeFor(item.to);
                     const tooltip = count > 0 ? `${item.label} (${count} new)` : item.label;
+                    const active = isItemActive(item.to);
                     return (
                       <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton asChild tooltip={tooltip}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          tooltip={tooltip}
+                          className={cn(
+                            active &&
+                              "border-l-2 border-sidebar-primary pl-[6px]",
+                          )}
+                        >
                           <NavLink
                             to={item.to}
                             end={item.to === "/"}
                             onMouseEnter={() => prefetchRoute(item.to)}
                             onFocus={() => prefetchRoute(item.to)}
-                            className={({ isActive }) =>
-                              isActive ? "data-[active=true]:bg-sidebar-accent" : ""
-                            }
                           >
-                            {({ isActive }) => (
-                              <>
-                                <span className="relative flex items-center justify-center">
-                                  <item.icon className={isActive ? "text-sidebar-primary" : ""} />
-                                  {count > 0 && (
-                                    <span
-                                      aria-hidden
-                                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-sidebar group-data-[collapsible=icon]:block hidden"
-                                    />
-                                  )}
-                                </span>
-                                <span className="flex-1">{item.label}</span>
-                                {count > 0 && (
-                                  <span
-                                    aria-label={`${count} unread`}
-                                    className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none group-data-[collapsible=icon]:hidden"
-                                  >
-                                    {count > 9 ? "9+" : count}
-                                  </span>
-                                )}
-                              </>
+                            <span className="relative flex items-center justify-center">
+                              <item.icon className={cn(active && "text-sidebar-primary")} />
+                              {count > 0 && (
+                                <span
+                                  aria-hidden
+                                  className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-sidebar group-data-[collapsible=icon]:block hidden"
+                                />
+                              )}
+                            </span>
+                            <span className="flex-1">{item.label}</span>
+                            {count > 0 && (
+                              <span
+                                aria-label={`${count} unread`}
+                                className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none group-data-[collapsible=icon]:hidden"
+                              >
+                                {count > 9 ? "9+" : count}
+                              </span>
                             )}
                           </NavLink>
                         </SidebarMenuButton>
