@@ -69,6 +69,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useTaskUnread } from "@/hooks/useTaskUnread";
 import { useApprovalUnread } from "@/hooks/useApprovalUnread";
 import { prefetchRoute } from "@/lib/routePrefetch";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   to: string;
